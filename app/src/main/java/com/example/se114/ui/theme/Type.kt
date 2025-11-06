@@ -6,29 +6,59 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-// Set of Material typography styles to start with
+// ⚠️ LƯU Ý: Theo yêu cầu, tất cả font chữ sẽ được đặt thành ExtraBold.
+// Điều này có thể khiến chữ (như email, password) khó đọc.
+// Nếu bạn muốn chữ nhỏ (body) là font thường,
+// hãy đổi `fontWeight = FontWeight.ExtraBold` thành `fontWeight = FontWeight.Normal`
+// cho style `bodyLarge`.
+
 val Typography = Typography(
+
     bodyLarge = TextStyle(
-        fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.Normal,
+        fontFamily = Poppins,
+        fontWeight = FontWeight.ExtraBold,
         fontSize = 16.sp,
         lineHeight = 24.sp,
         letterSpacing = 0.5.sp
-    )
-    /* Other default text styles to override
+    ),
+
     titleLarge = TextStyle(
-        fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.Normal,
+        fontFamily = Poppins,
+        fontWeight = FontWeight.ExtraBold,
         fontSize = 22.sp,
         lineHeight = 28.sp,
         letterSpacing = 0.sp
     ),
+
     labelSmall = TextStyle(
-        fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.Medium,
+        fontFamily = Poppins,
+        fontWeight = FontWeight.ExtraBold,
         fontSize = 11.sp,
         lineHeight = 16.sp,
         letterSpacing = 0.5.sp
+    ),
+
+
+    headlineLarge = TextStyle(
+        fontFamily = Poppins,
+        fontWeight = FontWeight.ExtraBold,
+        fontSize = 36.sp,
+        lineHeight = 40.sp,
+        letterSpacing = 0.sp
+    ),
+    headlineMedium = TextStyle(
+        fontFamily = Poppins,
+        fontWeight = FontWeight.ExtraBold,
+        fontSize = 28.sp,
+        lineHeight = 36.sp,
+        letterSpacing = 0.sp
+    ),
+    bodyMedium = TextStyle(
+        fontFamily = Poppins,
+        fontWeight = FontWeight.ExtraBold,
+        fontSize = 14.sp,
+        lineHeight = 20.sp,
+        letterSpacing = 0.25.sp
     )
-    */
+
 )

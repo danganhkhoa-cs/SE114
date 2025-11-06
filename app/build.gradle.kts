@@ -2,6 +2,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    id("kotlin-kapt")
+    id("com.google.dagger.hilt.android")
 }
 
 android {
@@ -61,4 +63,14 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+    implementation("androidx.compose.material:material-icons-extended")
+
+    implementation("com.google.dagger:hilt-android:2.57.2")
+    kapt("com.google.dagger:hilt-compiler:2.57.2")
+
+    implementation("androidx.hilt:hilt-navigation-compose:1.3.0")
+
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.4")
+
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.4")
 }
