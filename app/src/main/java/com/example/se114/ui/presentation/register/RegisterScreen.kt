@@ -45,7 +45,7 @@ fun RegisterScreen(
 
     LaunchedEffect(key1 = uiState.registerSuccess) {
         if (uiState.registerSuccess) {
-            Toast.makeText(context, "Đăng ký thành công!", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Register Successful!", Toast.LENGTH_SHORT).show()
             onRegisterSuccess()
         }
     }
@@ -134,7 +134,7 @@ fun RegisterForm(
 
                 TextButton(
                     onClick = onBackToLogin,
-                    contentPadding = PaddingValues(0.dp)
+                    contentPadding = PaddingValues(end = 4.dp)
                 ) {
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowBack,
@@ -155,6 +155,7 @@ fun RegisterForm(
 
             Text(
                 text = "Sign Up",
+                fontWeight = FontWeight.SemiBold,
                 style = MaterialTheme.typography.headlineLarge,
                 modifier = Modifier.fillMaxWidth(), // 👈 Sẽ tự động căn lề trái
                 color = AppTealDark
@@ -210,7 +211,7 @@ fun RegisterForm(
             )
 
             // 👈 Khoảng cách nút "Sign Up" (giữ nguyên như bạn muốn)
-            Spacer(modifier = Modifier.height(48.dp))
+            Spacer(modifier = Modifier.height(36.dp))
 
             Button(
 
