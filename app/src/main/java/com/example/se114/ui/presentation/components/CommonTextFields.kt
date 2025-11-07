@@ -12,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -30,15 +31,15 @@ fun EmailTextField(
         modifier = modifier,
         value = value,
         onValueChange = onValueChange,
-        label = { Text("Email") },
+        label = { Text("Email", fontWeight = FontWeight.Normal) },
         leadingIcon = { Icon(Icons.Default.Email, contentDescription = "Email") },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
         singleLine = true,
         isError = isError,
-        supportingText = {
-            if (isError) {
-                Text(errorMessage ?: "Email không hợp lệ")
-            }
+        supportingText = if (isError) {
+            { Text(errorMessage ?: "Email không hợp lệ") }
+        } else {
+            null
         },
         shape = CircleShape,
         // 👈 SỬA Ở ĐÂY:
@@ -69,7 +70,7 @@ fun PasswordTextField(
         modifier = modifier,
         value = value,
         onValueChange = onValueChange,
-        label = { Text(label) },
+        label = { Text(label, fontWeight = FontWeight.Normal) },
         leadingIcon = { Icon(Icons.Default.Lock, contentDescription = label) },
         trailingIcon = {
             val image = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
@@ -82,10 +83,10 @@ fun PasswordTextField(
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
         singleLine = true,
         isError = isError,
-        supportingText = {
-            if (isError) {
-                Text(errorMessage ?: "Mật khẩu không hợp lệ")
-            }
+        supportingText =   if (!isError) {
+            null
+        } else {
+            { Text(errorMessage ?: "Mật khẩu không hợp lệ") }
         },
         shape = CircleShape,
         // 👈 SỬA Ở ĐÂY:
@@ -113,7 +114,7 @@ fun PhoneTextField(
         modifier = modifier,
         value = value,
         onValueChange = onValueChange,
-        label = { Text("Phone") },
+        label = { Text("Phone", fontWeight = FontWeight.Normal) },
         leadingIcon = { Icon(Icons.Default.Phone, contentDescription = "Phone") },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
         singleLine = true,
