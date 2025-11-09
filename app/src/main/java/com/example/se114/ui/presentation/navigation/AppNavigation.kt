@@ -4,6 +4,8 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.se114.ui.presentation.forgot_password.ForgotPasswordScreen
+import com.example.se114.ui.presentation.forgot_password.OTPVerificationScreen
 import com.example.se114.ui.presentation.home.HomeScreen
 import com.example.se114.ui.presentation.login.LoginScreen
 import com.example.se114.ui.presentation.register.RegisterScreen
@@ -29,6 +31,9 @@ fun AppNavigation() {
                 onNavigateToRegister = {
                     // Tới màn hình Đăng ký
                     navController.navigate(Screen.Register.route)
+                },
+                onNavigateToForgotPassword = {
+                    navController.navigate(Screen.ForgotPassword.route)
                 }
             )
         }
@@ -37,17 +42,35 @@ fun AppNavigation() {
         composable(route = Screen.Register.route) {
             RegisterScreen(
                 onRegisterSuccess = {
-                    // Đăng ký thành công: Quay lại Login (đúng theo yêu cầu của bạn)
-                    // Xóa màn Register khỏi stack
                     navController.navigate(Screen.Login.route) {
                         popUpTo(Screen.Login.route) { inclusive = true }
                     }
                 },
                 onBackToLogin = {
-                    // Nhấn nút back trên màn Register
                     navController.popBackStack()
                 }
             )
+        }
+
+
+
+        // Màn hình Forgot password
+        composable(route = Screen.ForgotPassword.route) {
+            ForgotPasswordScreen(
+                onSendMailSuccess = {
+                    navController.navigate(Screen.OTPVerification.route) {
+                        popUpTo(Screen.ForgotPassword.route) {inclusive = true}
+                    }
+                },
+                onBackToLogin = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        // Màn hình xác thực OTP
+        composable(route = Screen.OTPVerification.route) {
+            OTPVerificationScreen()
         }
 
         // Màn hình Home (sau khi đăng nhập)
