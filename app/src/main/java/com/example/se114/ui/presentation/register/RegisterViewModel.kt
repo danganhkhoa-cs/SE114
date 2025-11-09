@@ -76,25 +76,25 @@ class RegisterViewModel @Inject constructor(
 
 
         if (state.email.isBlank() || !android.util.Patterns.EMAIL_ADDRESS.matcher(state.email).matches()) {
-            _uiState.update { it.copy(emailError = "Email không hợp lệ") }
+            _uiState.update { it.copy(emailError = "Invalid email") }
             isValid = false
         }
 
 
         if (state.password.length < 6) {
-            _uiState.update { it.copy(passwordError = "Mật khẩu phải có ít nhất 6 ký tự") }
+            _uiState.update { it.copy(passwordError = "Password must contain at least 6 characters") }
             isValid = false
         }
 
 
         if (state.password != state.confirmPassword) {
-            _uiState.update { it.copy(confirmPasswordError = "Mật khẩu không khớp") }
+            _uiState.update { it.copy(confirmPasswordError = "Password do not match") }
             isValid = false
         }
 
 
         if (state.phone.isBlank() || !phoneRegex.matches(state.phone)) {
-            _uiState.update { it.copy(phoneError = "Số điện thoại Việt Nam không hợp lệ") }
+            _uiState.update { it.copy(phoneError = "Invalid Vietnamese phone number") }
             isValid = false
         }
 

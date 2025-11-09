@@ -59,7 +59,7 @@ class LoginViewModel @Inject constructor(
 
 
         if (state.email.isBlank() || !android.util.Patterns.EMAIL_ADDRESS.matcher(state.email).matches()) {
-            _uiState.update { it.copy(emailError = "Email không hợp lệ") }
+            _uiState.update { it.copy(emailError = "Invalid email") }
             isValid = false
         }
 

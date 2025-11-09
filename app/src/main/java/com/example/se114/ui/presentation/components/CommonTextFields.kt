@@ -1,6 +1,7 @@
 package com.example.se114.ui.presentation.components
 
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
@@ -37,7 +38,7 @@ fun EmailTextField(
         singleLine = true,
         isError = isError,
         supportingText = if (isError) {
-            { Text(errorMessage ?: "Email không hợp lệ") }
+            { Text(errorMessage ?: "Invalid email") }
         } else {
             null
         },
@@ -86,9 +87,44 @@ fun PasswordTextField(
         supportingText =   if (!isError) {
             null
         } else {
-            { Text(errorMessage ?: "Mật khẩu không hợp lệ") }
+            { Text(errorMessage ?: "Invalid password") }
         },
         shape = CircleShape,
+        // 👈 SỬA Ở ĐÂY:
+        colors = OutlinedTextFieldDefaults.colors(
+            unfocusedContainerColor = Color.White,
+            focusedContainerColor = Color.White,
+            unfocusedLabelColor = AppGray,
+            unfocusedLeadingIconColor = AppGray,
+            focusedBorderColor = AppTealDark,
+            unfocusedBorderColor = Color.Transparent,
+            errorBorderColor = MaterialTheme.colorScheme.error
+        )
+    )
+}
+
+@Composable
+fun OTPTextField(
+    modifier: Modifier = Modifier,
+    value: String,
+    onValueChange: (String) -> Unit,
+    isError: Boolean,
+    errorMessage: String?
+) {
+    OutlinedTextField(
+        modifier = modifier,
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text("Phone", fontWeight = FontWeight.Normal) },
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        singleLine = true,
+        isError = isError,
+        supportingText = {
+            if (isError) {
+                Text(errorMessage ?: "Invalid OTP")
+            }
+        },
+        shape = RoundedCornerShape(20),
         // 👈 SỬA Ở ĐÂY:
         colors = OutlinedTextFieldDefaults.colors(
             unfocusedContainerColor = Color.White,
@@ -121,7 +157,7 @@ fun PhoneTextField(
         isError = isError,
         supportingText = {
             if (isError) {
-                Text(errorMessage ?: "Số điện thoại không hợp lệ")
+                Text(errorMessage ?: "Invalid Vietnamese phone number")
             }
         },
         shape = CircleShape,
