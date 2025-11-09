@@ -1,6 +1,5 @@
 package com.example.se114.ui.presentation.login
 
-import android.text.Layout
 import android.widget.Toast
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -10,8 +9,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,14 +18,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.se114.ui.presentation.components.EmailTextField
 import com.example.se114.ui.presentation.components.PasswordTextField
-import com.example.se114.ui.presentation.components.PhoneTextField
 import com.example.se114.ui.theme.AppFormBackground
 import com.example.se114.ui.theme.AppGray
 import com.example.se114.ui.theme.AppTealBlob
@@ -41,7 +36,8 @@ fun LoginScreen(
 
     viewModel: LoginViewModel = hiltViewModel(),
     onLoginSuccess: () -> Unit,
-    onNavigateToRegister: () -> Unit
+    onNavigateToRegister: () -> Unit,
+    onNavigateToForgotPassword: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -110,6 +106,7 @@ fun LoginScreen(
             uiState = uiState,
             viewModel = viewModel,
             onNavigateToRegister = onNavigateToRegister,
+            onNavigateToForgotPassword = onNavigateToForgotPassword,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(top = 300.dp)
@@ -134,6 +131,7 @@ fun LoginForm(
     uiState: LoginUiState,
     viewModel: LoginViewModel,
     onNavigateToRegister: () -> Unit,
+    onNavigateToForgotPassword: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -185,12 +183,12 @@ fun LoginForm(
             )
 
             TextButton(
-                onClick = onNavigateToRegister,
+                onClick = onNavigateToForgotPassword,
                 contentPadding = PaddingValues(horizontal = 8.dp),
                 modifier = Modifier.align(Alignment.End).height(20.dp).offset(y=10.dp)
             ) {
                 Text(
-                    "Forgot password",
+                    "Forgot password?",
                     color = AppTealDark,
                     style = MaterialTheme.typography.labelLarge
                 )
