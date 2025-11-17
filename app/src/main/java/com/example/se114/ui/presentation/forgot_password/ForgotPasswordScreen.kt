@@ -155,13 +155,13 @@ fun ForgotPasswordForm(
                 text = "Forgot password",
                 fontWeight = FontWeight.SemiBold,
                 style = MaterialTheme.typography.headlineLarge,
-                modifier = Modifier.fillMaxWidth(), // 👈 Sẽ tự động căn lề trái
+                modifier = Modifier.fillMaxWidth(),
                 color = AppTealDark
             )
             Text(
                 text = "Please enter your email to reset the password",
                 fontSize = 14.sp,
-                modifier = Modifier.fillMaxWidth(), // 👈 Sẽ tự động căn lề trái
+                modifier = Modifier.fillMaxWidth(),
                 color = AppTealDark.copy(alpha = .6F)
             )
 
@@ -176,7 +176,6 @@ fun ForgotPasswordForm(
                 errorMessage = uiState.emailError
             )
 
-            // 👈 Khoảng cách nút "Sign Up" (giữ nguyên như bạn muốn)
             Spacer(modifier = Modifier.height(36.dp))
 
             Button(
