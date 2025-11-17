@@ -30,7 +30,7 @@ class ForgotPasswordViewModel @Inject constructor(
     }
 
     fun sendMail() {
-        if (!validateInputs()) return // Nếu validation thất bại, dừng lại
+        if (!validateInputs()) return
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }

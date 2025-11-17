@@ -43,7 +43,6 @@ fun EmailTextField(
             null
         },
         shape = CircleShape,
-        // 👈 SỬA Ở ĐÂY:
         colors = OutlinedTextFieldDefaults.colors(
             unfocusedContainerColor = Color.White,
             focusedContainerColor = Color.White,
@@ -90,7 +89,6 @@ fun PasswordTextField(
             { Text(errorMessage ?: "Invalid password") }
         },
         shape = CircleShape,
-        // 👈 SỬA Ở ĐÂY:
         colors = OutlinedTextFieldDefaults.colors(
             unfocusedContainerColor = Color.White,
             focusedContainerColor = Color.White,
@@ -115,7 +113,8 @@ fun OTPTextField(
         modifier = modifier,
         value = value,
         onValueChange = onValueChange,
-        label = { Text("Phone", fontWeight = FontWeight.Normal) },
+        label = { Text("Enter 6-digit code", fontWeight = FontWeight.Normal) },
+        placeholder = { Text("000000") },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         singleLine = true,
         isError = isError,
@@ -124,8 +123,7 @@ fun OTPTextField(
                 Text(errorMessage ?: "Invalid OTP")
             }
         },
-        shape = RoundedCornerShape(20),
-        // 👈 SỬA Ở ĐÂY:
+        shape = CircleShape,
         colors = OutlinedTextFieldDefaults.colors(
             unfocusedContainerColor = Color.White,
             focusedContainerColor = Color.White,
@@ -161,7 +159,6 @@ fun PhoneTextField(
             }
         },
         shape = CircleShape,
-        // 👈 SỬA Ở ĐÂY:
         colors = OutlinedTextFieldDefaults.colors(
             unfocusedContainerColor = Color.White,
             focusedContainerColor = Color.White,

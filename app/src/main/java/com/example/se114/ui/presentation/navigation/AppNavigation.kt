@@ -16,20 +16,17 @@ fun AppNavigation() {
 
     NavHost(
         navController = navController,
-        startDestination = Screen.Login.route // Màn hình bắt đầu là Login
+        startDestination = Screen.Login.route
     ) {
 
-        // Màn hình Login
         composable(route = Screen.Login.route) {
             LoginScreen(
                 onLoginSuccess = {
-                    // Đăng nhập thành công: Tới Home và xóa hết stack cũ
                     navController.navigate(Screen.Home.route) {
                         popUpTo(navController.graph.id) { inclusive = true }
                     }
                 },
                 onNavigateToRegister = {
-                    // Tới màn hình Đăng ký
                     navController.navigate(Screen.Register.route)
                 },
                 onNavigateToForgotPassword = {
@@ -38,7 +35,6 @@ fun AppNavigation() {
             )
         }
 
-        // Màn hình Register
         composable(route = Screen.Register.route) {
             RegisterScreen(
                 onRegisterSuccess = {
@@ -52,9 +48,6 @@ fun AppNavigation() {
             )
         }
 
-
-
-        // Màn hình Forgot password
         composable(route = Screen.ForgotPassword.route) {
             ForgotPasswordScreen(
                 onSendMailSuccess = {
@@ -68,12 +61,22 @@ fun AppNavigation() {
             )
         }
 
-        // Màn hình xác thực OTP
         composable(route = Screen.OTPVerification.route) {
-            OTPVerificationScreen()
+            OTPVerificationScreen(
+                onResetPasswordSuccess = {
+                    // Sau khi reset password thành công, quay về màn hình Login
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(navController.graph.id) { inclusive = true }
+                    }
+                },
+                onBackToLogin = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(navController.graph.id) { inclusive = true }
+                    }
+                }
+            )
         }
 
-        // Màn hình Home (sau khi đăng nhập)
         composable(route = Screen.Home.route) {
             HomeScreen()
         }
