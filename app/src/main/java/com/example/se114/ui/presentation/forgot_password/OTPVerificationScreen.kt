@@ -17,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.platform.LocalContext
@@ -31,6 +32,7 @@ import com.example.se114.ui.theme.AppFormBackground
 import com.example.se114.ui.theme.AppTealBlob
 import com.example.se114.ui.theme.AppTealDark
 import com.example.se114.ui.theme.AppTealLight
+import kotlinx.coroutines.launch
 
 @Composable
 fun OTPVerificationScreen(
@@ -110,6 +112,9 @@ fun OTPVerificationForm(
     onBackToLogin: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val scrollState = rememberScrollState()
+    val coroutineScope = rememberCoroutineScope()
+
     Surface(
         modifier = modifier.fillMaxSize(),
         color = AppFormBackground,
@@ -119,7 +124,8 @@ fun OTPVerificationForm(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 24.dp)
-                .verticalScroll(rememberScrollState()),
+                .verticalScroll(scrollState)
+                .imePadding()
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -203,7 +209,15 @@ fun OTPVerificationForm(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 PasswordTextField(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .onFocusChanged { focusState ->
+                            if (focusState.isFocused) {
+                                coroutineScope.launch {
+                                    scrollState.animateScrollTo(750)
+                                }
+                            }
+                        },
                     label = "New Password",
                     value = uiState.newPassword,
                     onValueChange = viewModel::onNewPasswordChange,
