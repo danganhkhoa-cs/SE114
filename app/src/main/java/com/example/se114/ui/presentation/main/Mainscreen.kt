@@ -65,18 +65,19 @@ fun MainScreen() {
             }
         }
 
-        // Bottom Navigation Bar - overlay on top
+        // Bottom Navigation Bar - overlay on top with navigationBarsPadding
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter)
-                .height(95.dp) // Increased from 80dp
+                .navigationBarsPadding() // ← KEY FIX: Thêm padding để tránh bị che bởi system navigation bar
+                .height(95.dp)
         ) {
             // Main Bottom Bar with border and shadow
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(85.dp) // Increased from 70dp
+                    .height(85.dp)
                     .shadow(
                         elevation = 24.dp,
                         shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
@@ -86,11 +87,11 @@ fun MainScreen() {
                     )
                     .align(Alignment.BottomCenter),
                 shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
-                color = AppTealLight.copy(alpha = 0.95f), // Changed from White to light teal
+                color = AppTealLight.copy(alpha = 0.95f),
                 tonalElevation = 4.dp,
                 border = BorderStroke(
-                    width = 2.dp, // Increased from 1.5dp
-                    color = AppTealDark.copy(alpha = 0.2f) // Changed border color
+                    width = 2.dp,
+                    color = AppTealDark.copy(alpha = 0.2f)
                 )
             ) {
                 // Gradient overlay for depth
@@ -109,8 +110,8 @@ fun MainScreen() {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp) // Increased from 12dp
-                            .padding(top = 24.dp, bottom = 12.dp), // Adjusted padding
+                            .padding(horizontal = 16.dp)
+                            .padding(top = 24.dp, bottom = 12.dp),
                         horizontalArrangement = Arrangement.SpaceAround,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -136,21 +137,21 @@ fun MainScreen() {
                                                 restoreState = true
                                             }
                                         },
-                                        modifier = Modifier.size(64.dp) // Increased from 56dp
+                                        modifier = Modifier.size(64.dp)
                                     ) {
                                         Box(
                                             contentAlignment = Alignment.Center,
                                             modifier = Modifier
-                                                .size(64.dp) // Increased from 56dp
+                                                .size(64.dp)
                                                 .background(
                                                     color = if (selected) AppTealDark.copy(alpha = 0.2f) else Color.Transparent,
-                                                    shape = RoundedCornerShape(18.dp) // Increased from 16dp
+                                                    shape = RoundedCornerShape(18.dp)
                                                 )
                                         ) {
                                             Icon(
                                                 imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
                                                 contentDescription = item.title,
-                                                modifier = Modifier.size(32.dp), // Increased from 28dp
+                                                modifier = Modifier.size(32.dp),
                                                 tint = if (selected) AppTealDark else Color(0xFF757575)
                                             )
                                         }
@@ -160,7 +161,7 @@ fun MainScreen() {
                                     if (selected) {
                                         Box(
                                             modifier = Modifier
-                                                .size(7.dp) // Increased from 6dp
+                                                .size(7.dp)
                                                 .background(
                                                     AppTealDark,
                                                     shape = CircleShape
@@ -193,9 +194,9 @@ fun MainScreen() {
                 containerColor = Color(0xFFE53935),
                 contentColor = Color.White,
                 modifier = Modifier
-                    .size(70.dp) // Increased from 66dp
+                    .size(70.dp)
                     .align(Alignment.TopCenter)
-                    .offset(y = 8.dp), // Adjusted offset
+                    .offset(y = 8.dp),
                 shape = CircleShape,
                 elevation = FloatingActionButtonDefaults.elevation(
                     defaultElevation = 18.dp,
@@ -209,7 +210,7 @@ fun MainScreen() {
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(64.dp) // Increased from 60dp
+                            .size(64.dp)
                             .background(
                                 Color.White.copy(alpha = 0.2f),
                                 shape = CircleShape
@@ -218,7 +219,7 @@ fun MainScreen() {
                     Icon(
                         imageVector = BottomNavItem.Emergency.selectedIcon,
                         contentDescription = "Emergency",
-                        modifier = Modifier.size(38.dp), // Increased from 34dp
+                        modifier = Modifier.size(38.dp),
                         tint = Color.White
                     )
                 }
