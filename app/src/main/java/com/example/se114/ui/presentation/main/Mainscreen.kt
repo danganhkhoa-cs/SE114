@@ -10,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -18,17 +19,25 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.se114.data.local.PreferencesManager
 import com.example.se114.ui.presentation.chat.ChatScreen
 import com.example.se114.ui.presentation.emergency.EmergencyScreen
 import com.example.se114.ui.presentation.home.HomeScreen
 import com.example.se114.ui.presentation.navigation.BottomNavItem
-import com.example.se114.ui.presentation.profile.ProfileScreen
+import com.example.se114.ui.presentation.navigation.ProfileNavGraph
 import com.example.se114.ui.presentation.rank.RankScreen
 import com.example.se114.ui.theme.AppTealDark
 import com.example.se114.ui.theme.AppTealLight
+import com.example.se114.ui.theme.AppTealNeon
+import com.example.se114.ui.theme.DarkSurface
 
 @Composable
-fun MainScreen() {
+fun MainScreen(
+    preferencesManager: PreferencesManager,
+    isDarkTheme: Boolean,
+    onThemeChange: (Boolean) -> Unit,
+    onLogout: () -> Unit = {}
+) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
@@ -40,6 +49,20 @@ fun MainScreen() {
         BottomNavItem.Chat,
         BottomNavItem.Profile
     )
+
+    // Cấu hình màu cho Bottom Bar "Bóng bẩy"
+    val bottomBarBaseColor = if (isDarkTheme) {
+        DarkSurface.copy(alpha = 0.9f) // Hơi trong suốt để thấy nền dưới
+    } else {
+        AppTealLight.copy(alpha = 0.95f)
+    }
+
+    // Border phát sáng nhẹ ở Dark Mode
+    val bottomBarBorderColor = if (isDarkTheme) {
+        AppTealNeon.copy(alpha = 0.3f)
+    } else {
+        AppTealDark.copy(alpha = 0.2f)
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         // Content
@@ -61,7 +84,12 @@ fun MainScreen() {
                 ChatScreen()
             }
             composable(BottomNavItem.Profile.route) {
-                ProfileScreen()
+                ProfileNavGraph(
+                    preferencesManager = preferencesManager,
+                    isDarkTheme = isDarkTheme,
+                    onThemeChange = onThemeChange,
+                    onLogout = onLogout
+                )
             }
         }
 
@@ -70,7 +98,7 @@ fun MainScreen() {
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter)
-                .navigationBarsPadding() // ← KEY FIX: Thêm padding để tránh bị che bởi system navigation bar
+                .navigationBarsPadding()
                 .height(95.dp)
         ) {
             // Main Bottom Bar with border and shadow
@@ -79,31 +107,41 @@ fun MainScreen() {
                     .fillMaxWidth()
                     .height(85.dp)
                     .shadow(
-                        elevation = 24.dp,
+                        elevation = if(isDarkTheme) 32.dp else 24.dp,
                         shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
-                        spotColor = Color(0xFF000000).copy(alpha = 0.2f),
-                        ambientColor = Color(0xFF000000).copy(alpha = 0.15f),
+                        spotColor = if(isDarkTheme) AppTealNeon.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.4f),
+                        ambientColor = if(isDarkTheme) AppTealNeon.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.3f),
                         clip = true
                     )
                     .align(Alignment.BottomCenter),
                 shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
-                color = AppTealLight.copy(alpha = 0.95f),
-                tonalElevation = 4.dp,
+                color = bottomBarBaseColor,
+                tonalElevation = 0.dp,
                 border = BorderStroke(
-                    width = 2.dp,
-                    color = AppTealDark.copy(alpha = 0.2f)
+                    width = 1.dp, // Giảm độ dày border tý cho tinh tế
+                    color = bottomBarBorderColor
                 )
             ) {
-                // Gradient overlay for depth
+                // Lớp phủ Gradient tạo hiệu ứng bóng (Glossy Effect)
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(
-                            brush = androidx.compose.ui.graphics.Brush.verticalGradient(
-                                colors = listOf(
-                                    Color.White.copy(alpha = 0.6f),
-                                    Color.Transparent
-                                )
+                            brush = Brush.verticalGradient(
+                                colors = if (isDarkTheme) {
+                                    // Dark Mode: Bóng sáng nhẹ ở trên đỉnh -> trong suốt
+                                    listOf(
+                                        Color.White.copy(alpha = 0.08f),
+                                        Color.White.copy(alpha = 0.02f),
+                                        Color.Transparent
+                                    )
+                                } else {
+                                    // Light Mode: Bóng rõ hơn
+                                    listOf(
+                                        Color.White.copy(alpha = 0.6f),
+                                        Color.Transparent
+                                    )
+                                }
                             )
                         )
                 ) {
@@ -144,7 +182,12 @@ fun MainScreen() {
                                             modifier = Modifier
                                                 .size(64.dp)
                                                 .background(
-                                                    color = if (selected) AppTealDark.copy(alpha = 0.2f) else Color.Transparent,
+                                                    color = if (selected) {
+                                                        if (isDarkTheme) AppTealNeon.copy(alpha = 0.15f)
+                                                        else AppTealDark.copy(alpha = 0.2f)
+                                                    } else {
+                                                        Color.Transparent
+                                                    },
                                                     shape = RoundedCornerShape(18.dp)
                                                 )
                                         ) {
@@ -152,7 +195,11 @@ fun MainScreen() {
                                                 imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
                                                 contentDescription = item.title,
                                                 modifier = Modifier.size(32.dp),
-                                                tint = if (selected) AppTealDark else Color(0xFF757575)
+                                                tint = if (selected) {
+                                                    if (isDarkTheme) AppTealNeon else AppTealDark
+                                                } else {
+                                                    if (isDarkTheme) Color(0xFF90A4AE) else Color(0xFF757575)
+                                                }
                                             )
                                         }
                                     }
@@ -163,7 +210,7 @@ fun MainScreen() {
                                             modifier = Modifier
                                                 .size(7.dp)
                                                 .background(
-                                                    AppTealDark,
+                                                    if (isDarkTheme) AppTealNeon else AppTealDark,
                                                     shape = CircleShape
                                                 )
                                         )
@@ -191,7 +238,7 @@ fun MainScreen() {
                         restoreState = true
                     }
                 },
-                containerColor = Color(0xFFE53935),
+                containerColor = Color(0xFFE53935), // Màu đỏ giữ nguyên để cảnh báo
                 contentColor = Color.White,
                 modifier = Modifier
                     .size(70.dp)

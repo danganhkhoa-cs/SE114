@@ -19,10 +19,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.se114.data.local.PreferencesManager
 import com.example.se114.ui.theme.AppTealDark
 import com.example.se114.ui.theme.AppTealLight
 
@@ -41,10 +44,17 @@ data class Post(
 
 @Composable
 fun HomeScreen() {
-    var selectedTabIndex by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Everyone", "For You")
+    val context = LocalContext.current
+    val preferencesManager = remember { PreferencesManager(context) }
 
-    // Sample posts data
+    var selectedTabIndex by remember { mutableIntStateOf(0) }
+
+    // Dịch tiêu đề Tab
+    val tabs = listOf(
+        preferencesManager.getString("tab_everyone"),
+        preferencesManager.getString("tab_foryou")
+    )
+
     val samplePosts = remember {
         listOf(
             Post(
@@ -83,12 +93,12 @@ fun HomeScreen() {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(AppTealLight)
+            .background(MaterialTheme.colorScheme.background)
     ) {
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            // Top Bar with notification icon
+            // Top Bar
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 color = AppTealDark,
@@ -99,7 +109,8 @@ fun HomeScreen() {
                         .fillMaxWidth()
                         .height(120.dp)
                 ) {
-                    // Decorative blob 1
+                    val blobAlpha = 0.1f
+
                     Canvas(
                         modifier = Modifier
                             .size(100.dp)
@@ -107,7 +118,7 @@ fun HomeScreen() {
                             .offset(x = 30.dp, y = (-20).dp)
                     ) {
                         drawCircle(
-                            color = Color.White.copy(alpha = 0.1f),
+                            color = Color.White.copy(alpha = blobAlpha),
                             radius = size.minDimension / 2
                         )
                     }
@@ -119,19 +130,7 @@ fun HomeScreen() {
                             .offset(x = (-15).dp, y = 10.dp)
                     ) {
                         drawCircle(
-                            color = Color.White.copy(alpha = 0.08f),
-                            radius = size.minDimension / 2
-                        )
-                    }
-
-                    Canvas(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .align(Alignment.BottomStart)
-                            .offset(x = 50.dp, y = 15.dp)
-                    ) {
-                        drawCircle(
-                            color = Color.White.copy(alpha = 0.06f),
+                            color = Color.White.copy(alpha = blobAlpha),
                             radius = size.minDimension / 2
                         )
                     }
@@ -174,13 +173,7 @@ fun HomeScreen() {
                                     fontWeight = FontWeight.ExtraBold,
                                     color = Color.White,
                                     letterSpacing = 1.2.sp,
-                                    style = MaterialTheme.typography.headlineMedium.copy(
-                                        shadow = androidx.compose.ui.graphics.Shadow(
-                                            color = Color.Black.copy(alpha = 0.25f),
-                                            offset = androidx.compose.ui.geometry.Offset(1f, 2f),
-                                            blurRadius = 3f
-                                        )
-                                    )
+                                    style = MaterialTheme.typography.headlineMedium
                                 )
                             }
                         }
@@ -221,11 +214,11 @@ fun HomeScreen() {
                 }
             }
 
-            // Tab Row
+            // Tab Row - FIX: Tăng chiều cao, bo tròn và đổ bóng rõ ràng hơn
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                color = Color.White,
-                shadowElevation = 4.dp
+                color = MaterialTheme.colorScheme.background,
+                shadowElevation = 0.dp
             ) {
                 Box(
                     modifier = Modifier
@@ -235,26 +228,55 @@ fun HomeScreen() {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(52.dp)
+                            .height(56.dp) // Tăng chiều cao để tab thoáng hơn
                             .background(
-                                color = AppTealLight.copy(alpha = 0.3f),
-                                shape = RoundedCornerShape(26.dp)
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                shape = RoundedCornerShape(28.dp)
                             )
                             .padding(4.dp),
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         tabs.forEachIndexed { index, title ->
+                            val isSelected = selectedTabIndex == index
+
+                            val selectedBg = MaterialTheme.colorScheme.primary
+                            val selectedContentColor = MaterialTheme.colorScheme.onPrimary
+                            val unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
                                     .fillMaxHeight()
-                                    .background(
-                                        color = if (selectedTabIndex == index) {
-                                            AppTealDark
+                                    // Logic UI cho Tab
+                                    .then(
+                                        if (isSelected) {
+                                            Modifier
+                                                // Đổ bóng rõ ràng cho tab đang chọn
+                                                .shadow(
+                                                    elevation = 4.dp,
+                                                    shape = RoundedCornerShape(24.dp),
+                                                    spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                                                )
+                                                .background(
+                                                    color = selectedBg,
+                                                    shape = RoundedCornerShape(24.dp)
+                                                )
+                                                // Viền sáng nhẹ để nổi bật trên nền tối
+                                                .border(
+                                                    width = 1.dp,
+                                                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.2f),
+                                                    shape = RoundedCornerShape(24.dp)
+                                                )
                                         } else {
-                                            Color.Transparent
-                                        },
-                                        shape = RoundedCornerShape(22.dp)
+                                            Modifier
+                                                .background(Color.Transparent)
+                                                // Viền mờ cho tab chưa chọn để định hình khung
+                                                .border(
+                                                    width = 1.dp,
+                                                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f),
+                                                    shape = RoundedCornerShape(24.dp)
+                                                )
+                                        }
                                     )
                                     .clickable { selectedTabIndex = index }
                                     .padding(horizontal = 12.dp),
@@ -268,15 +290,15 @@ fun HomeScreen() {
                                     Icon(
                                         imageVector = if (index == 0) Icons.Filled.Public else Icons.Filled.People,
                                         contentDescription = null,
-                                        tint = if (selectedTabIndex == index) Color.White else AppTealDark.copy(alpha = 0.7f),
+                                        tint = if (isSelected) selectedContentColor else unselectedContentColor,
                                         modifier = Modifier.size(20.dp)
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
                                         text = title,
-                                        fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.SemiBold,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                                         fontSize = 15.sp,
-                                        color = if (selectedTabIndex == index) Color.White else AppTealDark.copy(alpha = 0.8f)
+                                        color = if (isSelected) selectedContentColor else unselectedContentColor
                                     )
                                 }
                             }
@@ -289,7 +311,7 @@ fun HomeScreen() {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(AppTealLight),
+                    .background(MaterialTheme.colorScheme.background),
                 contentPadding = PaddingValues(vertical = 8.dp)
             ) {
                 items(samplePosts) { post ->
@@ -311,21 +333,26 @@ fun PostCard(post: Post) {
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-        border = BorderStroke(2.dp, AppTealDark.copy(alpha = 0.2f))
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outlineVariant
+        )
     ) {
         Column(
             modifier = Modifier.fillMaxWidth()
         ) {
-            // Header
+            // Header Post (Avatar + Name)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(
-                        brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                        brush = Brush.verticalGradient(
                             colors = listOf(
-                                AppTealLight.copy(alpha = 0.2f),
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
                                 Color.Transparent
                             )
                         )
@@ -345,13 +372,13 @@ fun PostCard(post: Post) {
                                 .size(50.dp)
                                 .shadow(6.dp, CircleShape),
                             shape = CircleShape,
-                            color = AppTealDark,
-                            border = BorderStroke(3.dp, Color.White)
+                            color = MaterialTheme.colorScheme.primary,
+                            border = BorderStroke(2.dp, MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.5f))
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Text(
                                     text = post.userName.first().toString(),
-                                    color = Color.White,
+                                    color = MaterialTheme.colorScheme.onPrimary,
                                     fontWeight = FontWeight.ExtraBold,
                                     fontSize = 22.sp
                                 )
@@ -365,7 +392,7 @@ fun PostCard(post: Post) {
                                 text = post.userName,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 15.sp,
-                                color = Color.Black
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -375,12 +402,12 @@ fun PostCard(post: Post) {
                                     imageVector = Icons.Default.Schedule,
                                     contentDescription = null,
                                     modifier = Modifier.size(14.dp),
-                                    tint = Color.Gray
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Text(
                                     text = post.timeAgo,
                                     fontSize = 12.sp,
-                                    color = Color.Gray
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
@@ -388,7 +415,7 @@ fun PostCard(post: Post) {
 
                     Surface(
                         shape = CircleShape,
-                        color = Color.Black.copy(alpha = 0.06f),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                         modifier = Modifier.size(36.dp)
                     ) {
                         IconButton(
@@ -398,7 +425,7 @@ fun PostCard(post: Post) {
                             Icon(
                                 imageVector = Icons.Default.MoreVert,
                                 contentDescription = "More",
-                                tint = Color.Gray,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(22.dp)
                             )
                         }
@@ -406,7 +433,6 @@ fun PostCard(post: Post) {
                 }
             }
 
-            // Content
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -415,23 +441,23 @@ fun PostCard(post: Post) {
                 Text(
                     text = post.content,
                     fontSize = 14.sp,
-                    color = Color.Black.copy(alpha = 0.9f),
+                    color = MaterialTheme.colorScheme.onSurface,
                     lineHeight = 21.sp
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Location tag with better design
+                // Location tag
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .background(
-                            color = AppTealLight.copy(alpha = 0.3f),
+                            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f),
                             shape = RoundedCornerShape(10.dp)
                         )
                         .border(
                             width = 1.dp,
-                            color = AppTealDark.copy(alpha = 0.25f),
+                            color = MaterialTheme.colorScheme.outlineVariant,
                             shape = RoundedCornerShape(10.dp)
                         )
                         .padding(horizontal = 12.dp, vertical = 8.dp)
@@ -439,14 +465,14 @@ fun PostCard(post: Post) {
                     Icon(
                         imageVector = Icons.Default.LocationOn,
                         contentDescription = "Location",
-                        tint = AppTealDark,
+                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = post.location,
                         fontSize = 13.sp,
-                        color = AppTealDark,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
                         fontWeight = FontWeight.Medium
                     )
                 }
@@ -454,104 +480,104 @@ fun PostCard(post: Post) {
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
-            // Divider
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(1.5.dp)
+                    .height(1.dp)
                     .background(
-                        brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                        brush = Brush.horizontalGradient(
                             colors = listOf(
                                 Color.Transparent,
-                                AppTealDark.copy(alpha = 0.3f),
+                                MaterialTheme.colorScheme.outlineVariant,
                                 Color.Transparent
                             )
                         )
                     )
             )
 
-            // Buttons
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                val likeBg = if (isLiked) MaterialTheme.colorScheme.errorContainer else
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                val likeContentColor = if (isLiked) MaterialTheme.colorScheme.error else
+                    MaterialTheme.colorScheme.onSurfaceVariant
+
                 Surface(
                     shape = RoundedCornerShape(14.dp),
-                    color = if (isLiked) Color(0xFFFFEBEE) else Color(0xFFF8F8F8),
-                    border = BorderStroke(
-                        1.5.dp,
-                        if (isLiked) Color(0xFFE53935).copy(alpha = 0.3f) else Color(0xFFE0E0E0)
-                    ),
-                    modifier = Modifier.weight(1f),
-                    shadowElevation = if (isLiked) 2.dp else 0.dp
+                    color = likeBg,
+                    modifier = Modifier.weight(1f)
                 ) {
-                    TextButton(
-                        onClick = {
-                            isLiked = !isLiked
-                            likeCount = if (isLiked) likeCount + 1 else likeCount - 1
-                        },
-                        colors = ButtonDefaults.textButtonColors(
-                            contentColor = if (isLiked) Color(0xFFE53935) else Color.Gray
-                        )
+                    Row(
+                        modifier = Modifier
+                            .clickable {
+                                isLiked = !isLiked
+                                likeCount = if (isLiked) likeCount + 1 else likeCount - 1
+                            }
+                            .padding(vertical = 12.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = if (isLiked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                            imageVector = if (isLiked) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder,
                             contentDescription = "Like",
-                            modifier = Modifier.size(22.dp)
+                            tint = likeContentColor,
+                            modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "$likeCount",
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold
+                            text = likeCount.toString(),
+                            color = likeContentColor,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp
                         )
                     }
                 }
 
                 Surface(
                     shape = RoundedCornerShape(14.dp),
-                    color = Color(0xFFF8F8F8),
-                    border = BorderStroke(1.5.dp, Color(0xFFE0E0E0)),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                     modifier = Modifier.weight(1f)
                 ) {
-                    TextButton(
-                        onClick = { /* Navigate to comments */ },
-                        colors = ButtonDefaults.textButtonColors(
-                            contentColor = AppTealDark
-                        )
+                    Row(
+                        modifier = Modifier
+                            .clickable { /* Handle comment */ }
+                            .padding(vertical = 12.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.ChatBubbleOutline,
+                            imageVector = Icons.Default.ChatBubbleOutline,
                             contentDescription = "Comment",
-                            modifier = Modifier.size(22.dp)
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "${post.commentCount}",
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold
+                            text = post.commentCount.toString(),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp
                         )
                     }
                 }
 
                 Surface(
                     shape = RoundedCornerShape(14.dp),
-                    color = Color(0xFFF8F8F8),
-                    border = BorderStroke(1.5.dp, Color(0xFFE0E0E0)),
-                    modifier = Modifier.weight(1f)
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.size(48.dp)
                 ) {
-                    TextButton(
-                        onClick = { /* Share post */ },
-                        colors = ButtonDefaults.textButtonColors(
-                            contentColor = Color.Gray
-                        )
+                    IconButton(
+                        onClick = { /* Handle share */ }
                     ) {
                         Icon(
                             imageVector = Icons.Default.Share,
                             contentDescription = "Share",
-                            modifier = Modifier.size(22.dp)
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }

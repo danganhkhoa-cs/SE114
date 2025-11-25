@@ -9,45 +9,96 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
+// Light Theme Colors
+private val LightColorScheme = lightColorScheme(
+    primary = AppTealDark,
+    onPrimary = Color.White,
+    primaryContainer = AppTealLight,
+    onPrimaryContainer = AppTealDark,
+
+    secondary = AppTealLight,
+    onSecondary = AppTealDark,
+    secondaryContainer = AppTealLight.copy(alpha = 0.3f),
+    onSecondaryContainer = AppTealDark,
+
+    tertiary = AppTealBlob,
+    onTertiary = Color.White,
+
+    background = Color.White,
+    onBackground = Color(0xFF1C1B1F),
+
+    surface = Color.White,
+    onSurface = Color(0xFF1C1B1F),
+    surfaceVariant = Color(0xFFF3F4F6),
+    onSurfaceVariant = Color(0xFF44464F),
+
+    outline = Color(0xFFCAC4D0),
+    outlineVariant = AppTealLight.copy(alpha = 0.3f),
+
+    error = Color(0xFFB3261E),
+    onError = Color.White,
 )
 
-private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
+// Dark Theme Colors - Tinh chỉnh để không bị "đen thui"
+private val DarkColorScheme = darkColorScheme(
+    primary = AppTealNeon,
+    onPrimary = Color(0xFF00363D),
+    primaryContainer = Color(0xFF004F58),
+    onPrimaryContainer = AppTealNeon,
 
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+    secondary = AppTealBlob,
+    onSecondary = Color(0xFF00363D),
+    secondaryContainer = Color(0xFF1E4E55),
+    onSecondaryContainer = AppTealNeon,
+
+    tertiary = AppTealLight,
+    onTertiary = Color(0xFF00363D),
+
+    background = DarkBackground,
+    onBackground = DarkTextPrimary,
+
+    surface = DarkSurface,
+    onSurface = DarkTextPrimary,
+
+    surfaceVariant = DarkSurfaceVariant,
+    onSurfaceVariant = DarkTextSecondary,
+
+    outline = DarkOutline,
+    outlineVariant = Color(0xFF3F484A),
+
+    error = Color(0xFFFFB4AB),
+    onError = Color(0xFF690005),
 )
 
 @Composable
 fun SE114Theme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false, // Disable dynamic color to use custom theme
     content: @Composable () -> Unit
 ) {
+    @Suppress("NewApi")
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
-
         darkTheme -> DarkColorScheme
         else -> LightColorScheme
+    }
+
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as Activity).window
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
+        }
     }
 
     MaterialTheme(

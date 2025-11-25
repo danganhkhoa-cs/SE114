@@ -8,4 +8,10 @@ sealed class Screen(val route: String) {
     object ResetPassword : Screen("reset_password_screen")
     object Main : Screen("main_screen")
     object Home : Screen("home_screen")
+
+    // Profile related screens
+    object AccountSettings : Screen("account_settings_screen")
+    object AccountData : Screen("account_data_screen")
+    object HelpSupport : Screen("help_support_screen")
+    object Settings : Screen("settings_screen")
 }
