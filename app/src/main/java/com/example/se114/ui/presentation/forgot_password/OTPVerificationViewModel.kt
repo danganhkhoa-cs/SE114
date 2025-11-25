@@ -61,11 +61,6 @@ class OTPVerificationViewModel @Inject constructor() : ViewModel() {
     fun verifyOTP() {
         val state = _uiState.value
 
-        if (state.otp.length != 6) {
-            _uiState.update { it.copy(otpError = "OTP must be 6 digits") }
-            return
-        }
-
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
 
