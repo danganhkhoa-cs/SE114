@@ -6,8 +6,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.se114.ui.presentation.forgot_password.ForgotPasswordScreen
 import com.example.se114.ui.presentation.forgot_password.OTPVerificationScreen
-import com.example.se114.ui.presentation.home.HomeScreen
 import com.example.se114.ui.presentation.login.LoginScreen
+import com.example.se114.ui.presentation.main.MainScreen
 import com.example.se114.ui.presentation.register.RegisterScreen
 
 @Composable
@@ -16,17 +16,20 @@ fun AppNavigation() {
 
     NavHost(
         navController = navController,
-        startDestination = Screen.Login.route
+        startDestination = Screen.Login.route // Màn hình bắt đầu là Login
     ) {
 
+        // Màn hình Login
         composable(route = Screen.Login.route) {
             LoginScreen(
                 onLoginSuccess = {
-                    navController.navigate(Screen.Home.route) {
+                    // Đăng nhập thành công: Tới MainScreen và xóa hết stack cũ
+                    navController.navigate(Screen.Main.route) {
                         popUpTo(navController.graph.id) { inclusive = true }
                     }
                 },
                 onNavigateToRegister = {
+                    // Tới màn hình Đăng ký
                     navController.navigate(Screen.Register.route)
                 },
                 onNavigateToForgotPassword = {
@@ -35,6 +38,7 @@ fun AppNavigation() {
             )
         }
 
+        // Màn hình Register
         composable(route = Screen.Register.route) {
             RegisterScreen(
                 onRegisterSuccess = {
@@ -48,6 +52,7 @@ fun AppNavigation() {
             )
         }
 
+        // Màn hình Forgot password
         composable(route = Screen.ForgotPassword.route) {
             ForgotPasswordScreen(
                 onSendMailSuccess = {
@@ -61,6 +66,7 @@ fun AppNavigation() {
             )
         }
 
+        // Màn hình xác thực OTP và Reset Password
         composable(route = Screen.OTPVerification.route) {
             OTPVerificationScreen(
                 onResetPasswordSuccess = {
@@ -70,6 +76,7 @@ fun AppNavigation() {
                     }
                 },
                 onBackToLogin = {
+                    // Quay về màn hình Login
                     navController.navigate(Screen.Login.route) {
                         popUpTo(navController.graph.id) { inclusive = true }
                     }
@@ -77,8 +84,9 @@ fun AppNavigation() {
             )
         }
 
-        composable(route = Screen.Home.route) {
-            HomeScreen()
+        // Màn hình Main với Bottom Navigation (sau khi đăng nhập)
+        composable(route = Screen.Main.route) {
+            MainScreen()
         }
     }
 }

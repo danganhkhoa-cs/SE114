@@ -1,8 +1,7 @@
-package com.example.se114.ui.presentation.home
+package com.example.se114.ui.presentation.rank
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -12,30 +11,30 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.se114.ui.theme.AppTealDark
+import com.example.se114.ui.theme.AppTealLight
 
 @Composable
-fun HomeScreen() {
+fun RankScreen() {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White),
+            .background(AppTealLight),
         contentAlignment = Alignment.Center
     ) {
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Home Screen",
-                fontSize = 32.sp,
+                text = "Rank Screen",
+                fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
                 color = AppTealDark
             )
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Welcome to LocaSOS!",
-                fontSize = 18.sp,
-                color = AppTealDark.copy(alpha = 0.7f)
+                text = "Coming Soon",
+                fontSize = 16.sp,
+                color = Color.Gray
             )
         }
     }
