@@ -4,14 +4,19 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.se114.data.local.PreferencesManager
 import com.example.se114.ui.presentation.forgot_password.ForgotPasswordScreen
 import com.example.se114.ui.presentation.forgot_password.OTPVerificationScreen
-import com.example.se114.ui.presentation.home.HomeScreen
 import com.example.se114.ui.presentation.login.LoginScreen
+import com.example.se114.ui.presentation.main.MainScreen
 import com.example.se114.ui.presentation.register.RegisterScreen
 
 @Composable
-fun AppNavigation() {
+fun AppNavigation(
+    preferencesManager: PreferencesManager,
+    isDarkTheme: Boolean,
+    onThemeChange: (Boolean) -> Unit
+) {
     val navController = rememberNavController()
 
     NavHost(
@@ -19,10 +24,11 @@ fun AppNavigation() {
         startDestination = Screen.Login.route
     ) {
 
+        // Login Screen
         composable(route = Screen.Login.route) {
             LoginScreen(
                 onLoginSuccess = {
-                    navController.navigate(Screen.Home.route) {
+                    navController.navigate(Screen.Main.route) {
                         popUpTo(navController.graph.id) { inclusive = true }
                     }
                 },
@@ -35,6 +41,7 @@ fun AppNavigation() {
             )
         }
 
+        // Register Screen
         composable(route = Screen.Register.route) {
             RegisterScreen(
                 onRegisterSuccess = {
@@ -48,6 +55,7 @@ fun AppNavigation() {
             )
         }
 
+        // Forgot Password Screen
         composable(route = Screen.ForgotPassword.route) {
             ForgotPasswordScreen(
                 onSendMailSuccess = {
@@ -61,10 +69,10 @@ fun AppNavigation() {
             )
         }
 
+        // OTP Verification Screen
         composable(route = Screen.OTPVerification.route) {
             OTPVerificationScreen(
                 onResetPasswordSuccess = {
-                    // Sau khi reset password thành công, quay về màn hình Login
                     navController.navigate(Screen.Login.route) {
                         popUpTo(navController.graph.id) { inclusive = true }
                     }
@@ -77,8 +85,22 @@ fun AppNavigation() {
             )
         }
 
-        composable(route = Screen.Home.route) {
-            HomeScreen()
+        // Main Screen with Bottom Navigation
+        composable(route = Screen.Main.route) {
+            MainScreen(
+                preferencesManager = preferencesManager,
+                isDarkTheme = isDarkTheme,
+                onThemeChange = onThemeChange,
+                onLogout = {
+                    // Clear user data but keep settings
+                    preferencesManager.clearUserData()
+
+                    // Navigate back to login and clear all back stack
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(navController.graph.id) { inclusive = true }
+                    }
+                }
+            )
         }
     }
 }
