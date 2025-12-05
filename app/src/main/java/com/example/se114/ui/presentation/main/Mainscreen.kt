@@ -24,6 +24,7 @@ import com.example.se114.ui.presentation.chat.ChatScreen
 import com.example.se114.ui.presentation.emergency.EmergencyScreen
 import com.example.se114.ui.presentation.home.HomeScreen
 import com.example.se114.ui.presentation.navigation.BottomNavItem
+import com.example.se114.ui.presentation.navigation.MainNavGraph
 import com.example.se114.ui.presentation.navigation.ProfileNavGraph
 import com.example.se114.ui.presentation.rank.RankScreen
 import com.example.se114.ui.theme.AppTealDark
@@ -66,32 +67,14 @@ fun MainScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         // Content
-        NavHost(
+        MainNavGraph(
             navController = navController,
-            startDestination = BottomNavItem.Home.route,
+            preferencesManager = preferencesManager,
+            isDarkTheme = isDarkTheme,
+            onThemeChange = onThemeChange,
+            onLogout = onLogout,
             modifier = Modifier.fillMaxSize()
-        ) {
-            composable(BottomNavItem.Home.route) {
-                HomeScreen()
-            }
-            composable(BottomNavItem.Rank.route) {
-                RankScreen()
-            }
-            composable(BottomNavItem.Emergency.route) {
-                EmergencyScreen()
-            }
-            composable(BottomNavItem.Chat.route) {
-                ChatScreen()
-            }
-            composable(BottomNavItem.Profile.route) {
-                ProfileNavGraph(
-                    preferencesManager = preferencesManager,
-                    isDarkTheme = isDarkTheme,
-                    onThemeChange = onThemeChange,
-                    onLogout = onLogout
-                )
-            }
-        }
+        )
 
         // Bottom Navigation Bar - overlay on top with navigationBarsPadding
         Box(
@@ -202,20 +185,6 @@ fun MainScreen(
                                                 }
                                             )
                                         }
-                                    }
-
-                                    // Selected indicator dot
-                                    if (selected) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(7.dp)
-                                                .background(
-                                                    if (isDarkTheme) AppTealNeon else AppTealDark,
-                                                    shape = CircleShape
-                                                )
-                                        )
-                                    } else {
-                                        Spacer(modifier = Modifier.height(7.dp))
                                     }
                                 }
                             } else {
