@@ -6,7 +6,7 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import com.example.se114.data.local.PreferencesManager
+import com.example.se114.local.PreferencesManager
 import com.example.se114.ui.presentation.chat.ChatScreen
 import com.example.se114.ui.presentation.emergency.EmergencyScreen
 import com.example.se114.ui.presentation.home.HomeScreen

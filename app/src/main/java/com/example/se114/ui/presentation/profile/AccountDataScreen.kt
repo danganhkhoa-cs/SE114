@@ -20,7 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import com.example.se114.data.local.PreferencesManager
+import com.example.se114.local.PreferencesManager
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
