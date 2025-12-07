@@ -165,17 +165,14 @@ fun HomeScreen() {
                                     )
                                 }
                             }
-
-                            Column {
-                                Text(
-                                    text = "LocaSOS",
-                                    fontSize = 28.sp,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = Color.White,
-                                    letterSpacing = 1.2.sp,
-                                    style = MaterialTheme.typography.headlineMedium
-                                )
-                            }
+                            Text(
+                                text = "LocaSOS",
+                                fontSize = 28.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color.White,
+                                letterSpacing = 1.2.sp,
+                                style = MaterialTheme.typography.headlineMedium
+                            )
                         }
 
                         Box {
@@ -228,7 +225,7 @@ fun HomeScreen() {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(56.dp) // Tăng chiều cao để tab thoáng hơn
+                            .height(56.dp)
                             .background(
                                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                                 shape = RoundedCornerShape(28.dp)
@@ -270,7 +267,7 @@ fun HomeScreen() {
                                         } else {
                                             Modifier
                                                 .background(Color.Transparent)
-                                                // Viền mờ cho tab chưa chọn để định hình khung
+                                                // Viền mờ cho tab chưa chọn
                                                 .border(
                                                     width = 1.dp,
                                                     color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f),
@@ -438,6 +435,7 @@ fun PostCard(post: Post) {
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
             ) {
+                // Post content
                 Text(
                     text = post.content,
                     fontSize = 14.sp,
