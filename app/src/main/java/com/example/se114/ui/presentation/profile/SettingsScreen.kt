@@ -7,7 +7,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import com.example.se114.data.local.PreferencesManager
+import com.example.se114.local.PreferencesManager
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -201,9 +201,8 @@ fun SettingsScreen(
         ThemeSelectionDialog(
             isDarkTheme = isDarkTheme,
             onDismiss = { showThemeDialog = false },
-            onConfirm = { darkMode ->
-                onThemeChange(darkMode)
-                preferencesManager.isDarkMode = darkMode
+            onConfirm = { isDarkMode ->
+                onThemeChange(isDarkMode)
                 showThemeDialog = false
             },
             preferencesManager = preferencesManager

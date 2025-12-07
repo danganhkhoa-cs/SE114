@@ -25,9 +25,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.se114.data.local.PreferencesManager
+import com.example.se114.local.PreferencesManager
 import com.example.se114.ui.theme.AppTealDark
-import com.example.se114.ui.theme.AppTealLight
 
 data class Post(
     val id: Int,

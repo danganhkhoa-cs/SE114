@@ -4,7 +4,7 @@ import androidx.compose.runtime.*
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.example.se114.data.local.PreferencesManager
+import com.example.se114.local.PreferencesManager
 import com.example.se114.ui.presentation.profile.*
 
 @Composable

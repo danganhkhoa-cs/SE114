@@ -12,7 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.example.se114.data.local.PreferencesManager
+import com.example.se114.local.PreferencesManager
 import com.example.se114.ui.presentation.forgot_password.ForgotPasswordScreen
 import com.example.se114.ui.presentation.forgot_password.OTPVerificationScreen
 import com.example.se114.ui.presentation.login.LoginScreen
@@ -30,7 +30,6 @@ fun AppNavigation(
     NavHost(
         navController = navController,
         startDestination = Screen.Login.route,
-
     ) {
 
         // Login/Register/ForgotPassword/OTPVerification Screen - LUÔN SÁNG
