@@ -46,7 +46,7 @@ fun MainScreen(
 
     // Cấu hình màu cho Bottom Bar "Bóng bẩy"
     val bottomBarBaseColor = if (isDarkTheme) {
-        DarkSurface.copy(alpha = 0.9f) // Hơi trong suốt để thấy nền dưới
+        DarkSurface.copy(alpha = 0.9f)
     } else {
         AppTealLight.copy(alpha = 0.95f)
     }
@@ -71,10 +71,10 @@ fun MainScreen(
                         .fillMaxWidth()
                         .height(85.dp)
                         .shadow(
-                            elevation = if(isDarkTheme) 32.dp else 24.dp,
+                            elevation = if (isDarkTheme) 32.dp else 24.dp,
                             shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
-                            spotColor = if(isDarkTheme) AppTealNeon.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.4f),
-                            ambientColor = if(isDarkTheme) AppTealNeon.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.3f),
+                            spotColor = if (isDarkTheme) AppTealNeon.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.4f),
+                            ambientColor = if (isDarkTheme) AppTealNeon.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.3f),
                             clip = true
                         )
                         .align(Alignment.BottomCenter),
@@ -82,7 +82,7 @@ fun MainScreen(
                     color = bottomBarBaseColor,
                     tonalElevation = 0.dp,
                     border = BorderStroke(
-                        width = 1.dp, // Giảm độ dày border tý cho tinh tế
+                        width = 1.dp,
                         color = bottomBarBorderColor
                     )
                 ) {
@@ -93,14 +93,12 @@ fun MainScreen(
                             .background(
                                 brush = Brush.verticalGradient(
                                     colors = if (isDarkTheme) {
-                                        // Dark Mode: Bóng sáng nhẹ ở trên đỉnh -> trong suốt
                                         listOf(
                                             Color.White.copy(alpha = 0.08f),
                                             Color.White.copy(alpha = 0.02f),
                                             Color.Transparent
                                         )
                                     } else {
-                                        // Light Mode: Bóng rõ hơn
                                         listOf(
                                             Color.White.copy(alpha = 0.6f),
                                             Color.Transparent
@@ -117,7 +115,7 @@ fun MainScreen(
                             horizontalArrangement = Arrangement.SpaceAround,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            items.forEachIndexed { index, item ->
+                            items.forEachIndexed { _, item ->
                                 val selected = currentDestination?.hierarchy?.any {
                                     it.route == item.route
                                 } == true
@@ -167,6 +165,20 @@ fun MainScreen(
                                                 )
                                             }
                                         }
+
+                                        // MERGED FEATURE: Selected indicator dot (from Mainscreen.kt)
+                                        if (selected) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(7.dp)
+                                                    .background(
+                                                        if (isDarkTheme) AppTealNeon else AppTealDark,
+                                                        shape = CircleShape
+                                                    )
+                                            )
+                                        } else {
+                                            Spacer(modifier = Modifier.height(7.dp))
+                                        }
                                     }
                                 } else {
                                     // Spacer for emergency button
@@ -188,7 +200,7 @@ fun MainScreen(
                             restoreState = true
                         }
                     },
-                    containerColor = Color(0xFFE53935), // Màu đỏ giữ nguyên để cảnh báo
+                    containerColor = Color(0xFFE53935),
                     contentColor = Color.White,
                     modifier = Modifier
                         .size(70.dp)
@@ -223,13 +235,16 @@ fun MainScreen(
                 }
             }
         }
-    ) {innerPadding ->
+    ) { innerPadding ->
         MainNavGraph(
-        navController = navController,
-        preferencesManager = preferencesManager,
-        isDarkTheme = isDarkTheme,
-        onThemeChange = onThemeChange,
-        onLogout = onLogout,
-        modifier = Modifier.fillMaxSize().padding(innerPadding)
-    )}
+            navController = navController,
+            preferencesManager = preferencesManager,
+            isDarkTheme = isDarkTheme,
+            onThemeChange = onThemeChange,
+            onLogout = onLogout,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        )
+    }
 }
