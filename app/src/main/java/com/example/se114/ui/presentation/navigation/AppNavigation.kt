@@ -29,7 +29,7 @@ fun AppNavigation(
 
     NavHost(
         navController = navController,
-        startDestination = Screen.Login.route,
+        startDestination = Screen.Main.route,
     ) {
 
         // Login/Register/ForgotPassword/OTPVerification Screen - LUÔN SÁNG

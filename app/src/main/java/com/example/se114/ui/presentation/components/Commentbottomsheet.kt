@@ -30,7 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.se114.data.local.PreferencesManager
+import com.example.se114.local.PreferencesManager
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -108,6 +108,7 @@ fun CommentBottomSheet(
                 timestamp = System.currentTimeMillis() - 10800000,
                 likeCount = 3
             )
+
         )
     }
 
@@ -191,7 +192,7 @@ fun CommentBottomSheet(
                     )
                 }
 
-                Divider(
+                HorizontalDivider(
                     color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
                     thickness = 1.dp
                 )
@@ -315,7 +316,7 @@ fun CommentBottomSheet(
                     }
                 }
 
-                Divider(
+                HorizontalDivider(
                     color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
                     thickness = 1.dp
                 )
@@ -323,9 +324,8 @@ fun CommentBottomSheet(
                 // Main comment input (at bottom)
                 Surface(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 140.dp) // Even higher padding to fully clear bottom nav bar
-                        .imePadding(),
+                        .fillMaxWidth(),
+
                     color = MaterialTheme.colorScheme.surface,
                     tonalElevation = 4.dp,
                     shadowElevation = 8.dp

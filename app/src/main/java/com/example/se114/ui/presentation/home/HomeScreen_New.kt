@@ -136,7 +136,7 @@ fun HomeScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(120.dp)
+                        .height(90.dp)
                 ) {
                     val blobAlpha = 0.1f
 
@@ -439,7 +439,7 @@ fun HomeScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(MaterialTheme.colorScheme.background),
-                    contentPadding = PaddingValues(top = 8.dp, bottom = 100.dp) // Add padding bottom for FAB/Nav
+                    contentPadding = PaddingValues(vertical = 8.dp)
                 ) {
                     items(
                         items = displayedPosts,
