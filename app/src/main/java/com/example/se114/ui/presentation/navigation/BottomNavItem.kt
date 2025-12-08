@@ -1,6 +1,7 @@
 package com.example.se114.ui.presentation.navigation
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -37,7 +38,7 @@ sealed class BottomNavItem(
     object Chat : BottomNavItem(
         route = "chat",
         title = "Chat",
-        selectedIcon = Icons.Filled.Chat,
+        selectedIcon = Icons.AutoMirrored.Filled.Chat,
         unselectedIcon = Icons.Outlined.ChatBubbleOutline
     )
 

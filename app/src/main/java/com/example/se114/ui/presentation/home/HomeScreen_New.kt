@@ -1,5 +1,10 @@
 package com.example.se114.ui.presentation.home
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -12,6 +17,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.*
@@ -26,6 +32,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.se114.local.PreferencesManager
+import com.example.se114.ui.presentation.components.CommentBottomSheet
+import com.example.se114.ui.presentation.components.ReportDialog
 import com.example.se114.ui.theme.AppTealDark
 
 data class Post(
@@ -42,17 +50,39 @@ data class Post(
 )
 
 @Composable
-fun HomeScreen() {
+fun HomeScreen(
+    onNavigateToNotification: () -> Unit = {}
+) {
     val context = LocalContext.current
     val preferencesManager = remember { PreferencesManager(context) }
 
-    var selectedTabIndex by remember { mutableIntStateOf(0) }
+    var selectedTabIndex by remember { mutableStateOf(0) }
 
-    // Dịch tiêu đề Tab
+    // State để quản lý việc hiển thị bài đã lưu trong tab "For You"
+    var isShowingSavedPosts by remember { mutableStateOf(false) }
+
+    // Reset filter khi chuyển tab
+    LaunchedEffect(selectedTabIndex) {
+        if (selectedTabIndex == 0) {
+            isShowingSavedPosts = false
+        }
+    }
+
+    var notificationUnreadCount by remember { mutableStateOf(5) }
+
+    // Quay lại 2 tabs cơ bản
     val tabs = listOf(
         preferencesManager.getString("tab_everyone"),
         preferencesManager.getString("tab_foryou")
     )
+
+    val hiddenPostIds = remember { mutableStateListOf<Int>() }
+    // Giả sử có sẵn 1 bài đã lưu (id 2) để demo
+    val savedPostIds = remember { mutableStateListOf<Int>() }
+    var showSnackbar by remember { mutableStateOf(false) }
+    var snackbarMessage by remember { mutableStateOf("") }
+    var showCommentSheet by remember { mutableStateOf(false) }
+    var selectedPostForComment by remember { mutableStateOf<Post?>(null) }
 
     val samplePosts = remember {
         listOf(
@@ -97,7 +127,7 @@ fun HomeScreen() {
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            // Top Bar
+            // --- HEADER / APP BAR ---
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 color = AppTealDark,
@@ -176,7 +206,7 @@ fun HomeScreen() {
 
                         Box {
                             IconButton(
-                                onClick = { /* Navigate to notifications */ },
+                                onClick = onNavigateToNotification,
                                 modifier = Modifier
                                     .size(48.dp)
                                     .background(
@@ -192,25 +222,27 @@ fun HomeScreen() {
                                 )
                             }
 
-                            Badge(
-                                containerColor = Color(0xFFFF1744),
-                                contentColor = Color.White,
-                                modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .offset(x = (-2).dp, y = 2.dp)
-                            ) {
-                                Text(
-                                    "3",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
+                            if (notificationUnreadCount > 0) {
+                                Badge(
+                                    containerColor = Color(0xFFFF1744),
+                                    contentColor = Color.White,
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .offset(x = (-2).dp, y = 2.dp)
+                                ) {
+                                    Text(
+                                        if (notificationUnreadCount > 9) "9+" else notificationUnreadCount.toString(),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
                             }
                         }
                     }
                 }
             }
 
-            // Tab Row - FIX: Tăng chiều cao, bo tròn và đổ bóng rõ ràng hơn
+            // --- TAB ROW ---
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 color = MaterialTheme.colorScheme.background,
@@ -243,11 +275,9 @@ fun HomeScreen() {
                                 modifier = Modifier
                                     .weight(1f)
                                     .fillMaxHeight()
-                                    // Logic UI cho Tab
                                     .then(
                                         if (isSelected) {
                                             Modifier
-                                                // Đổ bóng rõ ràng cho tab đang chọn
                                                 .shadow(
                                                     elevation = 4.dp,
                                                     shape = RoundedCornerShape(24.dp),
@@ -257,7 +287,6 @@ fun HomeScreen() {
                                                     color = selectedBg,
                                                     shape = RoundedCornerShape(24.dp)
                                                 )
-                                                // Viền sáng nhẹ để nổi bật trên nền tối
                                                 .border(
                                                     width = 1.dp,
                                                     color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.2f),
@@ -303,26 +332,205 @@ fun HomeScreen() {
                 }
             }
 
-            // Posts List
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background),
-                contentPadding = PaddingValues(vertical = 8.dp)
+            // --- SAVED FILTER BUTTON (Only Visible in "For You" Tab) ---
+            AnimatedVisibility(
+                visible = selectedTabIndex == 1,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
             ) {
-                items(samplePosts) { post ->
-                    PostCard(post = post)
-                    Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Surface(
+                        modifier = Modifier
+                            .height(40.dp)
+                            .shadow(
+                                elevation = if (isShowingSavedPosts) 8.dp else 2.dp,
+                                shape = RoundedCornerShape(20.dp),
+                                spotColor = if (isShowingSavedPosts) MaterialTheme.colorScheme.primary else Color.Black.copy(alpha = 0.2f),
+                                ambientColor = if (isShowingSavedPosts) MaterialTheme.colorScheme.primary else Color.Black.copy(alpha = 0.1f)
+                            )
+                            .clickable { isShowingSavedPosts = !isShowingSavedPosts },
+                        shape = RoundedCornerShape(20.dp),
+                        color = if (isShowingSavedPosts)
+                            MaterialTheme.colorScheme.primaryContainer
+                        else
+                            MaterialTheme.colorScheme.surface,
+                        border = BorderStroke(
+                            width = if (isShowingSavedPosts) 1.5.dp else 1.dp,
+                            color = if (isShowingSavedPosts)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                        )
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (isShowingSavedPosts) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
+                                contentDescription = null,
+                                tint = if (isShowingSavedPosts) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = preferencesManager.getString("tab_saved"),
+                                fontSize = 14.sp,
+                                fontWeight = if (isShowingSavedPosts) FontWeight.Bold else FontWeight.Medium,
+                                color = if (isShowingSavedPosts) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 }
             }
+
+            // --- LIST LOGIC ---
+            val displayedPosts = remember(selectedTabIndex, isShowingSavedPosts, savedPostIds.size, hiddenPostIds.size) {
+                when(selectedTabIndex) {
+                    0 -> samplePosts.filter { it.id !in hiddenPostIds } // Everyone
+                    1 -> {
+                        // For You logic
+                        if (isShowingSavedPosts) {
+                            // Only saved posts
+                            samplePosts.filter { it.id in savedPostIds && it.id !in hiddenPostIds }
+                        } else {
+                            // All For You posts
+                            samplePosts.filter { it.id !in hiddenPostIds }
+                        }
+                    }
+                    else -> emptyList()
+                }
+            }
+
+            if (displayedPosts.isEmpty() && isShowingSavedPosts && selectedTabIndex == 1) {
+                // Empty State for Saved Posts
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                        modifier = Modifier.padding(bottom = 100.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.BookmarkBorder,
+                            contentDescription = null,
+                            modifier = Modifier.size(80.dp),
+                            tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = preferencesManager.getString("empty_saved_posts"),
+                            fontSize = 16.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background),
+                    contentPadding = PaddingValues(top = 8.dp, bottom = 100.dp) // Add padding bottom for FAB/Nav
+                ) {
+                    items(
+                        items = displayedPosts,
+                        key = { it.id }
+                    ) { post ->
+                        PostCard(
+                            post = post,
+                            isSaved = post.id in savedPostIds,
+                            onSaveClick = {
+                                if (post.id in savedPostIds) {
+                                    savedPostIds.remove(post.id)
+                                    // If we are in "Saved" view and unsave, list will update automatically
+                                } else {
+                                    savedPostIds.add(post.id)
+                                    snackbarMessage = preferencesManager.getString("post_saved")
+                                    showSnackbar = true
+                                }
+                            },
+                            onHideClick = {
+                                hiddenPostIds.add(post.id)
+                                snackbarMessage = preferencesManager.getString("post_hidden")
+                                showSnackbar = true
+                            },
+                            onReportSubmitted = {
+                                snackbarMessage = preferencesManager.getString("report_success")
+                                showSnackbar = true
+                            },
+                            onCommentClick = {
+                                selectedPostForComment = post
+                                showCommentSheet = true
+                            }
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                }
+            }
+        }
+
+        if (showSnackbar) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.BottomCenter
+            ) {
+                Snackbar(
+                    modifier = Modifier
+                        .padding(bottom = 120.dp)
+                        .padding(horizontal = 16.dp),
+                    containerColor = MaterialTheme.colorScheme.inverseSurface,
+                    contentColor = MaterialTheme.colorScheme.inverseOnSurface,
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(snackbarMessage, fontWeight = FontWeight.Medium)
+                }
+            }
+
+            LaunchedEffect(showSnackbar) {
+                kotlinx.coroutines.delay(2000)
+                showSnackbar = false
+            }
+        }
+
+        // Comment bottom sheet
+        if (showCommentSheet && selectedPostForComment != null) {
+            CommentBottomSheet(
+                onDismiss = {
+                    showCommentSheet = false
+                    selectedPostForComment = null
+                },
+                postId = selectedPostForComment!!.id,
+                preferencesManager = preferencesManager
+            )
         }
     }
 }
 
 @Composable
-fun PostCard(post: Post) {
+fun PostCard(
+    post: Post,
+    isSaved: Boolean = false,
+    onSaveClick: () -> Unit = {},
+    onHideClick: () -> Unit = {},
+    onReportSubmitted: () -> Unit = {},
+    onCommentClick: () -> Unit = {}
+) {
     var isLiked by remember { mutableStateOf(post.isLiked) }
     var likeCount by remember { mutableIntStateOf(post.likeCount) }
+    var showMenu by remember { mutableStateOf(false) }
+    var showReportDialog by remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
+    val preferencesManager = remember { PreferencesManager(context) }
 
     Card(
         modifier = Modifier
@@ -341,7 +549,6 @@ fun PostCard(post: Post) {
         Column(
             modifier = Modifier.fillMaxWidth()
         ) {
-            // Header Post (Avatar + Name)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -409,23 +616,177 @@ fun PostCard(post: Post) {
                         }
                     }
 
-                    Surface(
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        IconButton(
-                            onClick = { /* More options */ },
+                    Box {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                             modifier = Modifier.size(36.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.MoreVert,
-                                contentDescription = "More",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(22.dp)
+                            IconButton(
+                                onClick = { showMenu = true },
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.MoreVert,
+                                    contentDescription = "More",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                        }
+
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false },
+                            modifier = Modifier
+                                .width(220.dp)
+                                .background(
+                                    color = MaterialTheme.colorScheme.surface,
+                                    shape = RoundedCornerShape(16.dp)
+                                )
+                                .border(
+                                    width = 1.dp,
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                    shape = RoundedCornerShape(16.dp)
+                                ),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            DropdownMenuItem(
+                                text = {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = if (isSaved) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(22.dp)
+                                        )
+                                        Text(
+                                            text = if (isSaved) {
+                                                preferencesManager.getString("unsave_post")
+                                            } else {
+                                                preferencesManager.getString("save_post")
+                                            },
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    onSaveClick()
+                                },
+                                modifier = Modifier.padding(vertical = 4.dp)
+                            )
+
+                            HorizontalDivider(
+                                modifier = Modifier.padding(horizontal = 12.dp),
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                            )
+
+                            DropdownMenuItem(
+                                text = {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.VisibilityOff,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(22.dp)
+                                        )
+                                        Text(
+                                            text = preferencesManager.getString("hide_post"),
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    onHideClick()
+                                },
+                                modifier = Modifier.padding(vertical = 4.dp)
+                            )
+
+                            HorizontalDivider(
+                                modifier = Modifier.padding(horizontal = 12.dp),
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                            )
+
+                            DropdownMenuItem(
+                                text = {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Flag,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.error,
+                                            modifier = Modifier.size(22.dp)
+                                        )
+                                        Text(
+                                            text = preferencesManager.getString("report_post"),
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    showReportDialog = true
+                                },
+                                modifier = Modifier.padding(vertical = 4.dp)
+                            )
+
+                            HorizontalDivider(
+                                modifier = Modifier.padding(horizontal = 12.dp),
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                            )
+
+                            DropdownMenuItem(
+                                text = {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Info,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(22.dp)
+                                        )
+                                        Column {
+                                            Text(
+                                                text = "${preferencesManager.getString("about_user")} ${post.userName}",
+                                                fontSize = 15.sp,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                        }
+                                    }
+                                },
+                                onClick = {
+                                    showMenu = false
+                                },
+                                modifier = Modifier.padding(vertical = 4.dp)
                             )
                         }
                     }
+                }
+
+                if (showReportDialog) {
+                    ReportDialog(
+                        onDismiss = { showReportDialog = false },
+                        onSubmit = { reason, description ->
+                            onReportSubmitted()
+                        },
+                        preferencesManager = preferencesManager
+                    )
                 }
             }
 
@@ -541,7 +902,7 @@ fun PostCard(post: Post) {
                 ) {
                     Row(
                         modifier = Modifier
-                            .clickable { /* Handle comment */ }
+                            .clickable { onCommentClick() }
                             .padding(vertical = 12.dp),
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
