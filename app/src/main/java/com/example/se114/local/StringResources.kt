@@ -2,11 +2,10 @@ package com.example.se114.local
 
 object StringResources {
     val EN = mapOf(
-        // Home Tabs
         "tab_everyone" to "Everyone",
         "tab_foryou" to "For You",
-
-        // General
+        "tab_saved" to "Saved",
+        "empty_saved_posts" to "No saved posts yet",
         "cancel" to "Cancel",
         "save" to "Save",
         "confirm" to "Confirm",
@@ -17,8 +16,6 @@ object StringResources {
         "copy" to "Copy",
         "yes" to "Yes",
         "no" to "No",
-
-        // Profile Screen
         "profile_title" to "Profile",
         "account_settings" to "Account Settings",
         "account_data" to "Account Data",
@@ -33,8 +30,6 @@ object StringResources {
         "logout_confirm_title" to "Logout Confirmation",
         "logout_confirm_msg" to "Are you sure you want to logout?",
         "avatar_updated" to "Avatar updated!",
-
-        // Account Settings Screen
         "email" to "Email",
         "password" to "Password",
         "phone_number" to "Phone Number",
@@ -52,8 +47,6 @@ object StringResources {
         "new_phone" to "New Phone Number",
         "phone_required" to "Phone number is required",
         "invalid_phone" to "Invalid phone number format",
-
-        // Account Data Screen
         "address" to "Address",
         "gender" to "Gender",
         "current_job" to "Current Job",
@@ -68,8 +61,6 @@ object StringResources {
         "female" to "Female",
         "other" to "Other",
         "prefer_not_to_say" to "Prefer not to say",
-
-        // Help & Support Screen
         "need_help" to "Need Help?",
         "contact_support_msg" to "Contact our support team for assistance",
         "contact_info" to "Contact Information",
@@ -77,8 +68,6 @@ object StringResources {
         "email_copied" to "Email address copied!",
         "support_hours" to "Support Hours",
         "hours_detail" to "Monday - Friday: 8:00 AM - 8:00 PM\nSaturday - Sunday: 9:00 AM - 6:00 PM",
-
-        // Settings Screen
         "language" to "Language",
         "theme" to "Theme",
         "blocked_users" to "Blocked Users",
@@ -101,15 +90,69 @@ object StringResources {
         "enter_password_continue" to "Enter your password to continue",
         "type_delete" to "Type 'DELETE' to confirm",
         "delete_forever" to "Delete Forever",
-        "type_delete_exact" to "Please type DELETE exactly"
+        "type_delete_exact" to "Please type DELETE exactly",
+        "notifications" to "Notifications",
+        "social" to "Social",
+        "emergency" to "Emergency",
+        "no_notifications" to "No notifications",
+        "mark_all_read" to "Read all",
+        "clear_all" to "Clear all",
+        "social_empty_msg" to "Social interactions will appear here",
+        "emergency_empty_msg" to "Emergency notifications will appear here",
+        "just_now" to "Just now",
+        "notif_liked_post" to "liked your post",
+        "notif_commented" to "commented on your post",
+        "notif_replied" to "replied to your comment",
+        "notif_friend_request" to "sent you a friend request",
+        "notif_sos_accepted" to "accepted to support your SOS post",
+        "notif_emergency_approved" to "Your emergency request has been approved",
+        "notif_emergency_rejected" to "Your emergency request requires more information",
+        "time_just_now" to "Just now",
+        "time_minutes_ago" to "m ago",
+        "time_hours_ago" to "h ago",
+        "time_days_ago" to "d ago",
+        "time_weeks_ago" to "w ago",
+        "time_months_ago" to "mo ago",
+        "save_post" to "Save post",
+        "unsave_post" to "Unsave post",
+        "hide_post" to "Hide post",
+        "report_post" to "Report post",
+        "about_user" to "About",
+        "report_title" to "Report post",
+        "report_reason" to "Reason",
+        "select_reason" to "Select a reason",
+        "report_fraud" to "Fraud / Impersonation",
+        "report_inappropriate" to "Inappropriate content",
+        "report_trading" to "Trading",
+        "report_offensive" to "Offensive",
+        "report_misinformation" to "Misinformation",
+        "report_other" to "Other",
+        "report_description" to "Description (optional)",
+        "report_description_hint" to "Provide more details...",
+        "report_other_hint" to "Please specify the reason",
+        "report_submit" to "Submit report",
+        "report_cancel" to "Cancel",
+        "report_select_reason_required" to "Please select a reason",
+        "friend_accept" to "Accept",
+        "friend_reject" to "Reject",
+        "post_saved" to "Post saved!",
+        "post_hidden" to "Post hidden",
+        "report_success" to "Report submitted successfully",
+
+        // Comments
+        "comments" to "Comments",
+        "write_comment" to "Write a comment...",
+        "reply" to "Reply",
+        "send" to "Send",
+        "no_comments" to "No comments yet",
+        "be_first_comment" to "Be the first to comment!"
     )
 
     val VI = mapOf(
-        // Home Tabs
         "tab_everyone" to "Mọi người",
         "tab_foryou" to "Dành cho bạn",
-
-        // General
+        "tab_saved" to "Đã lưu",
+        "empty_saved_posts" to "Chưa có bài viết đã lưu",
         "cancel" to "Hủy",
         "save" to "Lưu",
         "confirm" to "Xác nhận",
@@ -120,8 +163,6 @@ object StringResources {
         "copy" to "Sao chép",
         "yes" to "Có",
         "no" to "Không",
-
-        // Profile Screen
         "profile_title" to "Hồ sơ",
         "account_settings" to "Cài đặt tài khoản",
         "account_data" to "Dữ liệu cá nhân",
@@ -136,8 +177,6 @@ object StringResources {
         "name" to "Tên",
         "bio" to "Tiểu sử / Trạng thái",
         "name_empty_error" to "Tên không được để trống",
-
-        // Account Settings Screen
         "email" to "Email",
         "password" to "Mật khẩu",
         "phone_number" to "Số điện thoại",
@@ -155,8 +194,6 @@ object StringResources {
         "new_phone" to "Số điện thoại mới",
         "phone_required" to "Vui lòng nhập số điện thoại",
         "invalid_phone" to "Định dạng số điện thoại không hợp lệ",
-
-        // Account Data Screen
         "address" to "Địa chỉ",
         "gender" to "Giới tính",
         "current_job" to "Công việc hiện tại",
@@ -171,8 +208,6 @@ object StringResources {
         "female" to "Nữ",
         "other" to "Khác",
         "prefer_not_to_say" to "Không muốn tiết lộ",
-
-        // Help & Support Screen
         "need_help" to "Cần trợ giúp?",
         "contact_support_msg" to "Liên hệ đội ngũ hỗ trợ để được giúp đỡ",
         "contact_info" to "Thông tin liên hệ",
@@ -180,8 +215,6 @@ object StringResources {
         "email_copied" to "Đã sao chép địa chỉ email!",
         "support_hours" to "Giờ làm việc",
         "hours_detail" to "Thứ 2 - Thứ 6: 8:00 Sáng - 8:00 Tối\nThứ 7 - Chủ Nhật: 9:00 Sáng - 6:00 Tối",
-
-        // Settings Screen
         "language" to "Ngôn ngữ",
         "theme" to "Giao diện",
         "blocked_users" to "Người dùng đã chặn",
@@ -204,6 +237,61 @@ object StringResources {
         "enter_password_continue" to "Nhập mật khẩu để tiếp tục",
         "type_delete" to "Gõ 'DELETE' để xác nhận",
         "delete_forever" to "Xóa Vĩnh Viễn",
-        "type_delete_exact" to "Vui lòng gõ chính xác chữ DELETE"
+        "type_delete_exact" to "Vui lòng gõ chính xác chữ DELETE",
+        "notifications" to "Thông báo",
+        "social" to "Xã hội",
+        "emergency" to "Khẩn cấp",
+        "no_notifications" to "Không có thông báo",
+        "mark_all_read" to "Đọc tất cả",
+        "clear_all" to "Xóa tất cả",
+        "social_empty_msg" to "Các tương tác xã hội sẽ xuất hiện ở đây",
+        "emergency_empty_msg" to "Các thông báo khẩn cấp sẽ xuất hiện ở đây",
+        "just_now" to "Vừa xong",
+        "notif_liked_post" to "đã thích bài viết của bạn",
+        "notif_commented" to "đã bình luận",
+        "notif_replied" to "đã trả lời bình luận của bạn",
+        "notif_friend_request" to "đã gửi lời mời kết bạn",
+        "notif_sos_accepted" to "đã chấp nhận hỗ trợ bài đăng SOS của bạn",
+        "notif_emergency_approved" to "Yêu cầu khẩn cấp của bạn đã được duyệt",
+        "notif_emergency_rejected" to "Yêu cầu khẩn cấp của bạn cần thêm thông tin",
+        "time_just_now" to "Vừa xong",
+        "time_minutes_ago" to "phút trước",
+        "time_hours_ago" to "giờ trước",
+        "time_days_ago" to "ngày trước",
+        "time_weeks_ago" to "tuần trước",
+        "time_months_ago" to "tháng trước",
+        "save_post" to "Lưu bài viết",
+        "unsave_post" to "Bỏ lưu bài viết",
+        "hide_post" to "Ẩn bài viết",
+        "report_post" to "Báo cáo bài viết",
+        "about_user" to "Về",
+        "report_title" to "Báo cáo bài viết",
+        "report_reason" to "Lý do",
+        "select_reason" to "Chọn lý do",
+        "report_fraud" to "Lừa đảo / Giả danh",
+        "report_inappropriate" to "Nội dung không phù hợp",
+        "report_trading" to "Buôn bán",
+        "report_offensive" to "Xúc phạm",
+        "report_misinformation" to "Thông tin sai sự thật",
+        "report_other" to "Khác",
+        "report_description" to "Mô tả (tùy chọn)",
+        "report_description_hint" to "Cung cấp thêm chi tiết...",
+        "report_other_hint" to "Vui lòng nêu rõ lý do",
+        "report_submit" to "Gửi báo cáo",
+        "report_cancel" to "Hủy",
+        "report_select_reason_required" to "Vui lòng chọn lý do",
+        "friend_accept" to "Chấp nhận",
+        "friend_reject" to "Từ chối",
+        "post_saved" to "Đã lưu bài viết!",
+        "post_hidden" to "Đã ẩn bài viết",
+        "report_success" to "Gửi báo cáo thành công",
+
+        // Comments
+        "comments" to "Bình luận",
+        "write_comment" to "Viết bình luận...",
+        "reply" to "Trả lời",
+        "send" to "Gửi",
+        "no_comments" to "Chưa có bình luận",
+        "be_first_comment" to "Hãy là người đầu tiên bình luận!"
     )
 }

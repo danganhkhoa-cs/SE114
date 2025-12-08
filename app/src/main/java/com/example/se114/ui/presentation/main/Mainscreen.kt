@@ -72,13 +72,11 @@ fun MainScreen(
                         .height(85.dp)
                         .shadow(
                             elevation = if (isDarkTheme) 32.dp else 24.dp,
-                            shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
                             spotColor = if (isDarkTheme) AppTealNeon.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.4f),
                             ambientColor = if (isDarkTheme) AppTealNeon.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.3f),
                             clip = true
                         )
                         .align(Alignment.BottomCenter),
-                    shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
                     color = bottomBarBaseColor,
                     tonalElevation = 0.dp,
                     border = BorderStroke(
