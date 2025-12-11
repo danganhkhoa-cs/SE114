@@ -44,6 +44,8 @@ fun MainScreen(
         BottomNavItem.Profile
     )
 
+    val isNotificationScreen = currentDestination?.route == "notification"
+
     // Cấu hình màu cho Bottom Bar "Bóng bẩy"
     val bottomBarBaseColor = if (isDarkTheme) {
         DarkSurface.copy(alpha = 0.9f)
@@ -60,175 +62,177 @@ fun MainScreen(
 
     Scaffold(
         bottomBar = {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
-            ) {
-                // Main Bottom Bar with border and shadow
-                Surface(
+            if (!isNotificationScreen) {
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(85.dp)
-                        .shadow(
-                            elevation = if (isDarkTheme) 32.dp else 24.dp,
-                            spotColor = if (isDarkTheme) AppTealNeon.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.4f),
-                            ambientColor = if (isDarkTheme) AppTealNeon.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.3f),
-                            clip = true
-                        )
-                        .align(Alignment.BottomCenter),
-                    color = bottomBarBaseColor,
-                    tonalElevation = 0.dp,
-                    border = BorderStroke(
-                        width = 1.dp,
-                        color = bottomBarBorderColor
-                    )
+                        .navigationBarsPadding()
                 ) {
-                    // Lớp phủ Gradient tạo hiệu ứng bóng (Glossy Effect)
-                    Box(
+                    // Main Bottom Bar with border and shadow
+                    Surface(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .background(
-                                brush = Brush.verticalGradient(
-                                    colors = if (isDarkTheme) {
-                                        listOf(
-                                            Color.White.copy(alpha = 0.08f),
-                                            Color.White.copy(alpha = 0.02f),
-                                            Color.Transparent
-                                        )
-                                    } else {
-                                        listOf(
-                                            Color.White.copy(alpha = 0.6f),
-                                            Color.Transparent
-                                        )
-                                    }
-                                )
+                            .fillMaxWidth()
+                            .height(85.dp)
+                            .shadow(
+                                elevation = if (isDarkTheme) 32.dp else 24.dp,
+                                spotColor = if (isDarkTheme) AppTealNeon.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.4f),
+                                ambientColor = if (isDarkTheme) AppTealNeon.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.3f),
+                                clip = true
                             )
+                            .align(Alignment.BottomCenter),
+                        color = bottomBarBaseColor,
+                        tonalElevation = 0.dp,
+                        border = BorderStroke(
+                            width = 1.dp,
+                            color = bottomBarBorderColor
+                        )
                     ) {
-                        Row(
+                        // Lớp phủ Gradient tạo hiệu ứng bóng (Glossy Effect)
+                        Box(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp)
-                                .padding(top = 24.dp, bottom = 12.dp),
-                            horizontalArrangement = Arrangement.SpaceAround,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            items.forEachIndexed { _, item ->
-                                val selected = currentDestination?.hierarchy?.any {
-                                    it.route == item.route
-                                } == true
-
-                                if (!item.isEmergency) {
-                                    // Regular navigation items
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.Center,
-                                        modifier = Modifier.weight(1f)
-                                    ) {
-                                        IconButton(
-                                            onClick = {
-                                                navController.navigate(item.route) {
-                                                    popUpTo(navController.graph.findStartDestination().id) {
-                                                        saveState = true
-                                                    }
-                                                    launchSingleTop = true
-                                                    restoreState = true
-                                                }
-                                            },
-                                            modifier = Modifier.size(64.dp)
-                                        ) {
-                                            Box(
-                                                contentAlignment = Alignment.Center,
-                                                modifier = Modifier
-                                                    .size(64.dp)
-                                                    .background(
-                                                        color = if (selected) {
-                                                            if (isDarkTheme) AppTealNeon.copy(alpha = 0.15f)
-                                                            else AppTealDark.copy(alpha = 0.2f)
-                                                        } else {
-                                                            Color.Transparent
-                                                        },
-                                                        shape = RoundedCornerShape(18.dp)
-                                                    )
-                                            ) {
-                                                Icon(
-                                                    imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
-                                                    contentDescription = item.title,
-                                                    modifier = Modifier.size(32.dp),
-                                                    tint = if (selected) {
-                                                        if (isDarkTheme) AppTealNeon else AppTealDark
-                                                    } else {
-                                                        if (isDarkTheme) Color(0xFF90A4AE) else Color(0xFF757575)
-                                                    }
-                                                )
-                                            }
-                                        }
-
-                                        // MERGED FEATURE: Selected indicator dot (from Mainscreen.kt)
-                                        if (selected) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(7.dp)
-                                                    .background(
-                                                        if (isDarkTheme) AppTealNeon else AppTealDark,
-                                                        shape = CircleShape
-                                                    )
+                                .fillMaxSize()
+                                .background(
+                                    brush = Brush.verticalGradient(
+                                        colors = if (isDarkTheme) {
+                                            listOf(
+                                                Color.White.copy(alpha = 0.08f),
+                                                Color.White.copy(alpha = 0.02f),
+                                                Color.Transparent
                                             )
                                         } else {
-                                            Spacer(modifier = Modifier.height(7.dp))
+                                            listOf(
+                                                Color.White.copy(alpha = 0.6f),
+                                                Color.Transparent
+                                            )
                                         }
+                                    )
+                                )
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp)
+                                    .padding(top = 24.dp, bottom = 12.dp),
+                                horizontalArrangement = Arrangement.SpaceAround,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                items.forEachIndexed { _, item ->
+                                    val selected = currentDestination?.hierarchy?.any {
+                                        it.route == item.route
+                                    } == true
+
+                                    if (!item.isEmergency) {
+                                        // Regular navigation items
+                                        Column(
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            verticalArrangement = Arrangement.Center,
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            IconButton(
+                                                onClick = {
+                                                    navController.navigate(item.route) {
+                                                        popUpTo(navController.graph.findStartDestination().id) {
+                                                            saveState = true
+                                                        }
+                                                        launchSingleTop = true
+                                                        restoreState = true
+                                                    }
+                                                },
+                                                modifier = Modifier.size(64.dp)
+                                            ) {
+                                                Box(
+                                                    contentAlignment = Alignment.Center,
+                                                    modifier = Modifier
+                                                        .size(64.dp)
+                                                        .background(
+                                                            color = if (selected) {
+                                                                if (isDarkTheme) AppTealNeon.copy(alpha = 0.15f)
+                                                                else AppTealDark.copy(alpha = 0.2f)
+                                                            } else {
+                                                                Color.Transparent
+                                                            },
+                                                            shape = RoundedCornerShape(18.dp)
+                                                        )
+                                                ) {
+                                                    Icon(
+                                                        imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
+                                                        contentDescription = item.title,
+                                                        modifier = Modifier.size(32.dp),
+                                                        tint = if (selected) {
+                                                            if (isDarkTheme) AppTealNeon else AppTealDark
+                                                        } else {
+                                                            if (isDarkTheme) Color(0xFF90A4AE) else Color(0xFF757575)
+                                                        }
+                                                    )
+                                                }
+                                            }
+
+                                            // MERGED FEATURE: Selected indicator dot (from Mainscreen.kt)
+                                            if (selected) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(7.dp)
+                                                        .background(
+                                                            if (isDarkTheme) AppTealNeon else AppTealDark,
+                                                            shape = CircleShape
+                                                        )
+                                                )
+                                            } else {
+                                                Spacer(modifier = Modifier.height(7.dp))
+                                            }
+                                        }
+                                    } else {
+                                        // Spacer for emergency button
+                                        Spacer(modifier = Modifier.weight(1f))
                                     }
-                                } else {
-                                    // Spacer for emergency button
-                                    Spacer(modifier = Modifier.weight(1f))
                                 }
                             }
                         }
                     }
-                }
 
-                // Emergency FAB
-                FloatingActionButton(
-                    onClick = {
-                        navController.navigate(BottomNavItem.Emergency.route) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
+                    // Emergency FAB
+                    FloatingActionButton(
+                        onClick = {
+                            navController.navigate(BottomNavItem.Emergency.route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
                             }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                    containerColor = Color(0xFFE53935),
-                    contentColor = Color.White,
-                    modifier = Modifier
-                        .size(70.dp)
-                        .align(Alignment.TopCenter)
-                        .offset(y = 8.dp),
-                    shape = CircleShape,
-                    elevation = FloatingActionButtonDefaults.elevation(
-                        defaultElevation = 18.dp,
-                        pressedElevation = 22.dp,
-                        hoveredElevation = 20.dp
-                    )
-                ) {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier.fillMaxSize()
+                        },
+                        containerColor = Color(0xFFE53935),
+                        contentColor = Color.White,
+                        modifier = Modifier
+                            .size(70.dp)
+                            .align(Alignment.TopCenter)
+                            .offset(y = 8.dp),
+                        shape = CircleShape,
+                        elevation = FloatingActionButtonDefaults.elevation(
+                            defaultElevation = 18.dp,
+                            pressedElevation = 22.dp,
+                            hoveredElevation = 20.dp
+                        )
                     ) {
                         Box(
-                            modifier = Modifier
-                                .size(64.dp)
-                                .background(
-                                    Color.White.copy(alpha = 0.2f),
-                                    shape = CircleShape
-                                )
-                        )
-                        Icon(
-                            imageVector = BottomNavItem.Emergency.selectedIcon,
-                            contentDescription = "Emergency",
-                            modifier = Modifier.size(38.dp),
-                            tint = Color.White
-                        )
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(64.dp)
+                                    .background(
+                                        Color.White.copy(alpha = 0.2f),
+                                        shape = CircleShape
+                                    )
+                            )
+                            Icon(
+                                imageVector = BottomNavItem.Emergency.selectedIcon,
+                                contentDescription = "Emergency",
+                                modifier = Modifier.size(38.dp),
+                                tint = Color.White
+                            )
+                        }
                     }
                 }
             }
