@@ -20,24 +20,31 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.se114.local.PreferencesManager
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AccountDataScreen(
     preferencesManager: PreferencesManager,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    viewModel: AccountDataViewModel = hiltViewModel()
 ) {
-    val currentLanguage = preferencesManager.languageState.value // Force recomposition
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    var address by remember { mutableStateOf(preferencesManager.userAddress) }
-    var phone by remember { mutableStateOf(preferencesManager.userPhone) }
-    var gender by remember { mutableStateOf(preferencesManager.userGender) }
-    var currentJob by remember { mutableStateOf(preferencesManager.userJob) }
+    // Force recomposition khi đổi ngôn ngữ
+    val currentLanguage = preferencesManager.languageState.value
 
-    var showAddressDialog by remember { mutableStateOf(false) }
-    var showGenderDialog by remember { mutableStateOf(false) }
-    var showJobDialog by remember { mutableStateOf(false) }
+    // Khởi tạo dữ liệu cho ViewModel từ Preferences (Chạy 1 lần)
+    LaunchedEffect(Unit) {
+        viewModel.setInitialData(
+            address = preferencesManager.userAddress,
+            phone = preferencesManager.userPhone,
+            gender = preferencesManager.userGender,
+            job = preferencesManager.userJob
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -83,15 +90,15 @@ fun AccountDataScreen(
             DataItemCard(
                 icon = Icons.Default.LocationOn,
                 title = preferencesManager.getString("address"),
-                value = address,
+                value = uiState.address,
                 isEditable = true,
-                onEditClick = { showAddressDialog = true }
+                onEditClick = viewModel::showAddressDialog
             )
 
             DataItemCard(
                 icon = Icons.Default.Phone,
                 title = preferencesManager.getString("phone_number"),
-                value = phone,
+                value = uiState.phone,
                 isEditable = false,
                 subtitle = preferencesManager.getString("edit_in_settings")
             )
@@ -99,64 +106,67 @@ fun AccountDataScreen(
             DataItemCard(
                 icon = Icons.Default.Person,
                 title = preferencesManager.getString("gender"),
-                value = gender,
+                value = uiState.gender,
                 isEditable = true,
-                onEditClick = { showGenderDialog = true }
+                onEditClick = viewModel::showGenderDialog
             )
 
             DataItemCard(
                 icon = Icons.Default.Work,
                 title = preferencesManager.getString("current_job"),
-                value = currentJob,
+                value = uiState.currentJob,
                 isEditable = true,
-                onEditClick = { showJobDialog = true }
+                onEditClick = viewModel::showJobDialog
             )
         }
     }
 
-    if (showAddressDialog) {
+    // --- Dialogs & Logic Save (Logic Preferences nằm tại đây) ---
+
+    if (uiState.isShowingAddressDialog) {
         EditTextDialog(
             title = preferencesManager.getString("edit_address"),
-            currentValue = address,
+            currentValue = uiState.address,
             placeholder = preferencesManager.getString("enter_address"),
-            onDismiss = { showAddressDialog = false },
+            onDismiss = viewModel::hideAddressDialog,
             onConfirm = { newValue ->
-                address = newValue
+                // 1. Lưu vào Preferences (Logic cũ)
                 preferencesManager.userAddress = newValue
-                showAddressDialog = false
+                // 2. Cập nhật UI State
+                viewModel.updateAddress(newValue)
             },
             preferencesManager = preferencesManager
         )
     }
 
-    if (showGenderDialog) {
+    if (uiState.isShowingGenderDialog) {
         GenderSelectionDialog(
-            currentGender = gender,
-            onDismiss = { showGenderDialog = false },
+            currentGender = uiState.gender,
+            onDismiss = viewModel::hideGenderDialog,
             onConfirm = { newGender ->
-                gender = newGender
                 preferencesManager.userGender = newGender
-                showGenderDialog = false
+                viewModel.updateGender(newGender)
             },
             preferencesManager = preferencesManager
         )
     }
 
-    if (showJobDialog) {
+    if (uiState.isShowingJobDialog) {
         EditTextDialog(
             title = preferencesManager.getString("edit_job"),
-            currentValue = currentJob,
+            currentValue = uiState.currentJob,
             placeholder = preferencesManager.getString("enter_job"),
-            onDismiss = { showJobDialog = false },
+            onDismiss = viewModel::hideJobDialog,
             onConfirm = { newValue ->
-                currentJob = newValue
                 preferencesManager.userJob = newValue
-                showJobDialog = false
+                viewModel.updateJob(newValue)
             },
             preferencesManager = preferencesManager
         )
     }
 }
+
+// --- GIỮ NGUYÊN CÁC COMPOSABLE PHỤ TRỢ Ở DƯỚI ---
 
 @Composable
 fun DataItemCard(
