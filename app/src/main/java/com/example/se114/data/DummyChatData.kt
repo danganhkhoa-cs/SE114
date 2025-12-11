@@ -105,7 +105,7 @@ object DummyChatData {
             content = "⚠️ KHẨN CẤP ⚠️\nTôi cần giúp: $helpContent\n📍 Tại: $location",
             timestamp = System.currentTimeMillis()
         )
-
+mmmmmmmmm
         addMessage(sosId, sosMessage)
     }
 }
