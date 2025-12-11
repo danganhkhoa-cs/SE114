@@ -24,112 +24,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.se114.local.PreferencesManager
-
-enum class NotificationType {
-    LIKE,
-    COMMENT,
-    REPLY,
-    FRIEND_REQUEST,
-    SOS_SUPPORT_ACCEPTED,
-    EMERGENCY_APPROVED,
-    EMERGENCY_REJECTED
-}
-
-data class NotificationItem(
-    val id: String,
-    val type: NotificationType,
-    val userName: String,
-    val userAvatar: String? = null,
-    val message: String,
-    val timestamp: Long,
-    val isRead: Boolean = false,
-    val postId: String? = null,
-    val requestId: String? = null
-)
-
-enum class NotificationTab {
-    SOCIAL,
-    EMERGENCY
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationScreen(
     onBackClick: () -> Unit,
-    preferencesManager: PreferencesManager
+    preferencesManager: PreferencesManager,
+    viewModel: NotificationViewModel = hiltViewModel()
 ) {
-    // Sample data - replace with real data from ViewModel
-    val socialNotifications = remember {
-        mutableStateListOf(
-            NotificationItem(
-                id = "1",
-                type = NotificationType.LIKE,
-                userName = "Nguyễn Văn A",
-                message = "liked your post",
-                timestamp = System.currentTimeMillis() - 3600000,
-                isRead = false
-            ),
-            NotificationItem(
-                id = "2",
-                type = NotificationType.COMMENT,
-                userName = "Trần Thị B",
-                message = "commented on your post: 'Great content!'",
-                timestamp = System.currentTimeMillis() - 7200000,
-                isRead = false
-            ),
-            NotificationItem(
-                id = "3",
-                type = NotificationType.FRIEND_REQUEST,
-                userName = "Lê Văn C",
-                message = "sent you a friend request",
-                timestamp = System.currentTimeMillis() - 86400000,
-                isRead = true
-            ),
-            NotificationItem(
-                id = "4",
-                type = NotificationType.REPLY,
-                userName = "Phạm Thị D",
-                message = "replied to your comment",
-                timestamp = System.currentTimeMillis() - 172800000,
-                isRead = true
-            )
-        )
-    }
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    val emergencyNotifications = remember {
-        mutableStateListOf(
-            NotificationItem(
-                id = "5",
-                type = NotificationType.SOS_SUPPORT_ACCEPTED,
-                userName = "Rescue Team Alpha",
-                message = "accepted to support your SOS post",
-                timestamp = System.currentTimeMillis() - 1800000,
-                isRead = false
-            ),
-            NotificationItem(
-                id = "6",
-                type = NotificationType.EMERGENCY_APPROVED,
-                userName = "Emergency Control Center",
-                message = "Your emergency request has been approved",
-                timestamp = System.currentTimeMillis() - 5400000,
-                isRead = false
-            ),
-            NotificationItem(
-                id = "7",
-                type = NotificationType.EMERGENCY_REJECTED,
-                userName = "Emergency Control Center",
-                message = "Your emergency request requires more information",
-                timestamp = System.currentTimeMillis() - 259200000,
-                isRead = true
-            )
-        )
-    }
-
-    var selectedTab by remember { mutableStateOf(NotificationTab.SOCIAL) }
-
-    val socialUnreadCount = socialNotifications.count { !it.isRead }
-    val emergencyUnreadCount = emergencyNotifications.count { !it.isRead }
+    val socialUnreadCount = uiState.socialNotifications.count { !it.isRead }
+    val emergencyUnreadCount = uiState.emergencyNotifications.count { !it.isRead }
 
     Scaffold(
         topBar = {
@@ -153,15 +62,8 @@ fun NotificationScreen(
                 actions = {
                     // Mark all as read button
                     Surface(
-                        onClick = {
-                            if (selectedTab == NotificationTab.SOCIAL) {
-                                socialNotifications.replaceAll { it.copy(isRead = true) }
-                            } else {
-                                emergencyNotifications.replaceAll { it.copy(isRead = true) }
-                            }
-                        },
-                        modifier = Modifier
-                            .padding(end = 8.dp),
+                        onClick = viewModel::markAllAsRead,
+                        modifier = Modifier.padding(end = 8.dp),
                         shape = RoundedCornerShape(12.dp),
                         color = MaterialTheme.colorScheme.primaryContainer
                     ) {
@@ -170,12 +72,7 @@ fun NotificationScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            Icon(
-                                Icons.Default.DoneAll,
-                                contentDescription = "Mark all as read",
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.size(20.dp)
-                            )
+                            Icon(Icons.Default.DoneAll, "Mark all as read", tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(20.dp))
                             Text(
                                 text = preferencesManager.getString("mark_all_read"),
                                 color = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -185,9 +82,7 @@ fun NotificationScreen(
                         }
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
             )
         }
     ) { paddingValues ->
@@ -208,249 +103,117 @@ fun NotificationScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .padding(top = 12.dp, bottom = 8.dp)
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .padding(bottom = 8.dp)
                     .height(56.dp)
-                    .background(
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                        shape = RoundedCornerShape(28.dp)
-                    )
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(28.dp))
                     .padding(4.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 listOf(
                     Triple(NotificationTab.SOCIAL, preferencesManager.getString("social"), Icons.Default.People),
                     Triple(NotificationTab.EMERGENCY, preferencesManager.getString("emergency"), Icons.Default.Warning)
-                ).forEachIndexed { index, (tab, title, icon) ->
-                    val isSelected = selectedTab == tab
+                ).forEach { (tab, title, icon) ->
+                    val isSelected = uiState.selectedTab == tab
                     val unreadCount = if (tab == NotificationTab.SOCIAL) socialUnreadCount else emergencyUnreadCount
-
                     val selectedBg = MaterialTheme.colorScheme.primary
                     val selectedContentColor = MaterialTheme.colorScheme.onPrimary
                     val unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
 
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                    ) {
-                        // Tab button
+                    Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .then(
-                                    if (isSelected) {
-                                        Modifier
-                                            .shadow(
-                                                elevation = 4.dp,
-                                                shape = RoundedCornerShape(24.dp),
-                                                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                                            )
-                                            .background(
-                                                color = selectedBg,
-                                                shape = RoundedCornerShape(24.dp)
-                                            )
-                                            .border(
-                                                width = 1.dp,
-                                                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.2f),
-                                                shape = RoundedCornerShape(24.dp)
-                                            )
-                                    } else {
-                                        Modifier
-                                            .background(Color.Transparent)
-                                            .border(
-                                                width = 1.dp,
-                                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
-                                                shape = RoundedCornerShape(24.dp)
-                                            )
-                                    }
+                                    if (isSelected) Modifier
+                                        .shadow(4.dp, RoundedCornerShape(24.dp), spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
+                                        .background(selectedBg, RoundedCornerShape(24.dp))
+                                        .border(1.dp, MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.2f), RoundedCornerShape(24.dp))
+                                    else Modifier
+                                        .background(Color.Transparent)
+                                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f), RoundedCornerShape(24.dp))
                                 )
-                                .clickable { selectedTab = tab },
+                                .clickable { viewModel.onTabSelected(tab) },
                             contentAlignment = Alignment.Center
                         ) {
-                            Row(
-                                horizontalArrangement = Arrangement.Center,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = icon,
-                                    contentDescription = title,
-                                    tint = if (isSelected) selectedContentColor else unselectedContentColor,
-                                    modifier = Modifier.size(20.dp)
-                                )
-
+                            Row(horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                                Icon(icon, title, tint = if (isSelected) selectedContentColor else unselectedContentColor, modifier = Modifier.size(20.dp))
                                 Spacer(modifier = Modifier.width(8.dp))
-
-                                Text(
-                                    text = title,
-                                    fontSize = 15.sp,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                    color = if (isSelected) selectedContentColor else unselectedContentColor
-                                )
+                                Text(title, fontSize = 15.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium, color = if (isSelected) selectedContentColor else unselectedContentColor)
                             }
                         }
-
-                        // Badge on top right corner of tab (outside clickable area)
                         if (unreadCount > 0) {
                             Box(
                                 modifier = Modifier
-                                    .size(20.dp)
-                                    .offset(x = 6.dp, y = (-6).dp)
-                                    .background(
-                                        color = Color(0xFFE53935),
-                                        shape = CircleShape
-                                    )
-                                    .border(
-                                        width = 2.5.dp,
-                                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                                        shape = CircleShape
-                                    )
+                                    .size(20.dp).offset(x = 6.dp, y = (-6).dp)
+                                    .background(Color(0xFFE53935), CircleShape)
+                                    .border(2.5.dp, MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), CircleShape)
                                     .align(Alignment.TopEnd),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(
-                                    text = if (unreadCount > 9) "9+" else unreadCount.toString(),
-                                    color = Color.White,
-                                    fontSize = 9.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
+                                Text(if (unreadCount > 9) "9+" else unreadCount.toString(), color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
                 }
             }
 
-            // Clear All Button (below tabs)
-            if ((selectedTab == NotificationTab.SOCIAL && socialNotifications.isNotEmpty()) ||
-                (selectedTab == NotificationTab.EMERGENCY && emergencyNotifications.isNotEmpty())) {
-
+            // Clear All Button
+            val currentList = if (uiState.selectedTab == NotificationTab.SOCIAL) uiState.socialNotifications else uiState.emergencyNotifications
+            if (currentList.isNotEmpty()) {
                 Surface(
-                    onClick = {
-                        if (selectedTab == NotificationTab.SOCIAL) {
-                            socialNotifications.clear()
-                        } else {
-                            emergencyNotifications.clear()
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .padding(bottom = 8.dp),
+                    onClick = viewModel::clearAll,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 8.dp),
                     shape = RoundedCornerShape(12.dp),
                     color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f),
-                    border = androidx.compose.foundation.BorderStroke(
-                        width = 1.dp,
-                        color = MaterialTheme.colorScheme.error.copy(alpha = 0.3f)
-                    )
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.3f))
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 12.dp),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.DeleteSweep,
-                            contentDescription = "Clear all",
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(20.dp)
-                        )
+                    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.DeleteSweep, "Clear all", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = preferencesManager.getString("clear_all"),
-                            color = MaterialTheme.colorScheme.error,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 14.sp
-                        )
+                        Text(preferencesManager.getString("clear_all"), color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                     }
                 }
             }
 
             // Notification List
             AnimatedContent(
-                targetState = selectedTab,
-                transitionSpec = {
-                    slideInHorizontally { width -> width } + fadeIn() togetherWith
-                            slideOutHorizontally { width -> -width } + fadeOut()
-                },
+                targetState = uiState.selectedTab,
+                transitionSpec = { slideInHorizontally { width -> width } + fadeIn() togetherWith slideOutHorizontally { width -> -width } + fadeOut() },
                 label = "tab_transition",
                 modifier = Modifier.fillMaxSize()
             ) { tab ->
-                val notifications = if (tab == NotificationTab.SOCIAL) {
-                    socialNotifications
-                } else {
-                    emergencyNotifications
-                }
+                val notifications = if (tab == NotificationTab.SOCIAL) uiState.socialNotifications else uiState.emergencyNotifications
 
                 if (notifications.isEmpty()) {
-                    EmptyNotificationState(
-                        tab = tab,
-                        preferencesManager = preferencesManager
-                    )
+                    EmptyNotificationState(tab = tab, preferencesManager = preferencesManager)
                 } else {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(
-                            horizontal = 16.dp,
-                            vertical = 8.dp
-                        ),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        item {
-                            Spacer(modifier = Modifier.height(4.dp))
-                        }
-
-                        items(
-                            items = notifications,
-                            key = { it.id }
-                        ) { notification ->
+                        item { Spacer(modifier = Modifier.height(4.dp)) }
+                        items(items = notifications, key = { it.id }) { notification ->
                             Surface(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .shadow(
-                                        elevation = 4.dp,
-                                        shape = RoundedCornerShape(18.dp),
-                                        spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                                        ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
-                                    ),
+                                modifier = Modifier.fillMaxWidth().shadow(4.dp, RoundedCornerShape(18.dp), spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)),
                                 shape = RoundedCornerShape(18.dp),
                                 color = MaterialTheme.colorScheme.surface,
                                 tonalElevation = 1.dp,
-                                border = androidx.compose.foundation.BorderStroke(
-                                    width = 1.dp,
-                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                                )
+                                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .background(
-                                            brush = Brush.verticalGradient(
-                                                colors = listOf(
-                                                    MaterialTheme.colorScheme.surface,
-                                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                                                )
-                                            )
-                                        )
-                                ) {
+                                Box(modifier = Modifier.fillMaxWidth().background(brush = Brush.verticalGradient(colors = listOf(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))))) {
                                     NotificationCard(
                                         notification = notification,
                                         preferencesManager = preferencesManager,
-                                        onClick = {
-                                            val index = notifications.indexOf(notification)
-                                            if (index != -1) {
-                                                notifications[index] = notification.copy(isRead = true)
-                                            }
-                                        }
+                                        onClick = { viewModel.markItemAsRead(notification) },
+                                        onAccept = { viewModel.acceptFriendRequest(notification) },
+                                        onReject = { viewModel.rejectFriendRequest(notification) }
                                     )
                                 }
                             }
                         }
-
-                        item {
-                            Spacer(modifier = Modifier.height(4.dp))
-                        }
+                        item { Spacer(modifier = Modifier.height(4.dp)) }
                     }
                 }
             }
@@ -462,178 +225,47 @@ fun NotificationScreen(
 fun NotificationCard(
     notification: NotificationItem,
     preferencesManager: PreferencesManager,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onAccept: () -> Unit = {},
+    onReject: () -> Unit = {}
 ) {
     val iconData = getNotificationIconData(notification.type)
     val timeAgo = getTimeAgo(notification.timestamp, preferencesManager)
 
     Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        color = if (notification.isRead) {
-            Color.Transparent
-        } else {
-            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f)
-        }
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        color = if (notification.isRead) Color.Transparent else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // Icon Container
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .background(
-                        color = iconData.backgroundColor,
-                        shape = RoundedCornerShape(12.dp)
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = iconData.icon,
-                    contentDescription = null,
-                    tint = iconData.iconColor,
-                    modifier = Modifier.size(24.dp)
-                )
+        Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(modifier = Modifier.size(48.dp).background(iconData.backgroundColor, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
+                Icon(iconData.icon, null, tint = iconData.iconColor, modifier = Modifier.size(24.dp))
             }
-
-            // Content
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = notification.userName,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.weight(1f)
-                    )
-
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(notification.userName, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
                     if (!notification.isRead) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .background(
-                                    color = MaterialTheme.colorScheme.primary,
-                                    shape = CircleShape
-                                )
-                        )
+                        Box(modifier = Modifier.size(8.dp).background(MaterialTheme.colorScheme.primary, CircleShape))
                     }
                 }
-
                 Spacer(modifier = Modifier.height(4.dp))
-
-                Text(
-                    text = getLocalizedMessage(notification, preferencesManager),
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    lineHeight = 20.sp
-                )
-
+                Text(getLocalizedMessage(notification, preferencesManager), fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 20.sp)
                 Spacer(modifier = Modifier.height(6.dp))
+                Text(timeAgo, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f), fontWeight = FontWeight.Medium)
 
-                Text(
-                    text = timeAgo,
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                    fontWeight = FontWeight.Medium
-                )
-
-                // Friend request action buttons
                 if (notification.type == NotificationType.FRIEND_REQUEST) {
                     Spacer(modifier = Modifier.height(12.dp))
-
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        // Accept button
-                        Surface(
-                            onClick = {
-                                // Handle accept friend request
-                                onClick()
-                            },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(10.dp),
-                            color = MaterialTheme.colorScheme.primary,
-                            tonalElevation = 2.dp
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 10.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(24.dp)
-                                        .background(
-                                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.2f),
-                                            shape = CircleShape
-                                        )
-                                        .border(
-                                            width = 1.5.dp,
-                                            color = MaterialTheme.colorScheme.onPrimary,
-                                            shape = CircleShape
-                                        ),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Check,
-                                        contentDescription = preferencesManager.getString("friend_accept"),
-                                        tint = MaterialTheme.colorScheme.onPrimary,
-                                        modifier = Modifier.size(16.dp)
-                                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Surface(onClick = onAccept, modifier = Modifier.weight(1f), shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.primary, tonalElevation = 2.dp) {
+                            Box(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), contentAlignment = Alignment.Center) {
+                                Box(modifier = Modifier.size(24.dp).background(MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.2f), CircleShape).border(1.5.dp, MaterialTheme.colorScheme.onPrimary, CircleShape), contentAlignment = Alignment.Center) {
+                                    Icon(Icons.Default.Check, preferencesManager.getString("friend_accept"), tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(16.dp))
                                 }
                             }
                         }
-
-                        // Reject button
-                        Surface(
-                            onClick = {
-                                // Handle reject friend request
-                                onClick()
-                            },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(10.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant,
-                            border = androidx.compose.foundation.BorderStroke(
-                                width = 1.dp,
-                                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-                            )
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 10.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(24.dp)
-                                        .background(
-                                            color = MaterialTheme.colorScheme.error.copy(alpha = 0.1f),
-                                            shape = CircleShape
-                                        )
-                                        .border(
-                                            width = 1.5.dp,
-                                            color = MaterialTheme.colorScheme.error,
-                                            shape = CircleShape
-                                        ),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Close,
-                                        contentDescription = preferencesManager.getString("friend_reject"),
-                                        tint = MaterialTheme.colorScheme.error,
-                                        modifier = Modifier.size(16.dp)
-                                    )
+                        Surface(onClick = onReject, modifier = Modifier.weight(1f), shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.surfaceVariant, border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))) {
+                            Box(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), contentAlignment = Alignment.Center) {
+                                Box(modifier = Modifier.size(24.dp).background(MaterialTheme.colorScheme.error.copy(alpha = 0.1f), CircleShape).border(1.5.dp, MaterialTheme.colorScheme.error, CircleShape), contentAlignment = Alignment.Center) {
+                                    Icon(Icons.Default.Close, preferencesManager.getString("friend_reject"), tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
                                 }
                             }
                         }
@@ -645,145 +277,52 @@ fun NotificationCard(
 }
 
 @Composable
-fun EmptyNotificationState(
-    tab: NotificationTab,
-    preferencesManager: PreferencesManager
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(120.dp)
-                    .background(
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
-                        shape = CircleShape
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = if (tab == NotificationTab.SOCIAL) {
-                        Icons.Default.Notifications
-                    } else {
-                        Icons.Default.NotificationsActive
-                    },
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
-                    modifier = Modifier.size(56.dp)
-                )
+fun EmptyNotificationState(tab: NotificationTab, preferencesManager: PreferencesManager) {
+    Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+            Box(modifier = Modifier.size(120.dp).background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f), CircleShape), contentAlignment = Alignment.Center) {
+                Icon(if (tab == NotificationTab.SOCIAL) Icons.Default.Notifications else Icons.Default.NotificationsActive, null, tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f), modifier = Modifier.size(56.dp))
             }
-
             Spacer(modifier = Modifier.height(24.dp))
-
-            Text(
-                text = preferencesManager.getString("no_notifications"),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
+            Text(preferencesManager.getString("no_notifications"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
             Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = if (tab == NotificationTab.SOCIAL) {
-                    preferencesManager.getString("social_empty_msg")
-                } else {
-                    preferencesManager.getString("emergency_empty_msg")
-                },
-                fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                lineHeight = 20.sp
-            )
+            Text(if (tab == NotificationTab.SOCIAL) preferencesManager.getString("social_empty_msg") else preferencesManager.getString("emergency_empty_msg"), fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, lineHeight = 20.sp)
         }
     }
 }
 
-data class NotificationIconData(
-    val icon: ImageVector,
-    val iconColor: Color,
-    val backgroundColor: Color
-)
+// --- HELPER FUNCTIONS & DATA (Giữ lại ở Screen) ---
+
+data class NotificationIconData(val icon: ImageVector, val iconColor: Color, val backgroundColor: Color)
 
 @Composable
 fun getNotificationIconData(type: NotificationType): NotificationIconData {
     return when (type) {
-        NotificationType.LIKE -> NotificationIconData(
-            icon = Icons.Default.Favorite,
-            iconColor = Color(0xFFE91E63),
-            backgroundColor = Color(0xFFE91E63).copy(alpha = 0.15f)
-        )
-        NotificationType.COMMENT -> NotificationIconData(
-            icon = Icons.Default.Comment,
-            iconColor = Color(0xFF2196F3),
-            backgroundColor = Color(0xFF2196F3).copy(alpha = 0.15f)
-        )
-        NotificationType.REPLY -> NotificationIconData(
-            icon = Icons.Default.Reply,
-            iconColor = Color(0xFF9C27B0),
-            backgroundColor = Color(0xFF9C27B0).copy(alpha = 0.15f)
-        )
-        NotificationType.FRIEND_REQUEST -> NotificationIconData(
-            icon = Icons.Default.PersonAdd,
-            iconColor = Color(0xFF4CAF50),
-            backgroundColor = Color(0xFF4CAF50).copy(alpha = 0.15f)
-        )
-        NotificationType.SOS_SUPPORT_ACCEPTED -> NotificationIconData(
-            icon = Icons.Default.CheckCircle,
-            iconColor = Color(0xFF4CAF50),
-            backgroundColor = Color(0xFF4CAF50).copy(alpha = 0.15f)
-        )
-        NotificationType.EMERGENCY_APPROVED -> NotificationIconData(
-            icon = Icons.Default.Verified,
-            iconColor = Color(0xFF00BCD4),
-            backgroundColor = Color(0xFF00BCD4).copy(alpha = 0.15f)
-        )
-        NotificationType.EMERGENCY_REJECTED -> NotificationIconData(
-            icon = Icons.Default.Cancel,
-            iconColor = Color(0xFFFF5722),
-            backgroundColor = Color(0xFFFF5722).copy(alpha = 0.15f)
-        )
+        NotificationType.LIKE -> NotificationIconData(Icons.Default.Favorite, Color(0xFFE91E63), Color(0xFFE91E63).copy(alpha = 0.15f))
+        NotificationType.COMMENT -> NotificationIconData(Icons.Default.Comment, Color(0xFF2196F3), Color(0xFF2196F3).copy(alpha = 0.15f))
+        NotificationType.REPLY -> NotificationIconData(Icons.Default.Reply, Color(0xFF9C27B0), Color(0xFF9C27B0).copy(alpha = 0.15f))
+        NotificationType.FRIEND_REQUEST -> NotificationIconData(Icons.Default.PersonAdd, Color(0xFF4CAF50), Color(0xFF4CAF50).copy(alpha = 0.15f))
+        NotificationType.SOS_SUPPORT_ACCEPTED -> NotificationIconData(Icons.Default.CheckCircle, Color(0xFF4CAF50), Color(0xFF4CAF50).copy(alpha = 0.15f))
+        NotificationType.EMERGENCY_APPROVED -> NotificationIconData(Icons.Default.Verified, Color(0xFF00BCD4), Color(0xFF00BCD4).copy(alpha = 0.15f))
+        NotificationType.EMERGENCY_REJECTED -> NotificationIconData(Icons.Default.Cancel, Color(0xFFFF5722), Color(0xFFFF5722).copy(alpha = 0.15f))
     }
 }
 
 fun getLocalizedMessage(notification: NotificationItem, preferencesManager: PreferencesManager): String {
     return when (notification.type) {
-        NotificationType.LIKE -> {
-            preferencesManager.getString("notif_liked_post")
-        }
-        NotificationType.COMMENT -> {
-            val comment = notification.message.substringAfter(": '").substringBefore("'")
-            "${preferencesManager.getString("notif_commented")}: '$comment'"
-        }
-        NotificationType.REPLY -> {
-            preferencesManager.getString("notif_replied")
-        }
-        NotificationType.FRIEND_REQUEST -> {
-            preferencesManager.getString("notif_friend_request")
-        }
-        NotificationType.SOS_SUPPORT_ACCEPTED -> {
-            preferencesManager.getString("notif_sos_accepted")
-        }
-        NotificationType.EMERGENCY_APPROVED -> {
-            preferencesManager.getString("notif_emergency_approved")
-        }
-        NotificationType.EMERGENCY_REJECTED -> {
-            preferencesManager.getString("notif_emergency_rejected")
-        }
+        NotificationType.LIKE -> preferencesManager.getString("notif_liked_post")
+        NotificationType.COMMENT -> "${preferencesManager.getString("notif_commented")}: '${notification.message.substringAfter(": '").substringBefore("'")}'"
+        NotificationType.REPLY -> preferencesManager.getString("notif_replied")
+        NotificationType.FRIEND_REQUEST -> preferencesManager.getString("notif_friend_request")
+        NotificationType.SOS_SUPPORT_ACCEPTED -> preferencesManager.getString("notif_sos_accepted")
+        NotificationType.EMERGENCY_APPROVED -> preferencesManager.getString("notif_emergency_approved")
+        NotificationType.EMERGENCY_REJECTED -> preferencesManager.getString("notif_emergency_rejected")
     }
 }
 
 fun getTimeAgo(timestamp: Long, preferencesManager: PreferencesManager): String {
     val now = System.currentTimeMillis()
     val diff = now - timestamp
-
     val seconds = diff / 1000
     val minutes = seconds / 60
     val hours = minutes / 60
