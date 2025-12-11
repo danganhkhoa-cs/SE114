@@ -11,24 +11,37 @@ class PreferencesManager(context: Context) {
         context.getSharedPreferences(Keys.PREF_NAME, Context.MODE_PRIVATE)
 
     // --- STATE FOR RECOMPOSITION ---
-    var languageState = mutableStateOf(language)
+    // Đây là các biến trạng thái (State) giúp Jetpack Compose nhận biết thay đổi để vẽ lại giao diện ngay lập tức
+
+    var languageState = mutableStateOf(prefs.getString(Keys.KEY_LANGUAGE, "English") ?: "English")
+        private set
+
+    var darkModeState = mutableStateOf(prefs.getBoolean(Keys.KEY_DARK_MODE, false))
         private set
 
     // --- SETTINGS ---
     var isDarkMode: Boolean
-        get() = prefs.getBoolean(Keys.KEY_DARK_MODE, false)
-        set(value) = prefs.edit { putBoolean(Keys.KEY_DARK_MODE, value) }
+        get() = darkModeState.value
+        set(value) {
+            // 1. Cập nhật State -> UI đổi màu ngay lập tức
+            darkModeState.value = value
+            // 2. Lưu vào bộ nhớ máy
+            prefs.edit { putBoolean(Keys.KEY_DARK_MODE, value) }
+        }
 
     var language: String
-        get() = prefs.getString(Keys.KEY_LANGUAGE, "English") ?: "English"
+        get() = languageState.value
         set(value) {
-            prefs.edit { putString(Keys.KEY_LANGUAGE, value) }
+            // 1. Cập nhật State -> UI đổi chữ ngay lập tức
             languageState.value = value
+            // 2. Lưu vào bộ nhớ máy
+            prefs.edit { putString(Keys.KEY_LANGUAGE, value) }
         }
 
     // --- LOCALIZATION HELPER ---
     fun getString(key: String): String {
-        val isVietnamese = language == "Tiếng Việt"
+        // Truy cập vào .value để Compose biết cần phải theo dõi biến này
+        val isVietnamese = languageState.value == "Tiếng Việt"
 
         return if (isVietnamese) StringResources.VI[key] ?: key
         else StringResources.EN[key] ?: key
@@ -47,7 +60,7 @@ class PreferencesManager(context: Context) {
         get() = prefs.getString(Keys.KEY_USER_PHONE, "0123456789") ?: "0123456789"
         set(value) = prefs.edit { putString(Keys.KEY_USER_PHONE, value) }
 
-    // Logic xử lý song ngữ cho Bio/Address/Job/Gender mình giữ nguyên logic nhưng viết gọn hơn
+    // Logic xử lý song ngữ cho Bio/Address/Job/Gender
     var userBio: String
         get() = getLocalizedField(
             key = Keys.KEY_USER_BIO,
@@ -98,6 +111,8 @@ class PreferencesManager(context: Context) {
     // --- HELPER FUNCTIONS ---
     private fun getLocalizedField(key: String, defaultEn: String, defaultVi: String): String {
         val saved = prefs.getString(key, null)
+        // Vì hàm này gọi 'language' (mà 'language' gọi 'languageState.value'),
+        // nên Compose cũng sẽ tự động vẽ lại các trường này khi đổi ngôn ngữ.
         if (saved == null || saved == defaultEn || saved == defaultVi) {
             return if (language == "Tiếng Việt") defaultVi else defaultEn
         }
@@ -112,11 +127,13 @@ class PreferencesManager(context: Context) {
         prefs.edit { clear() }
 
         // Restore settings
+        // Lưu ý: Việc gán lại này cũng sẽ kích hoạt State update, đảm bảo UI đồng bộ
         isDarkMode = keepDarkMode
         language = keepLanguage
     }
 
     fun clearAll() {
         prefs.edit { clear() }
+        // Reset states về default nếu cần, hoặc để nguyên tùy logic app
     }
 }

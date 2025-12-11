@@ -41,7 +41,7 @@ fun MainNavGraph(
             EmergencyScreen()
         }
         composable(BottomNavItem.Chat.route) {
-            ChatScreen()
+            ChatScreen(preferencesManager = preferencesManager)
         }
         composable(BottomNavItem.Profile.route) {
             ProfileNavGraph(
