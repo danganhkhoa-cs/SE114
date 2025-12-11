@@ -20,24 +20,33 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.se114.local.PreferencesManager
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AccountSettingsScreen(
     preferencesManager: PreferencesManager,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    viewModel: AccountSettingsViewModel = hiltViewModel()
 ) {
-    val currentLanguage = preferencesManager.languageState.value // Force recomposition
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    val email = preferencesManager.userEmail
-    val maskedEmail = maskEmail(email)
-    val phone = preferencesManager.userPhone
-    val maskedPhone = maskPhone(phone)
+    // Force recomposition khi đổi ngôn ngữ
+    val currentLanguage = preferencesManager.languageState.value
 
-    var showPasswordDialog by remember { mutableStateOf(false) }
-    var showPhoneDialog by remember { mutableStateOf(false) }
-    var showPasswordVerifyDialog by remember { mutableStateOf(false) }
+    // Load initial data
+    LaunchedEffect(Unit) {
+        viewModel.setInitialData(
+            email = preferencesManager.userEmail,
+            phone = preferencesManager.userPhone
+        )
+    }
+
+    // Masking logic (UI only)
+    val maskedEmail = maskEmail(uiState.email)
+    val maskedPhone = maskPhone(uiState.phone)
 
     Scaffold(
         topBar = {
@@ -80,45 +89,70 @@ fun AccountSettingsScreen(
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            SettingItemCard(Icons.Default.Email, preferencesManager.getString("email"), maskedEmail, false)
-            SettingItemCard(Icons.Default.Lock, preferencesManager.getString("password"), "••••••••", true, { showPasswordDialog = true })
-            SettingItemCard(Icons.Default.Phone, preferencesManager.getString("phone_number"), maskedPhone, true, { showPasswordVerifyDialog = true })
+            SettingItemCard(
+                icon = Icons.Default.Email,
+                title = preferencesManager.getString("email"),
+                value = maskedEmail,
+                isEditable = false
+            )
+            SettingItemCard(
+                icon = Icons.Default.Lock,
+                title = preferencesManager.getString("password"),
+                value = "••••••••",
+                isEditable = true,
+                onEditClick = viewModel::showPasswordDialog
+            )
+            SettingItemCard(
+                icon = Icons.Default.Phone,
+                title = preferencesManager.getString("phone_number"),
+                value = maskedPhone,
+                isEditable = true,
+                onEditClick = viewModel::showPasswordVerifyDialog
+            )
         }
     }
 
-    if (showPasswordDialog) {
+    // --- Dialogs ---
+
+    if (uiState.isShowingPasswordDialog) {
         ChangePasswordDialog(
-            onDismiss = { showPasswordDialog = false },
+            onDismiss = viewModel::hidePasswordDialog,
             onConfirm = { _, _ ->
-                showPasswordDialog = false
+                // Logic đổi mật khẩu thực tế sẽ nằm ở đây (gọi API hoặc lưu Prefs)
+                viewModel.hidePasswordDialog()
             },
             preferencesManager = preferencesManager
         )
     }
 
-    if (showPasswordVerifyDialog) {
+    if (uiState.isShowingPasswordVerifyDialog) {
         VerifyPasswordDialog(
-            onDismiss = { showPasswordVerifyDialog = false },
+            onDismiss = viewModel::hidePasswordVerifyDialog,
             onVerified = {
-                showPasswordVerifyDialog = false
-                showPhoneDialog = true
+                // Xác thực thành công -> Mở dialog đổi số điện thoại
+                viewModel.hidePasswordVerifyDialog()
+                viewModel.showPhoneDialog()
             },
             preferencesManager = preferencesManager
         )
     }
 
-    if (showPhoneDialog) {
+    if (uiState.isShowingPhoneDialog) {
         ChangePhoneDialog(
-            currentPhone = phone,
-            onDismiss = { showPhoneDialog = false },
+            currentPhone = uiState.phone,
+            onDismiss = viewModel::hidePhoneDialog,
             onConfirm = { newPhone ->
+                // 1. Lưu vào Preferences
                 preferencesManager.userPhone = newPhone
-                showPhoneDialog = false
+                // 2. Cập nhật UI State
+                viewModel.updatePhone(newPhone)
             },
             preferencesManager = preferencesManager
         )
     }
 }
+
+// --- HELPER FUNCTIONS & COMPOSABLES (Giữ nguyên) ---
 
 @Composable
 fun SettingItemCard(
