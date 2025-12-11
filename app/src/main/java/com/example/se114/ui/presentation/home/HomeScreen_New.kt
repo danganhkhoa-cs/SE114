@@ -31,23 +31,15 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.se114.data.dummy.DummyPostData
+import com.example.se114.data.dummy.Post
 import com.example.se114.local.PreferencesManager
 import com.example.se114.ui.presentation.components.CommentBottomSheet
 import com.example.se114.ui.presentation.components.ReportDialog
 import com.example.se114.ui.theme.AppTealDark
 
-data class Post(
-    val id: Int,
-    val userName: String,
-    val userAvatar: String,
-    val timeAgo: String,
-    val content: String,
-    val location: String,
-    val imageUrl: String? = null,
-    val likeCount: Int,
-    val commentCount: Int,
-    val isLiked: Boolean = false
-)
+// REMOVED LOCAL DATA CLASS POST
+// Using com.example.se114.data.dummy.Post instead
 
 @Composable
 fun HomeScreen(
@@ -84,40 +76,8 @@ fun HomeScreen(
     var showCommentSheet by remember { mutableStateOf(false) }
     var selectedPostForComment by remember { mutableStateOf<Post?>(null) }
 
-    val samplePosts = remember {
-        listOf(
-            Post(
-                id = 1,
-                userName = "Nguyen Van A",
-                userAvatar = "",
-                timeAgo = "2 hours ago",
-                content = "Need urgent help! Flooding in my area. Anyone nearby can assist?",
-                location = "District 1, HCMC",
-                likeCount = 24,
-                commentCount = 8
-            ),
-            Post(
-                id = 2,
-                userName = "Tran Thi B",
-                userAvatar = "",
-                timeAgo = "5 hours ago",
-                content = "Medical emergency. Looking for nearby hospital or ambulance.",
-                location = "District 3, HCMC",
-                likeCount = 45,
-                commentCount = 12
-            ),
-            Post(
-                id = 3,
-                userName = "Le Van C",
-                userAvatar = "",
-                timeAgo = "1 day ago",
-                content = "Lost pet - Golden Retriever. Last seen near Landmark 81. Please help!",
-                location = "Binh Thanh, HCMC",
-                likeCount = 67,
-                commentCount = 23
-            )
-        )
-    }
+    // CHANGED: Use shared data from DummyPostData
+    val samplePosts = remember { DummyPostData.posts }
 
     Box(
         modifier = Modifier
@@ -391,7 +351,7 @@ fun HomeScreen(
             }
 
             // --- LIST LOGIC ---
-            val displayedPosts = remember(selectedTabIndex, isShowingSavedPosts, savedPostIds.size, hiddenPostIds.size) {
+            val displayedPosts = remember(selectedTabIndex, isShowingSavedPosts, savedPostIds.size, hiddenPostIds.size, samplePosts.size) {
                 when(selectedTabIndex) {
                     0 -> samplePosts.filter { it.id !in hiddenPostIds } // Everyone
                     1 -> {
