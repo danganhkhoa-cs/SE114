@@ -3,7 +3,7 @@ package com.example.se114.ui.presentation.chat
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.se114.data.dummy.DummyChatData
+import com.example.se114.data.DummyChatData
 import com.example.se114.data.model.ChatMessage
 import com.example.se114.data.model.Conversation
 import dagger.hilt.android.lifecycle.HiltViewModel

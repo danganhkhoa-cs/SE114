@@ -33,7 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.se114.data.dummy.Post
+import com.example.se114.data.Post
 import com.example.se114.local.PreferencesManager
 import com.example.se114.ui.presentation.components.CommentBottomSheet
 import com.example.se114.ui.presentation.components.ReportDialog
