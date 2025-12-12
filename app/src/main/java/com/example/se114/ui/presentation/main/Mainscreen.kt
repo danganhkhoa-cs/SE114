@@ -44,7 +44,7 @@ fun MainScreen(
         BottomNavItem.Profile
     )
 
-    val isNotificationScreen = currentDestination?.route == "notification"
+    val isFullScreen = currentDestination?.route == "notification" || currentDestination?.route?.contains("chat_detail") == true
 
     // Cấu hình màu cho Bottom Bar "Bóng bẩy"
     val bottomBarBaseColor = if (isDarkTheme) {
@@ -62,7 +62,7 @@ fun MainScreen(
 
     Scaffold(
         bottomBar = {
-            if (!isNotificationScreen) {
+            if (!isFullScreen) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()

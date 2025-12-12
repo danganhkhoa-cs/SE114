@@ -36,9 +36,7 @@ class SettingsViewModel @Inject constructor(
 
     // --- Block List Logic ---
     fun unblockUser(username: String) {
-        _uiState.update { state ->
-            state.copy(blockedUsers = state.blockedUsers - username)
-        }
+        _uiState.update { it.copy(blockedUsers = it.blockedUsers - username) }
     }
 
     // --- Dialog Controls ---
