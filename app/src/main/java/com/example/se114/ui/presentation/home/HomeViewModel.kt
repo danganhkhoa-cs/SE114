@@ -1,9 +1,8 @@
 package com.example.se114.ui.presentation.home
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import com.example.se114.data.dummy.DummyPostData
-import com.example.se114.data.dummy.Post
+import com.example.se114.data.DummyPostData
+import com.example.se114.data.Post
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow

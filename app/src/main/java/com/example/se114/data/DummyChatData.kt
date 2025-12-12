@@ -1,4 +1,4 @@
-package com.example.se114.data.dummy
+package com.example.se114.data
 
 import androidx.compose.runtime.mutableStateListOf
 import com.example.se114.data.model.ChatMessage
