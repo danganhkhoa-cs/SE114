@@ -82,7 +82,7 @@ fun ChatListScreen(
                         Text(preferencesManager.getString("chat_search"), color = Color.White.copy(alpha = 0.7f))
                     },
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.White) },
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(26.dp),
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color.White.copy(alpha = 0.2f),
