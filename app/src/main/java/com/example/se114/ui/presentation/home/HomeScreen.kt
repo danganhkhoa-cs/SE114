@@ -42,27 +42,25 @@ import com.example.se114.ui.theme.AppTealDark
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
-    onNavigateToNotification: () -> Unit = {}
+    onNavigateToNotification: () -> Unit = {},
+    onNavigateToOtherProfile: (String) -> Unit = {} // Thêm callback điều hướng
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
-    // Giữ nguyên PreferencesManager ở Screen để lấy chuỗi
     val preferencesManager = remember { PreferencesManager(context) }
 
-    // Quản lý UI cục bộ (bottom sheet, snackbar)
     var showSnackbar by remember { mutableStateOf(false) }
     var snackbarMessageText by remember { mutableStateOf("") }
 
     var showCommentSheet by remember { mutableStateOf(false) }
     var selectedPostForComment by remember { mutableStateOf<Post?>(null) }
 
-    // Xử lý Side Effect: Hiển thị Snackbar dựa trên thay đổi từ ViewModel
     LaunchedEffect(uiState.currentMessage) {
         if (uiState.currentMessage != HomeMessage.NONE) {
             val message = when(uiState.currentMessage) {
                 HomeMessage.SAVED -> preferencesManager.getString("post_saved")
-                HomeMessage.UNSAVED -> preferencesManager.getString("unsave_post") // Tùy chọn
+                HomeMessage.UNSAVED -> preferencesManager.getString("unsave_post")
                 HomeMessage.HIDDEN -> preferencesManager.getString("post_hidden")
                 HomeMessage.REPORT_SUCCESS -> preferencesManager.getString("report_success")
                 else -> ""
@@ -76,7 +74,6 @@ fun HomeScreen(
         }
     }
 
-    // Tắt Snackbar sau 2s
     LaunchedEffect(showSnackbar) {
         if (showSnackbar) {
             kotlinx.coroutines.delay(2000)
@@ -96,20 +93,17 @@ fun HomeScreen(
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
 
-            // --- HEADER ---
             HomeHeader(
                 notificationCount = uiState.notificationUnreadCount,
                 onNavigateToNotification = onNavigateToNotification
             )
 
-            // --- TABS ---
             HomeTabs(
                 tabs = tabs,
                 selectedTabIndex = uiState.selectedTabIndex,
                 onTabSelected = viewModel::onTabSelected
             )
 
-            // --- SAVED FILTER BUTTON ---
             HomeSavedFilter(
                 isVisible = uiState.selectedTabIndex == 1,
                 isShowingSavedPosts = uiState.isShowingSavedPosts,
@@ -117,7 +111,6 @@ fun HomeScreen(
                 onClick = viewModel::toggleSavedFilter
             )
 
-            // --- LIST ---
             val displayedPosts = uiState.displayedPosts
 
             if (displayedPosts.isEmpty() && uiState.isShowingSavedPosts && uiState.selectedTabIndex == 1) {
@@ -136,7 +129,7 @@ fun HomeScreen(
                         PostCard(
                             post = post,
                             isSaved = post.id in uiState.savedPostIds,
-                            preferencesManager = preferencesManager, // Truyền xuống để lấy chuỗi trong Menu
+                            preferencesManager = preferencesManager,
                             onLikeClick = { viewModel.onToggleLike(post.id) },
                             onSaveClick = { viewModel.onToggleSave(post.id) },
                             onHideClick = { viewModel.onHidePost(post.id) },
@@ -144,6 +137,10 @@ fun HomeScreen(
                             onCommentClick = {
                                 selectedPostForComment = post
                                 showCommentSheet = true
+                            },
+                            onAvatarClick = {
+                                // Truyền ID người dùng giả định từ Post (trong thực tế Post model sẽ có userId)
+                                onNavigateToOtherProfile("user_${post.userName}")
                             }
                         )
                         Spacer(modifier = Modifier.height(8.dp))
@@ -152,7 +149,6 @@ fun HomeScreen(
             }
         }
 
-        // --- SNACKBAR ---
         if (showSnackbar) {
             Box(
                 modifier = Modifier.fillMaxSize(),
@@ -171,7 +167,6 @@ fun HomeScreen(
             }
         }
 
-        // --- COMMENT SHEET ---
         if (showCommentSheet && selectedPostForComment != null) {
             CommentBottomSheet(
                 onDismiss = {
@@ -185,7 +180,7 @@ fun HomeScreen(
     }
 }
 
-// --- SUB COMPONENTS (Tách nhỏ để dễ đọc) ---
+// --- SUB COMPONENTS ---
 
 @Composable
 fun HomeHeader(
@@ -201,7 +196,6 @@ fun HomeHeader(
             modifier = Modifier.fillMaxWidth().height(90.dp)
         ) {
             val blobAlpha = 0.1f
-            // (Giữ nguyên Canvas blobs của bạn)
             Canvas(modifier = Modifier.size(100.dp).align(Alignment.TopEnd).offset(x = 30.dp, y = (-20).dp)) {
                 drawCircle(color = Color.White.copy(alpha = blobAlpha), radius = size.minDimension / 2)
             }
@@ -340,9 +334,9 @@ fun PostCard(
     onSaveClick: () -> Unit,
     onHideClick: () -> Unit,
     onReportSubmitted: () -> Unit,
-    onCommentClick: () -> Unit
+    onCommentClick: () -> Unit,
+    onAvatarClick: () -> Unit // Tham số mới
 ) {
-    // PostCard giờ là Stateless, chỉ hiển thị dữ liệu từ post
     var showMenu by remember { mutableStateOf(false) }
     var showReportDialog by remember { mutableStateOf(false) }
 
@@ -358,7 +352,11 @@ fun PostCard(
                 modifier = Modifier.fillMaxWidth().background(brush = Brush.verticalGradient(colors = listOf(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), Color.Transparent))).padding(16.dp)
             ) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Avatar & Name -> Clickable
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.clickable { onAvatarClick() } // Thêm sự kiện click
+                    ) {
                         Surface(modifier = Modifier.size(50.dp).shadow(6.dp, CircleShape), shape = CircleShape, color = MaterialTheme.colorScheme.primary, border = BorderStroke(2.dp, MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.5f))) {
                             Box(contentAlignment = Alignment.Center) {
                                 Text(post.userName.first().toString(), color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 22.sp)
@@ -432,7 +430,10 @@ fun PostCard(
                                         }
                                     }
                                 },
-                                onClick = { showMenu = false },
+                                onClick = {
+                                    showMenu = false
+                                    onAvatarClick() // Xem profile từ menu
+                                },
                                 modifier = Modifier.padding(vertical = 4.dp)
                             )
                         }

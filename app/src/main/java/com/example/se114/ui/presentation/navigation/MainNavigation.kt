@@ -3,15 +3,17 @@ package com.example.se114.ui.presentation.navigation
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 import com.example.se114.local.PreferencesManager
 import com.example.se114.ui.presentation.chat.ChatNavGraph
 import com.example.se114.ui.presentation.emergency.EmergencyScreen
 import com.example.se114.ui.presentation.home.HomeScreen
 import com.example.se114.ui.presentation.notification.NotificationScreen
+import com.example.se114.ui.presentation.profile.OtherProfileScreen
 import com.example.se114.ui.presentation.rank.RankScreen
 
 @Composable
@@ -32,6 +34,9 @@ fun MainNavGraph(
             HomeScreen(
                 onNavigateToNotification = {
                     navController.navigate("notification")
+                },
+                onNavigateToOtherProfile = { userId ->
+                    navController.navigate(Screen.OtherProfile.createRoute(userId))
                 }
             )
         }
@@ -62,6 +67,18 @@ fun MainNavGraph(
                     navController.navigateUp()
                 },
                 preferencesManager = preferencesManager
+            )
+        }
+
+        // Màn hình Profile người khác
+        composable(
+            route = Screen.OtherProfile.route,
+            arguments = listOf(navArgument("userId") { type = NavType.StringType })
+        ) {
+            OtherProfileScreen(
+                onBackClick = {
+                    navController.popBackStack()
+                }
             )
         }
     }
