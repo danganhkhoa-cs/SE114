@@ -178,10 +178,12 @@ object StringResources {
         "sos_error" to "Please enter all details!",
 
         // Other Profile
+        "other_profile_title" to "Profile",
         "rating_score" to "Community Rating",
         "reviews" to "Reviews",
         "message" to "Message",
-        "add_friend" to "Add Friend",
+        "follow" to "Follow",
+        "followed" to "Followed",
         "joined_date" to "Joined",
     )
 
@@ -362,10 +364,12 @@ object StringResources {
         "sos_error" to "Vui lòng nhập đầy đủ thông tin!",
 
         // Other Profile
+        "other_profile_title" to "Thông tin cá nhân",
         "rating_score" to "Đánh giá cộng đồng",
         "reviews" to "Đánh giá",
         "message" to "Nhắn tin",
-        "add_friend" to "Kết bạn",
+        "follow" to "Theo dõi",
+        "followed" to "Đã theo dõi",
         "joined_date" to "Tham gia",
     )
 }
