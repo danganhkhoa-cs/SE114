@@ -4,8 +4,10 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -46,7 +48,7 @@ fun ProfileScreen(
     val currentLanguage = preferencesManager.languageState.value
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-
+    val scrollState = rememberScrollState()
     // Load Data
     LaunchedEffect(Unit) {
         viewModel.setInitialData(preferencesManager.userName, preferencesManager.userBio)
@@ -73,7 +75,6 @@ fun ProfileScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
                     .background(
                         brush = Brush.verticalGradient(
                             colors = listOf(
@@ -86,8 +87,10 @@ fun ProfileScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
+                        .verticalScroll(scrollState)
+                        .padding(paddingValues)
                         .padding(horizontal = 20.dp)
-                        .padding(top = 50.dp),
+                        .padding(top = 50.dp, bottom = 30.dp), // Thêm bottom padding để khi scroll xuống cuối không bị sát mép
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
