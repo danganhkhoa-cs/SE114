@@ -170,13 +170,19 @@ object StringResources {
         "sos_button" to "SEND SOS SIGNAL",
         "sos_success" to "SOS signal sent!",
         "delete" to "Delete",
-        "cancel" to "Cancel",
         "phone_number" to "Phone Number",
         "phone_required" to "Phone number is required",
         "add_friend_title" to "Add New Friend",
         "add" to "Add",
         "enter_phone_placeholder" to "0901234567",
-        "sos_error" to "Please enter all details!"
+        "sos_error" to "Please enter all details!",
+
+        // Other Profile
+        "rating_score" to "Community Rating",
+        "reviews" to "Reviews",
+        "message" to "Message",
+        "add_friend" to "Add Friend",
+        "joined_date" to "Joined",
     )
 
     val VI = mapOf(
@@ -348,12 +354,18 @@ object StringResources {
         "sos_button" to "GỬI TÍN HIỆU CẦU CỨU",
         "sos_success" to "Đã gửi tín hiệu SOS!",
         "delete" to "Xóa",
-        "cancel" to "Hủy",
         "phone_number" to "Số điện thoại",
         "phone_required" to "Vui lòng nhập số điện thoại",
         "add_friend_title" to "Thêm bạn mới",
         "add" to "Thêm",
         "enter_phone_placeholder" to "0901234567",
-        "sos_error" to "Vui lòng nhập đầy đủ thông tin!"
+        "sos_error" to "Vui lòng nhập đầy đủ thông tin!",
+
+        // Other Profile
+        "rating_score" to "Đánh giá cộng đồng",
+        "reviews" to "Đánh giá",
+        "message" to "Nhắn tin",
+        "add_friend" to "Kết bạn",
+        "joined_date" to "Tham gia",
     )
 }
