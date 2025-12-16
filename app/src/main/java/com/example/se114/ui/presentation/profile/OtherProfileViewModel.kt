@@ -21,7 +21,7 @@ data class OtherProfileUiState(
     val joinedDate: String = "",
     val rating: Float = 0.0f,
     val reviewCount: Int = 0,
-    val isFriend: Boolean = false,
+    val isFollow: Boolean = false,
     val isLoading: Boolean = true
 )
 
@@ -59,7 +59,7 @@ class OtherProfileViewModel @Inject constructor(
                     joinedDate = "October 2023",
                     rating = 4.7f, // Điểm đánh giá (đã tính trung bình từ việc giúp đỡ)
                     reviewCount = 128,
-                    isFriend = false,
+                    isFollow = false,
                     isLoading = false
                 )
             }
@@ -67,6 +67,6 @@ class OtherProfileViewModel @Inject constructor(
     }
 
     fun toggleFriendStatus() {
-        _uiState.update { it.copy(isFriend = !it.isFriend) }
+        _uiState.update { it.copy(isFollow = !it.isFollow) }
     }
 }

@@ -41,47 +41,51 @@ fun OtherProfileScreen(
     // Force recomposition
     val currentLanguage = preferencesManager.languageState.value
 
-    // --- FIX: Đưa Box Gradient ra ngoài cùng để bao phủ toàn bộ màn hình ---
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                        MaterialTheme.colorScheme.background
+    Scaffold(
+        containerColor = Color.Transparent,
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        preferencesManager.getString("other_profile_title"),
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent // TopBar trong suốt để hòa hợp background (nếu cần)
                 )
             )
-    ) {
-        Scaffold(
-            // --- FIX: Set màu nền Scaffold trong suốt để thấy Gradient bên dưới ---
-            containerColor = Color.Transparent,
-            topBar = {
-                TopAppBar(
-                    title = {
-                        // Có thể để trống hoặc dùng string phù hợp
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = onBackClick) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back",
-                                tint = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.Transparent // TopBar cũng trong suốt
+        },
+        bottomBar = {
+            Spacer(modifier = Modifier.height(0.dp))
+        }
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                            MaterialTheme.colorScheme.background
+                        )
                     )
                 )
-            }
-        ) { paddingValues ->
+        ) {
             if (uiState.isLoading) {
                 Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
+                    modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
@@ -90,14 +94,13 @@ fun OtherProfileScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(paddingValues) // Padding này chỉ đẩy nội dung xuống, không cắt background
+                        .padding(paddingValues)
                         .verticalScroll(rememberScrollState())
                 ) {
                     // --- SECTION 1: HEADER & AVATAR ---
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 10.dp) // Giảm top padding một chút cho cân đối
                             .padding(horizontal = 24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
@@ -143,7 +146,7 @@ fun OtherProfileScreen(
 
                         Spacer(modifier = Modifier.height(24.dp))
 
-                        // Action Buttons (Add Friend / Message)
+                        // Action Buttons
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -152,18 +155,18 @@ fun OtherProfileScreen(
                                 onClick = viewModel::toggleFriendStatus,
                                 modifier = Modifier.weight(1f),
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (uiState.isFriend) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.primary,
-                                    contentColor = if (uiState.isFriend) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onPrimary
+                                    containerColor = if (uiState.isFollow) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.primary,
+                                    contentColor = if (uiState.isFollow) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onPrimary
                                 ),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
                                 Icon(
-                                    imageVector = if (uiState.isFriend) Icons.Default.Check else Icons.Default.PersonAdd,
+                                    imageVector = if (uiState.isFollow) Icons.Default.Check else Icons.Default.PersonAdd,
                                     contentDescription = null,
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text(if (uiState.isFriend) "Friend" else preferencesManager.getString("add_friend"))
+                                Text(if (uiState.isFollow) preferencesManager.getString("followed") else preferencesManager.getString("follow"))
                             }
 
                             Button(
@@ -244,7 +247,7 @@ fun OtherProfileScreen(
     }
 }
 
-// --- SUB COMPONENTS ---
+// --- SUB COMPONENTS (Giữ nguyên) ---
 
 @Composable
 fun ReadOnlyDataItemCard(
@@ -358,7 +361,7 @@ fun RatingCard(
                             Icon(
                                 imageVector = if (index < rating.toInt()) Icons.Default.Star else Icons.Default.StarBorder,
                                 contentDescription = null,
-                                tint = Color(0xFFFFC107), // Gold color
+                                tint = Color(0xFFFFC107),
                                 modifier = Modifier.size(16.dp)
                             )
                         }
