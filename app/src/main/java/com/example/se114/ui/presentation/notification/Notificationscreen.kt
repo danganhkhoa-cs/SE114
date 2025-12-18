@@ -84,6 +84,10 @@ fun NotificationScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
             )
+
+        },
+        bottomBar = {
+            Spacer(Modifier.height(0.dp))
         }
     ) { paddingValues ->
         Column(
