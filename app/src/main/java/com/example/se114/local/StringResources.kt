@@ -2,9 +2,8 @@ package com.example.se114.local
 
 object StringResources {
     val EN = mapOf(
-        "tab_everyone" to "Everyone",
-        "tab_foryou" to "For You",
-        "tab_saved" to "Saved",
+        "tab_support" to "Support",
+        "tab_service" to "Service",
         "empty_saved_posts" to "No saved posts yet",
         "cancel" to "Cancel",
         "save" to "Save",
@@ -182,20 +181,18 @@ object StringResources {
         "rating_score" to "Community Rating",
         "reviews" to "Reviews",
         "message" to "Message",
-        "follow" to "Follow",
-        "followed" to "Followed",
+        "add_friend" to "Add friend",
+        "friends" to "Friends",
         "joined_date" to "Joined",
-        "tab_everyone" to "Support",
-        "tab_foryou" to "Service",
-        "tab_saved" to "Saved",
-        "saved_posts" to "Saved Posts"
+        
+        // Saved
+        "saved_posts" to "Saved Posts",
         "empty_saved_posts" to "There is no post"
     )
 
     val VI = mapOf(
-        "tab_everyone" to "Mọi người",
-        "tab_foryou" to "Dành cho bạn",
-        "tab_saved" to "Đã lưu",
+        "tab_support" to "Hỗ trợ",
+        "tab_service" to "Dịch vụ",
         "empty_saved_posts" to "Chưa có bài viết đã lưu",
         "cancel" to "Hủy",
         "save" to "Lưu",
@@ -373,13 +370,12 @@ object StringResources {
         "rating_score" to "Đánh giá cộng đồng",
         "reviews" to "Đánh giá",
         "message" to "Nhắn tin",
-        "follow" to "Theo dõi",
-        "followed" to "Đã theo dõi",
+        "add_friend" to "Kết bạn",
+        "friends" to "Bạn bè",
         "joined_date" to "Tham gia",
-        "tab_everyone" to "Hỗ trợ",
-        "tab_foryou" to "Dịch vụ",
-        "tab_saved" to "Đã lưu",
-        "saved_posts" to "Bài Đăng Đã Lưu",
-        "empty_saved_posts" to "Không có bài đăng nào"
+
+        // Saved
+        "saved_posts" to "Bài viết đã lưu",
+        "empty_saved_posts" to "Không có bài viết nào"
     )
 }

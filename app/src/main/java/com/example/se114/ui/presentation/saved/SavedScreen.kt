@@ -55,7 +55,7 @@ fun SavedScreen(
                     .padding(vertical = 20.dp, horizontal = 16.dp)
             ) {
                 Text(
-                    text = preferencesManager.getString("saved_posted"),
+                    text = preferencesManager.getString("saved_posts"),
                     style = MaterialTheme.typography.headlineMedium,
                     color = Color.White,
                     fontWeight = FontWeight.Bold,

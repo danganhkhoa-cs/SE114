@@ -12,7 +12,7 @@ import com.example.se114.ui.presentation.chat.ChatNavGraph
 import com.example.se114.ui.presentation.emergency.EmergencyScreen
 import com.example.se114.ui.presentation.home.HomeScreen
 import com.example.se114.ui.presentation.notification.NotificationScreen
-import com.example.se114.ui.presentation.profile.OtherProfileScreen
+import com.example.se114.ui.presentation.other_profile.OtherProfileScreen
 import com.example.se114.ui.presentation.saved.SavedScreen
 
 @Composable

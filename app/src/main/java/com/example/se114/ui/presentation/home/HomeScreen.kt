@@ -77,8 +77,8 @@ fun HomeScreen(
     }
 
     val tabs = listOf(
-        preferencesManager.getString("tab_everyone"),
-        preferencesManager.getString("tab_foryou")
+        preferencesManager.getString("tab_support"),
+        preferencesManager.getString("tab_service")
     )
 
     Box(
@@ -99,11 +99,9 @@ fun HomeScreen(
                 onTabSelected = viewModel::onTabSelected
             )
 
-            // --- ĐÃ XÓA PHẦN NÚT LỌC SAVED (HomeSavedFilter) TẠI ĐÂY ---
 
             val displayedPosts = uiState.displayedPosts
 
-            // --- ĐÃ XÓA LOGIC KIỂM TRA EmptySavedState ---
             // Chỉ hiển thị danh sách bài viết
             LazyColumn(
                 modifier = Modifier
@@ -143,8 +141,7 @@ fun HomeScreen(
             ) {
                 Snackbar(
                     modifier = Modifier
-                        .padding(bottom = 120.dp)
-                        .padding(horizontal = 16.dp),
+                        .padding(16.dp),
                     containerColor = MaterialTheme.colorScheme.inverseSurface,
                     contentColor = MaterialTheme.colorScheme.inverseOnSurface,
                     shape = RoundedCornerShape(12.dp)
