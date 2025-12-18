@@ -168,7 +168,7 @@ fun OtherProfileScreen(
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text(if (uiState.isFollow) preferencesManager.getString("followed") else preferencesManager.getString("follow"))
+                                Text(if (uiState.isFollow) preferencesManager.getString("friends") else preferencesManager.getString("add_friend"))
                             }
 
                             Button(

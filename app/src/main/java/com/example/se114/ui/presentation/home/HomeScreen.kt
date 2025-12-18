@@ -77,8 +77,8 @@ fun HomeScreen(
     }
 
     val tabs = listOf(
-        preferencesManager.getString("tab_everyone"),
-        preferencesManager.getString("tab_foryou")
+        preferencesManager.getString("tab_support"),
+        preferencesManager.getString("tab_service")
     )
 
     Box(
