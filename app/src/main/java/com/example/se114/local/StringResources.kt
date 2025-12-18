@@ -185,6 +185,9 @@ object StringResources {
         "follow" to "Follow",
         "followed" to "Followed",
         "joined_date" to "Joined",
+        "tab_everyone" to "Support",
+        "tab_foryou" to "Service",
+        "tab_saved" to "Saved",
     )
 
     val VI = mapOf(
@@ -371,5 +374,8 @@ object StringResources {
         "follow" to "Theo dõi",
         "followed" to "Đã theo dõi",
         "joined_date" to "Tham gia",
+        "tab_everyone" to "Hỗ trợ",
+        "tab_foryou" to "Dịch vụ",
+        "tab_saved" to "Đã lưu",
     )
 }
