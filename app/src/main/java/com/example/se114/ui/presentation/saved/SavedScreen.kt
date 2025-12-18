@@ -19,9 +19,8 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.se114.local.PreferencesManager
-import com.example.se114.ui.presentation.home.PostCard // Import PostCard từ Home
+import com.example.se114.ui.presentation.home.PostCard // Hoặc .components.PostCard tùy vị trí bạn đặt file
 import com.example.se114.ui.theme.AppTealDark
-
 
 @Composable
 fun SavedScreen(
@@ -30,6 +29,9 @@ fun SavedScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+
+    // Khởi tạo PreferencesManager để quản lý ngôn ngữ
+    // remember giúp giữ lại instance này qua các lần recomposition
     val preferencesManager = remember { PreferencesManager(context) }
 
     // Reload dữ liệu mỗi khi màn hình hiển thị lại
@@ -42,10 +44,10 @@ fun SavedScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        // --- HEADER (Màu AppTealDark) ---
+        // --- HEADER ---
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            color = AppTealDark, // Đồng bộ màu với Home Header
+            color = AppTealDark,
             shadowElevation = 4.dp,
             shape = RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp)
         ) {
@@ -54,8 +56,10 @@ fun SavedScreen(
                     .fillMaxWidth()
                     .padding(vertical = 20.dp, horizontal = 16.dp)
             ) {
+                // [THAY ĐỔI 1] Áp dụng đa ngôn ngữ cho tiêu đề
+                // Key "Saved Posts" đã có trong file StringResources.kt của bạn
                 Text(
-                    text = "Saved Posts",
+                    text = preferencesManager.getString("Saved Posts"),
                     style = MaterialTheme.typography.headlineMedium,
                     color = Color.White,
                     fontWeight = FontWeight.Bold,
@@ -79,8 +83,11 @@ fun SavedScreen(
                         tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
                     )
                     Spacer(modifier = Modifier.height(16.dp))
+
+                    // [THAY ĐỔI 2] Áp dụng đa ngôn ngữ cho thông báo trống
+                    // Key "empty_saved_posts" đã có trong file StringResources.kt
                     Text(
-                        text = "No saved posts yet",
+                        text = preferencesManager.getString("empty_saved_posts"),
                         fontSize = 18.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Medium
@@ -98,7 +105,7 @@ fun SavedScreen(
                     PostCard(
                         post = post,
                         isSaved = true, // Luôn true ở màn hình Saved
-                        preferencesManager = preferencesManager,
+                        preferencesManager = preferencesManager, // Truyền xuống để PostCard tự dịch menu
                         onLikeClick = { /* Xử lý like nếu cần */ },
                         onSaveClick = {
                             // Xử lý bỏ lưu ngay tại màn hình Saved

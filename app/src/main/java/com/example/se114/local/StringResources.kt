@@ -188,6 +188,8 @@ object StringResources {
         "tab_everyone" to "Support",
         "tab_foryou" to "Service",
         "tab_saved" to "Saved",
+        "Saved Posts" to "Saved Posts"
+
     )
 
     val VI = mapOf(
@@ -377,5 +379,6 @@ object StringResources {
         "tab_everyone" to "Hỗ trợ",
         "tab_foryou" to "Dịch vụ",
         "tab_saved" to "Đã lưu",
+        "Saved Posts" to "Bài Đăng Đã Lưu",
     )
 }
