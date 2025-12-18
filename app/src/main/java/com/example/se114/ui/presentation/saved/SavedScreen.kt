@@ -55,7 +55,7 @@ fun SavedScreen(
                     .padding(vertical = 20.dp, horizontal = 16.dp)
             ) {
                 Text(
-                    text = "Saved Posts",
+                    text = preferencesManager.getString("saved_posted"),
                     style = MaterialTheme.typography.headlineMedium,
                     color = Color.White,
                     fontWeight = FontWeight.Bold,
@@ -79,8 +79,9 @@ fun SavedScreen(
                         tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
                     )
                     Spacer(modifier = Modifier.height(16.dp))
+
                     Text(
-                        text = "No saved posts yet",
+                        text = preferencesManager.getString("empty_saved_posts"),
                         fontSize = 18.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Medium
