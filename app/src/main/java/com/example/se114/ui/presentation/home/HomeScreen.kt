@@ -1,10 +1,5 @@
 package com.example.se114.ui.presentation.home
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -43,7 +38,7 @@ import com.example.se114.ui.theme.AppTealDark
 fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
     onNavigateToNotification: () -> Unit = {},
-    onNavigateToOtherProfile: (String) -> Unit = {} // Thêm callback điều hướng
+    onNavigateToOtherProfile: (String) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -104,47 +99,39 @@ fun HomeScreen(
                 onTabSelected = viewModel::onTabSelected
             )
 
-            HomeSavedFilter(
-                isVisible = uiState.selectedTabIndex == 1,
-                isShowingSavedPosts = uiState.isShowingSavedPosts,
-                label = preferencesManager.getString("tab_saved"),
-                onClick = viewModel::toggleSavedFilter
-            )
+            // --- ĐÃ XÓA PHẦN NÚT LỌC SAVED (HomeSavedFilter) TẠI ĐÂY ---
 
             val displayedPosts = uiState.displayedPosts
 
-            if (displayedPosts.isEmpty() && uiState.isShowingSavedPosts && uiState.selectedTabIndex == 1) {
-                EmptySavedState(message = preferencesManager.getString("empty_saved_posts"))
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.background),
-                    contentPadding = PaddingValues(vertical = 8.dp)
-                ) {
-                    items(
-                        items = displayedPosts,
-                        key = { it.id }
-                    ) { post ->
-                        PostCard(
-                            post = post,
-                            isSaved = post.id in uiState.savedPostIds,
-                            preferencesManager = preferencesManager,
-                            onLikeClick = { viewModel.onToggleLike(post.id) },
-                            onSaveClick = { viewModel.onToggleSave(post.id) },
-                            onHideClick = { viewModel.onHidePost(post.id) },
-                            onReportSubmitted = { viewModel.onReportSubmitted() },
-                            onCommentClick = {
-                                selectedPostForComment = post
-                                showCommentSheet = true
-                            },
-                            onAvatarClick = {
-                                // Truyền ID người dùng giả định từ Post (trong thực tế Post model sẽ có userId)
-                                onNavigateToOtherProfile("user_${post.userName}")
-                            }
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
+            // --- ĐÃ XÓA LOGIC KIỂM TRA EmptySavedState ---
+            // Chỉ hiển thị danh sách bài viết
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background),
+                contentPadding = PaddingValues(vertical = 8.dp)
+            ) {
+                items(
+                    items = displayedPosts,
+                    key = { it.id }
+                ) { post ->
+                    PostCard(
+                        post = post,
+                        isSaved = post.id in uiState.savedPostIds,
+                        preferencesManager = preferencesManager,
+                        onLikeClick = { viewModel.onToggleLike(post.id) },
+                        onSaveClick = { viewModel.onToggleSave(post.id) },
+                        onHideClick = { viewModel.onHidePost(post.id) },
+                        onReportSubmitted = { viewModel.onReportSubmitted() },
+                        onCommentClick = {
+                            selectedPostForComment = post
+                            showCommentSheet = true
+                        },
+                        onAvatarClick = {
+                            onNavigateToOtherProfile("user_${post.userName}")
+                        }
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
             }
         }
@@ -282,48 +269,7 @@ fun HomeTabs(
     }
 }
 
-@Composable
-fun HomeSavedFilter(
-    isVisible: Boolean,
-    isShowingSavedPosts: Boolean,
-    label: String,
-    onClick: () -> Unit
-) {
-    AnimatedVisibility(
-        visible = isVisible,
-        enter = expandVertically() + fadeIn(),
-        exit = shrinkVertically() + fadeOut()
-    ) {
-        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.End) {
-            Surface(
-                modifier = Modifier
-                    .height(40.dp)
-                    .shadow(if (isShowingSavedPosts) 8.dp else 2.dp, RoundedCornerShape(20.dp), spotColor = if (isShowingSavedPosts) MaterialTheme.colorScheme.primary else Color.Black.copy(alpha = 0.2f))
-                    .clickable { onClick() },
-                shape = RoundedCornerShape(20.dp),
-                color = if (isShowingSavedPosts) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
-                border = BorderStroke(if (isShowingSavedPosts) 1.5.dp else 1.dp, if (isShowingSavedPosts) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center, modifier = Modifier.padding(horizontal = 16.dp)) {
-                    Icon(if (isShowingSavedPosts) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder, null, tint = if (isShowingSavedPosts) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(label, fontSize = 14.sp, fontWeight = if (isShowingSavedPosts) FontWeight.Bold else FontWeight.Medium, color = if (isShowingSavedPosts) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun EmptySavedState(message: String) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center, modifier = Modifier.padding(bottom = 100.dp)) {
-            Icon(Icons.Default.BookmarkBorder, null, modifier = Modifier.size(80.dp), tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(message, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f), fontWeight = FontWeight.Medium)
-        }
-    }
-}
+// --- ĐÃ XÓA Composable HomeSavedFilter VÀ EmptySavedState ---
 
 @Composable
 fun PostCard(
@@ -335,7 +281,7 @@ fun PostCard(
     onHideClick: () -> Unit,
     onReportSubmitted: () -> Unit,
     onCommentClick: () -> Unit,
-    onAvatarClick: () -> Unit // Tham số mới
+    onAvatarClick: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
     var showReportDialog by remember { mutableStateOf(false) }
@@ -355,7 +301,7 @@ fun PostCard(
                     // Avatar & Name -> Clickable
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.clickable { onAvatarClick() } // Thêm sự kiện click
+                        modifier = Modifier.clickable { onAvatarClick() }
                     ) {
                         Surface(modifier = Modifier.size(50.dp).shadow(6.dp, CircleShape), shape = CircleShape, color = MaterialTheme.colorScheme.primary, border = BorderStroke(2.dp, MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.5f))) {
                             Box(contentAlignment = Alignment.Center) {
@@ -432,7 +378,7 @@ fun PostCard(
                                 },
                                 onClick = {
                                     showMenu = false
-                                    onAvatarClick() // Xem profile từ menu
+                                    onAvatarClick()
                                 },
                                 modifier = Modifier.padding(vertical = 4.dp)
                             )

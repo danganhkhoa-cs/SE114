@@ -2,7 +2,6 @@ package com.example.se114.data
 
 import androidx.compose.runtime.mutableStateListOf
 
-
 data class Post(
     val id: Int,
     val userName: String,
@@ -17,7 +16,7 @@ data class Post(
 )
 
 object DummyPostData {
-    // 2. Dùng mutableStateListOf để Home tự động cập nhật khi có bài mới
+    // Danh sách bài viết gốc
     val posts = mutableStateListOf(
         Post(
             id = 1,
@@ -51,19 +50,30 @@ object DummyPostData {
         )
     )
 
-    // 3. Hàm thêm bài viết vào ĐẦU danh sách (index 0)
+    // --- MỚI: Danh sách ID các bài đã lưu (Global State) ---
+    // Giả sử bài số 2 đã được lưu từ trước
+    val savedPostIds = mutableStateListOf(2)
+
+    // Hàm xử lý lưu/bỏ lưu dùng chung cho toàn App
+    fun toggleSave(postId: Int) {
+        if (savedPostIds.contains(postId)) {
+            savedPostIds.remove(postId)
+        } else {
+            savedPostIds.add(postId)
+        }
+    }
+
     fun addPost(content: String) {
         val newPost = Post(
             id = (posts.maxOfOrNull { it.id } ?: 0) + 1,
-            userName = "Bạn (Me)", // Tên hiển thị khi bạn đăng
-            userAvatar = "", // Có thể thêm avatar của bạn vào đây
+            userName = "Bạn (Me)",
+            userAvatar = "",
             timeAgo = "Vừa xong",
             content = content,
             location = "Vị trí của bạn",
             likeCount = 0,
             commentCount = 0
         )
-        // add(0, ...) để chèn vào đầu danh sách
         posts.add(0, newPost)
     }
 }

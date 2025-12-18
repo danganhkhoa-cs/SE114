@@ -38,7 +38,7 @@ fun MainScreen(
 
     val items = listOf(
         BottomNavItem.Home,
-        BottomNavItem.Rank,
+        BottomNavItem.Saved,
         BottomNavItem.Emergency,
         BottomNavItem.Chat,
         BottomNavItem.Profile
