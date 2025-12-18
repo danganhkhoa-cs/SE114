@@ -8,7 +8,9 @@ data class Post(
     val userAvatar: String,
     val timeAgo: String,
     val content: String,
-    val location: String,
+    val district: String,
+    val city: String,
+    val category: String,
     val imageUrl: String? = null,
     val likeCount: Int,
     val commentCount: Int,
@@ -24,7 +26,10 @@ object DummyPostData {
             userAvatar = "",
             timeAgo = "2 hours ago",
             content = "Need urgent help! Flooding in my area. Anyone nearby can assist?",
-            location = "District 1, HCMC",
+            district = "District 1",
+            city = "HCMC",
+            category = "Emergency",
+            imageUrl = null,
             likeCount = 24,
             commentCount = 8
         ),
@@ -34,7 +39,10 @@ object DummyPostData {
             userAvatar = "",
             timeAgo = "5 hours ago",
             content = "Medical emergency. Looking for nearby hospital or ambulance.",
-            location = "District 3, HCMC",
+            district = "District 3",
+            city = "HCMC",
+            category = "Emergency",
+            imageUrl = null,
             likeCount = 45,
             commentCount = 12
         ),
@@ -44,7 +52,10 @@ object DummyPostData {
             userAvatar = "",
             timeAgo = "1 day ago",
             content = "Lost pet - Golden Retriever. Last seen near Landmark 81. Please help!",
-            location = "Binh Thanh, HCMC",
+            district = "Binh Thanh",
+            city = "HCMC",
+            category = "Lost and Found",
+            imageUrl = null,
             likeCount = 67,
             commentCount = 23
         )
@@ -70,7 +81,10 @@ object DummyPostData {
             userAvatar = "",
             timeAgo = "Vừa xong",
             content = content,
-            location = "Vị trí của bạn",
+            district = "Vị trí của bạn",
+            city = "Hồ Chí Minh",
+            category = "??",
+            imageUrl = null,
             likeCount = 0,
             commentCount = 0
         )

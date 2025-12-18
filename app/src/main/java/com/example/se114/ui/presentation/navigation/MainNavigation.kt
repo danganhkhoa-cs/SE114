@@ -31,6 +31,7 @@ fun MainNavGraph(
     ) {
         composable(BottomNavItem.Home.route) {
             HomeScreen(
+                preferencesManager = preferencesManager,
                 onNavigateToNotification = {
                     navController.navigate("notification")
                 },
@@ -75,6 +76,7 @@ fun MainNavGraph(
             arguments = listOf(navArgument("userId") { type = NavType.StringType })
         ) {
             OtherProfileScreen(
+                preferencesManager = preferencesManager,
                 onBackClick = {
                     navController.popBackStack()
                 }
