@@ -1,5 +1,6 @@
-package com.example.se114.ui.presentation.profile
+package com.example.se114.ui.presentation.other_profile
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -22,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -111,7 +113,7 @@ fun OtherProfileScreen(
                                 .shadow(16.dp, CircleShape, spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)),
                             shape = CircleShape,
                             color = MaterialTheme.colorScheme.primaryContainer,
-                            border = androidx.compose.foundation.BorderStroke(3.dp, MaterialTheme.colorScheme.background)
+                            border = BorderStroke(3.dp, MaterialTheme.colorScheme.background)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Text(
@@ -140,7 +142,7 @@ fun OtherProfileScreen(
                             text = uiState.userBio,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            textAlign = TextAlign.Center,
                             lineHeight = 20.sp
                         )
 
@@ -261,7 +263,7 @@ fun ReadOnlyDataItemCard(
             .shadow(4.dp, RoundedCornerShape(16.dp)),
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surface,
-        border = androidx.compose.foundation.BorderStroke(
+        border = BorderStroke(
             width = 1.dp,
             color = MaterialTheme.colorScheme.outlineVariant
         )
@@ -323,7 +325,7 @@ fun RatingCard(
             .shadow(8.dp, RoundedCornerShape(20.dp), spotColor = Color(0xFFFFC107).copy(alpha = 0.4f)),
         shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surface,
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Row(
             modifier = Modifier

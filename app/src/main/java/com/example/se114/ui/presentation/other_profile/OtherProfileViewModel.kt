@@ -1,4 +1,4 @@
-package com.example.se114.ui.presentation.profile
+package com.example.se114.ui.presentation.other_profile
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
