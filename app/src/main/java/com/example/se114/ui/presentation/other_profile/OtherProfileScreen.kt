@@ -34,14 +34,10 @@ import com.example.se114.local.PreferencesManager
 @Composable
 fun OtherProfileScreen(
     onBackClick: () -> Unit,
-    viewModel: OtherProfileViewModel = hiltViewModel()
+    viewModel: OtherProfileViewModel = hiltViewModel(),
+    preferencesManager: PreferencesManager,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
-    val preferencesManager = remember { PreferencesManager(context) }
-
-    // Force recomposition
-    val currentLanguage = preferencesManager.languageState.value
 
     Scaffold(
         containerColor = Color.Transparent,

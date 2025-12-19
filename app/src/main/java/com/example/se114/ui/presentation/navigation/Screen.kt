@@ -18,4 +18,7 @@ sealed class Screen(val route: String) {
     object OtherProfile : Screen("other_profile/{userId}") {
         fun createRoute(userId: String) = "other_profile/$userId"
     }
+
+    // Màn hình thông báo
+    object Notification : Screen("notification")
 }

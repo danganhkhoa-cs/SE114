@@ -9,7 +9,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.example.se114.local.PreferencesManager
 import com.example.se114.ui.presentation.chat.ChatNavGraph
-import com.example.se114.ui.presentation.emergency.EmergencyScreen
+import com.example.se114.ui.presentation.create_post.CreatePostScreen
 import com.example.se114.ui.presentation.home.HomeScreen
 import com.example.se114.ui.presentation.notification.NotificationScreen
 import com.example.se114.ui.presentation.other_profile.OtherProfileScreen
@@ -31,6 +31,7 @@ fun MainNavGraph(
     ) {
         composable(BottomNavItem.Home.route) {
             HomeScreen(
+                preferencesManager = preferencesManager,
                 onNavigateToNotification = {
                     navController.navigate("notification")
                 },
@@ -43,7 +44,15 @@ fun MainNavGraph(
             SavedScreen()
         }
         composable(BottomNavItem.Emergency.route) {
-            EmergencyScreen()
+            CreatePostScreen(
+                preferencesManager = preferencesManager,
+                onPostSuccess = {
+                    // Khi đăng xong thì tự động chuyển về tab Home
+                    navController.navigate(BottomNavItem.Home.route) {
+                        popUpTo(BottomNavItem.Home.route) { inclusive = true }
+                    }
+                }
+            )
         }
         // Đặc biệt để ẩn thanh bottom bar
         ChatNavGraph(
@@ -59,8 +68,7 @@ fun MainNavGraph(
             )
         }
 
-        // MERGED FEATURE: Màn hình Notification được thêm vào NavGraph chính
-        composable("notification") {
+        composable(Screen.Notification.route) {
             NotificationScreen(
                 onBackClick = {
                     navController.navigateUp()
@@ -75,6 +83,7 @@ fun MainNavGraph(
             arguments = listOf(navArgument("userId") { type = NavType.StringType })
         ) {
             OtherProfileScreen(
+                preferencesManager = preferencesManager,
                 onBackClick = {
                     navController.popBackStack()
                 }

@@ -153,28 +153,19 @@ object StringResources {
         "chat_type_message" to "Type a message...",
         "chat_auto_reply" to "Auto reply from bot ",
         "be_first_comment" to "Be the first to comment!",
-        // --- EMERGENCY SCREEN ---
-        "emergency_title" to "Emergency Center",
-        "community_share" to "Community Share",
-        "what_on_your_mind" to "What's on your mind?",
-        "post_placeholder" to "Flood warning, traffic jam...",
+
+        // --- CREATE POST SCREEN ---
+        "create_post_title" to "Create Post",
         "post_button" to "Post",
-        "post_success" to "Posted to Home!",
-        "sos_title" to "SOS EMERGENCY",
-        "sos_subtitle" to "Send signal to everyone",
-        "sos_reason_label" to "What do you need help with?",
-        "sos_reason_placeholder" to "Accident, breakdown, medical...",
-        "sos_location_label" to "Where are you?",
-        "sos_location_placeholder" to "Street name, district...",
-        "sos_button" to "SEND SOS SIGNAL",
-        "sos_success" to "SOS signal sent!",
-        "delete" to "Delete",
-        "phone_number" to "Phone Number",
-        "phone_required" to "Phone number is required",
-        "add_friend_title" to "Add New Friend",
-        "add" to "Add",
-        "enter_phone_placeholder" to "0901234567",
-        "sos_error" to "Please enter all details!",
+        "post_success" to "Posted successfully!",
+        "what_on_your_mind" to "Describe what you need or provide...",
+        "select_city" to "Select City",
+        "select_district" to "Select District",
+        "select_category" to "Select Category",
+        "label_city" to "City",
+        "label_district" to "District",
+        "label_category" to "Category",
+        "fill_all_fields" to "Please fill in all fields",
 
         // Other Profile
         "other_profile_title" to "Profile",
@@ -184,10 +175,9 @@ object StringResources {
         "add_friend" to "Add friend",
         "friends" to "Friends",
         "joined_date" to "Joined",
-        
+
         // Saved
-        "saved_posts" to "Saved Posts",
-        "empty_saved_posts" to "There is no post"
+        "saved_posts" to "Saved Posts"
     )
 
     val VI = mapOf(
@@ -342,28 +332,19 @@ object StringResources {
         "chat_type_message" to "Nhập tin nhắn...",
         "chat_auto_reply" to "Trả lời tự động từ bot ",
         "be_first_comment" to "Hãy là người đầu tiên bình luận!",
-        // --- MÀN HÌNH KHẨN CẤP ---
-        "emergency_title" to "Trung tâm Khẩn cấp",
-        "community_share" to "Chia sẻ cộng đồng",
-        "what_on_your_mind" to "Bạn đang nghĩ gì?",
-        "post_placeholder" to "Cảnh báo ngập lụt, kẹt xe...",
-        "post_button" to "Đăng bài",
-        "post_success" to "Đã đăng lên Trang chủ!",
-        "sos_title" to "SOS KHẨN CẤP",
-        "sos_subtitle" to "Gửi tín hiệu đến tất cả mọi người",
-        "sos_reason_label" to "Bạn đang cần giúp gì?",
-        "sos_reason_placeholder" to "Tai nạn, hỏng xe, y tế...",
-        "sos_location_label" to "Bạn đang ở đâu?",
-        "sos_location_placeholder" to "Số nhà, tên đường, quận...",
-        "sos_button" to "GỬI TÍN HIỆU CẦU CỨU",
-        "sos_success" to "Đã gửi tín hiệu SOS!",
-        "delete" to "Xóa",
-        "phone_number" to "Số điện thoại",
-        "phone_required" to "Vui lòng nhập số điện thoại",
-        "add_friend_title" to "Thêm bạn mới",
-        "add" to "Thêm",
-        "enter_phone_placeholder" to "0901234567",
-        "sos_error" to "Vui lòng nhập đầy đủ thông tin!",
+
+        // --- CREATE POST SCREEN ---
+        "create_post_title" to "Tạo bài viết",
+        "post_button" to "Đăng",
+        "post_success" to "Đã đăng bài viết!",
+        "what_on_your_mind" to "Mô tả việc bạn cần giúp hoặc cung cấp...",
+        "select_city" to "Chọn Thành phố",
+        "select_district" to "Chọn Quận/Huyện",
+        "select_category" to "Chọn Danh mục",
+        "label_city" to "Thành phố",
+        "label_district" to "Quận/Huyện",
+        "label_category" to "Danh mục",
+        "fill_all_fields" to "Vui lòng điền đầy đủ thông tin",
 
         // Other Profile
         "other_profile_title" to "Thông tin cá nhân",

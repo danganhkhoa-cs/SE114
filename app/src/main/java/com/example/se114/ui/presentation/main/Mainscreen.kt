@@ -5,6 +5,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -61,6 +63,10 @@ fun MainScreen(
     } else {
         AppTealDark.copy(alpha = 0.2f)
     }
+
+    // Màu cho nút FAB (Create Post)
+    val fabColor = if (isDarkTheme) AppTealNeon else AppTealDark
+    val fabContentColor = if (isDarkTheme) Color(0xFF00363D) else Color.White
 
     Scaffold(
         bottomBar = {
@@ -158,7 +164,7 @@ fun MainScreen(
                                                 ) {
                                                     Icon(
                                                         imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
-                                                        contentDescription = item.title,
+                                                        contentDescription = "",
                                                         modifier = Modifier.size(32.dp),
                                                         tint = if (selected) {
                                                             if (isDarkTheme) AppTealNeon else AppTealDark
@@ -192,7 +198,7 @@ fun MainScreen(
                         }
                     }
 
-                    // Emergency FAB
+                    // Create Post FAB (Thay thế Emergency FAB cũ)
                     FloatingActionButton(
                         onClick = {
                             navController.navigate(BottomNavItem.Emergency.route) {
@@ -203,8 +209,8 @@ fun MainScreen(
                                 restoreState = true
                             }
                         },
-                        containerColor = Color(0xFFE53935),
-                        contentColor = Color.White,
+                        containerColor = fabColor, // Dùng màu Theme
+                        contentColor = fabContentColor,
                         modifier = Modifier
                             .size(70.dp)
                             .align(Alignment.TopCenter)
@@ -224,15 +230,16 @@ fun MainScreen(
                                 modifier = Modifier
                                     .size(64.dp)
                                     .background(
-                                        Color.White.copy(alpha = 0.2f),
+                                        Color.White.copy(alpha = 0.1f),
                                         shape = CircleShape
                                     )
                             )
+                            // Đổi Icon thành dấu cộng (Add)
                             Icon(
-                                imageVector = BottomNavItem.Emergency.selectedIcon,
-                                contentDescription = "Emergency",
+                                imageVector = Icons.Filled.Add,
+                                contentDescription = "Create Post",
                                 modifier = Modifier.size(38.dp),
-                                tint = Color.White
+                                tint = fabContentColor
                             )
                         }
                     }
