@@ -68,8 +68,7 @@ fun MainNavGraph(
             )
         }
 
-        // Màn hình Notification được thêm vào NavGraph chính
-        composable("notification") {
+        composable(Screen.Notification.route) {
             NotificationScreen(
                 onBackClick = {
                     navController.navigateUp()
