@@ -22,7 +22,7 @@ sealed class BottomNavItem(
 
     // Đã sửa từ Rank thành Saved, và đổi Icon thành Bookmark
     object Saved : BottomNavItem(
-        route = "saved", // Lưu ý: route này phải khớp với định nghĩa trong NavHost
+        route = "saved",
         title = "Saved",
         selectedIcon = Icons.Filled.Bookmark,       // Hình đặc khi được chọn
         unselectedIcon = Icons.Outlined.BookmarkBorder // Hình viền rỗng như bạn yêu cầu
