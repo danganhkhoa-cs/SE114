@@ -164,7 +164,7 @@ fun MainScreen(
                                                 ) {
                                                     Icon(
                                                         imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
-                                                        contentDescription = item.title,
+                                                        contentDescription = "",
                                                         modifier = Modifier.size(32.dp),
                                                         tint = if (selected) {
                                                             if (isDarkTheme) AppTealNeon else AppTealDark
