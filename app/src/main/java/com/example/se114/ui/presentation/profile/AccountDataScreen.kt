@@ -33,17 +33,9 @@ fun AccountDataScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    // Force recomposition khi đổi ngôn ngữ
-    val currentLanguage = preferencesManager.languageState.value
-
-    // Khởi tạo dữ liệu cho ViewModel từ Preferences (Chạy 1 lần)
+    // FIX LỖI: Luôn cập nhật lại dữ liệu khi mở màn hình
     LaunchedEffect(Unit) {
-        viewModel.setInitialData(
-            address = preferencesManager.userAddress,
-            phone = preferencesManager.userPhone,
-            gender = preferencesManager.userGender,
-            job = preferencesManager.userJob
-        )
+        viewModel.refreshData()
     }
 
     Scaffold(
@@ -121,7 +113,7 @@ fun AccountDataScreen(
         }
     }
 
-    // --- Dialogs & Logic Save (Logic Preferences nằm tại đây) ---
+    // --- Dialogs ---
 
     if (uiState.isShowingAddressDialog) {
         EditTextDialog(
@@ -130,9 +122,6 @@ fun AccountDataScreen(
             placeholder = preferencesManager.getString("enter_address"),
             onDismiss = viewModel::hideAddressDialog,
             onConfirm = { newValue ->
-                // 1. Lưu vào Preferences (Logic cũ)
-                preferencesManager.userAddress = newValue
-                // 2. Cập nhật UI State
                 viewModel.updateAddress(newValue)
             },
             preferencesManager = preferencesManager
@@ -144,7 +133,6 @@ fun AccountDataScreen(
             currentGender = uiState.gender,
             onDismiss = viewModel::hideGenderDialog,
             onConfirm = { newGender ->
-                preferencesManager.userGender = newGender
                 viewModel.updateGender(newGender)
             },
             preferencesManager = preferencesManager
@@ -158,15 +146,23 @@ fun AccountDataScreen(
             placeholder = preferencesManager.getString("enter_job"),
             onDismiss = viewModel::hideJobDialog,
             onConfirm = { newValue ->
-                preferencesManager.userJob = newValue
                 viewModel.updateJob(newValue)
             },
             preferencesManager = preferencesManager
         )
     }
+
+    if (uiState.isLoading) {
+        Box(
+            modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.3f)),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+    }
 }
 
-// --- GIỮ NGUYÊN CÁC COMPOSABLE PHỤ TRỢ Ở DƯỚI ---
+// --- SUB COMPOSABLES ---
 
 @Composable
 fun DataItemCard(

@@ -1,6 +1,8 @@
 package com.example.se114.ui.presentation.profile
 
+import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,7 +16,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -29,24 +33,31 @@ import com.example.se114.local.PreferencesManager
 fun AccountSettingsScreen(
     preferencesManager: PreferencesManager,
     onBackClick: () -> Unit,
+    // ViewModel sẽ được Inject tự động bởi Hilt
+    // Nếu vẫn lỗi "Unresolved reference", hãy kiểm tra kỹ file AccountSettingsViewModel.kt có đúng package không
     viewModel: AccountSettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
-    // Force recomposition khi đổi ngôn ngữ
-    val currentLanguage = preferencesManager.languageState.value
-
-    // Load initial data
+    // Refresh data khi mở màn hình
     LaunchedEffect(Unit) {
-        viewModel.setInitialData(
-            email = preferencesManager.userEmail,
-            phone = preferencesManager.userPhone
-        )
+        viewModel.refreshData()
     }
 
-    // Masking logic (UI only)
-    val maskedEmail = maskEmail(uiState.email)
-    val maskedPhone = maskPhone(uiState.phone)
+    // Xử lý thông báo Toast
+    LaunchedEffect(uiState.successMessage) {
+        uiState.successMessage?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.clearMessages()
+        }
+    }
+    LaunchedEffect(uiState.errorMessage) {
+        uiState.errorMessage?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.clearMessages()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -73,165 +84,139 @@ fun AccountSettingsScreen(
             )
         }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                            MaterialTheme.colorScheme.background
-                        )
-                    )
+        Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Email (Read-only)
+                AccountInfoItem(
+                    label = preferencesManager.getString("email"),
+                    value = maskEmail(uiState.email),
+                    icon = Icons.Default.Email,
+                    isEditable = false
                 )
-                .verticalScroll(rememberScrollState())
-                .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            SettingItemCard(
-                icon = Icons.Default.Email,
-                title = preferencesManager.getString("email"),
-                value = maskedEmail,
-                isEditable = false
-            )
-            SettingItemCard(
-                icon = Icons.Default.Lock,
-                title = preferencesManager.getString("password"),
-                value = "••••••••",
-                isEditable = true,
-                onEditClick = viewModel::showPasswordDialog
-            )
-            SettingItemCard(
-                icon = Icons.Default.Phone,
-                title = preferencesManager.getString("phone_number"),
-                value = maskedPhone,
-                isEditable = true,
-                onEditClick = viewModel::showPasswordVerifyDialog
-            )
+
+                // Phone (Editable)
+                AccountInfoItem(
+                    label = preferencesManager.getString("phone_number"),
+                    value = maskPhone(uiState.phone),
+                    icon = Icons.Default.Phone,
+                    isEditable = true,
+                    onEditClick = { viewModel.showPasswordVerifyDialog() }
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Change Password Button
+                Button(
+                    onClick = { viewModel.showPasswordDialog() },
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                ) {
+                    Icon(Icons.Default.Lock, contentDescription = null)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        preferencesManager.getString("change_password"),
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+
+            // Loading Indicator
+            if (uiState.isLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.5f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = Color.White)
+                }
+            }
         }
     }
 
-    // --- Dialogs ---
+    // --- DIALOGS ---
 
+    // 1. Change Password Dialog
     if (uiState.isShowingPasswordDialog) {
         ChangePasswordDialog(
-            onDismiss = viewModel::hidePasswordDialog,
-            onConfirm = { _, _ ->
-                // Logic đổi mật khẩu thực tế sẽ nằm ở đây (gọi API hoặc lưu Prefs)
-                viewModel.hidePasswordDialog()
-            },
+            onDismiss = { viewModel.hidePasswordDialog() },
+            onConfirm = { current, new -> viewModel.changePassword(current, new) },
             preferencesManager = preferencesManager
         )
     }
 
+    // 2. Verify Password Dialog (Before changing phone)
     if (uiState.isShowingPasswordVerifyDialog) {
-        VerifyPasswordDialog(
-            onDismiss = viewModel::hidePasswordVerifyDialog,
-            onVerified = {
-                // Xác thực thành công -> Mở dialog đổi số điện thoại
-                viewModel.hidePasswordVerifyDialog()
-                viewModel.showPhoneDialog()
-            },
+        PasswordVerificationDialog(
+            onDismiss = { viewModel.hidePasswordVerifyDialog() },
+            onConfirm = { pass -> viewModel.verifyPasswordForPhoneChange(pass) },
             preferencesManager = preferencesManager
         )
     }
 
+    // 3. Change Phone Dialog (After verification)
     if (uiState.isShowingPhoneDialog) {
         ChangePhoneDialog(
-            currentPhone = uiState.phone,
-            onDismiss = viewModel::hidePhoneDialog,
-            onConfirm = { newPhone ->
-                // 1. Lưu vào Preferences
-                preferencesManager.userPhone = newPhone
-                // 2. Cập nhật UI State
-                viewModel.updatePhone(newPhone)
-            },
+            onDismiss = { viewModel.hidePhoneDialog() },
+            onConfirm = { newPhone -> viewModel.updatePhone(newPhone) },
             preferencesManager = preferencesManager
         )
     }
 }
 
-// --- HELPER FUNCTIONS & COMPOSABLES (Giữ nguyên) ---
+// --- SUB COMPONENTS ---
 
 @Composable
-fun SettingItemCard(
-    icon: ImageVector,
-    title: String,
+fun AccountInfoItem(
+    label: String,
     value: String,
-    isEditable: Boolean,
+    icon: ImageVector,
+    isEditable: Boolean = false,
     onEditClick: () -> Unit = {}
 ) {
     Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .shadow(4.dp, RoundedCornerShape(16.dp)),
-        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.fillMaxWidth().shadow(2.dp, RoundedCornerShape(12.dp)),
         color = MaterialTheme.colorScheme.surface,
-        border = androidx.compose.foundation.BorderStroke(
-            1.dp,
-            MaterialTheme.colorScheme.outlineVariant
-        )
+        shape = RoundedCornerShape(12.dp)
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
+            modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(48.dp)
-                    .background(
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                        RoundedCornerShape(12.dp)
-                    ),
+                    .size(40.dp)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), RoundedCornerShape(8.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    icon,
-                    title,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
+                Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
             }
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 13.sp
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    value,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface)
             }
             if (isEditable) {
-                IconButton(
-                    onClick = onEditClick,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .background(
-                            MaterialTheme.colorScheme.surfaceVariant,
-                            RoundedCornerShape(10.dp)
-                        )
-                ) {
-                    Icon(
-                        Icons.Default.Edit,
-                        "Edit",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp)
-                    )
+                IconButton(onClick = onEditClick) {
+                    Icon(Icons.Default.Edit, contentDescription = "Edit", tint = MaterialTheme.colorScheme.primary)
                 }
             }
         }
     }
 }
+
+// --- DIALOGS IMPLEMENTATION ---
 
 @Composable
 fun ChangePasswordDialog(
@@ -239,43 +224,25 @@ fun ChangePasswordDialog(
     onConfirm: (String, String) -> Unit,
     preferencesManager: PreferencesManager
 ) {
-    var oldPassword by remember { mutableStateOf("") }
+    var currentPassword by remember { mutableStateOf("") }
     var newPassword by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
-    var errorMessage by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
 
     Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = RoundedCornerShape(20.dp),
-            color = MaterialTheme.colorScheme.surface,
-            modifier = Modifier.fillMaxWidth(),
-            border = androidx.compose.foundation.BorderStroke(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.outline
-            )
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp)
-            ) {
-                Text(
-                    text = preferencesManager.getString("change_password"),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
+        Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface, modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(24.dp)) {
+                Text(preferencesManager.getString("change_password"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(16.dp))
 
                 OutlinedTextField(
-                    value = oldPassword,
-                    onValueChange = { oldPassword = it },
+                    value = currentPassword,
+                    onValueChange = { currentPassword = it },
                     label = { Text(preferencesManager.getString("current_password")) },
                     visualTransformation = PasswordVisualTransformation(),
                     modifier = Modifier.fillMaxWidth()
                 )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
+                Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = newPassword,
                     onValueChange = { newPassword = it },
@@ -283,9 +250,7 @@ fun ChangePasswordDialog(
                     visualTransformation = PasswordVisualTransformation(),
                     modifier = Modifier.fillMaxWidth()
                 )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
+                Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = confirmPassword,
                     onValueChange = { confirmPassword = it },
@@ -294,53 +259,24 @@ fun ChangePasswordDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                if (errorMessage.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = errorMessage,
-                        color = MaterialTheme.colorScheme.error,
-                        fontSize = 12.sp
-                    )
+                if (error != null) {
+                    Text(error!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
                 }
 
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.weight(1f),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
-                    ) {
-                        Text(preferencesManager.getString("cancel"), color = MaterialTheme.colorScheme.primary)
-                    }
-
-                    Button(
-                        onClick = {
-                            when {
-                                oldPassword.isEmpty() || newPassword.isEmpty() || confirmPassword.isEmpty() -> {
-                                    errorMessage = preferencesManager.getString("field_empty_error")
-                                }
-                                newPassword != confirmPassword -> {
-                                    errorMessage = preferencesManager.getString("passwords_not_match")
-                                }
-                                newPassword.length < 6 -> {
-                                    errorMessage = preferencesManager.getString("password_length_error")
-                                }
-                                else -> {
-                                    onConfirm(oldPassword, newPassword)
-                                }
-                            }
-                        },
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        )
-                    ) {
-                        Text(preferencesManager.getString("change"))
+                Spacer(modifier = Modifier.height(24.dp))
+                Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
+                    TextButton(onClick = onDismiss) { Text(preferencesManager.getString("cancel")) }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(onClick = {
+                        if (newPassword.length < 6) {
+                            error = preferencesManager.getString("password_length_error")
+                        } else if (newPassword != confirmPassword) {
+                            error = preferencesManager.getString("passwords_not_match")
+                        } else {
+                            onConfirm(currentPassword, newPassword)
+                        }
+                    }) {
+                        Text(preferencesManager.getString("save"))
                     }
                 }
             }
@@ -349,56 +285,19 @@ fun ChangePasswordDialog(
 }
 
 @Composable
-fun VerifyPasswordDialog(
+fun PasswordVerificationDialog(
     onDismiss: () -> Unit,
-    onVerified: () -> Unit,
+    onConfirm: (String) -> Unit,
     preferencesManager: PreferencesManager
 ) {
     var password by remember { mutableStateOf("") }
-    var errorMessage by remember { mutableStateOf("") }
 
     Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = RoundedCornerShape(20.dp),
-            color = MaterialTheme.colorScheme.surface,
-            modifier = Modifier.fillMaxWidth(),
-            border = androidx.compose.foundation.BorderStroke(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.outline
-            )
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Lock,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .align(Alignment.CenterHorizontally)
-                )
-
+        Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface, modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(24.dp)) {
+                Text(preferencesManager.getString("verify_password"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text(preferencesManager.getString("verify_password_msg"), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(modifier = Modifier.height(16.dp))
-
-                Text(
-                    text = preferencesManager.getString("verify_password"),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = preferencesManager.getString("verify_password_msg"),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
 
                 OutlinedTextField(
                     value = password,
@@ -408,44 +307,12 @@ fun VerifyPasswordDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                if (errorMessage.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = errorMessage,
-                        color = MaterialTheme.colorScheme.error,
-                        fontSize = 12.sp
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.weight(1f),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
-                    ) {
-                        Text(preferencesManager.getString("cancel"), color = MaterialTheme.colorScheme.primary)
-                    }
-
-                    Button(
-                        onClick = {
-                            if (password.isEmpty()) {
-                                errorMessage = preferencesManager.getString("password_required")
-                            } else {
-                                onVerified()
-                            }
-                        },
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        )
-                    ) {
-                        Text(preferencesManager.getString("verify"))
+                Spacer(modifier = Modifier.height(24.dp))
+                Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
+                    TextButton(onClick = onDismiss) { Text(preferencesManager.getString("cancel")) }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(onClick = { onConfirm(password) }) {
+                        Text(preferencesManager.getString("confirm"))
                     }
                 }
             }
@@ -455,96 +322,45 @@ fun VerifyPasswordDialog(
 
 @Composable
 fun ChangePhoneDialog(
-    currentPhone: String,
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit,
     preferencesManager: PreferencesManager
 ) {
     var newPhone by remember { mutableStateOf("") }
-    var errorMessage by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+    val phoneRegex = Regex("^(0|\\+84)[35789]\\d{8}$")
 
     Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = RoundedCornerShape(20.dp),
-            color = MaterialTheme.colorScheme.surface,
-            modifier = Modifier.fillMaxWidth(),
-            border = androidx.compose.foundation.BorderStroke(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.outline
-            )
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp)
-            ) {
-                Text(
-                    text = preferencesManager.getString("change_phone"),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "${preferencesManager.getString("current")}: ${maskPhone(currentPhone)}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
+        Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface, modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(24.dp)) {
+                Text(preferencesManager.getString("change_phone"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(16.dp))
 
                 OutlinedTextField(
                     value = newPhone,
                     onValueChange = { newPhone = it },
                     label = { Text(preferencesManager.getString("new_phone")) },
-                    placeholder = { Text("0123456789") },
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                if (errorMessage.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = errorMessage,
-                        color = MaterialTheme.colorScheme.error,
-                        fontSize = 12.sp
-                    )
+                if (error != null) {
+                    Text(error!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
                 }
 
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.weight(1f),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
-                    ) {
-                        Text(preferencesManager.getString("cancel"), color = MaterialTheme.colorScheme.primary)
-                    }
-
-                    Button(
-                        onClick = {
-                            when {
-                                newPhone.isEmpty() -> {
-                                    errorMessage = preferencesManager.getString("phone_required")
-                                }
-                                !newPhone.matches(Regex("^0\\d{9}$")) -> {
-                                    errorMessage = preferencesManager.getString("invalid_phone")
-                                }
-                                else -> {
-                                    onConfirm(newPhone)
-                                }
-                            }
-                        },
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        )
-                    ) {
-                        Text(preferencesManager.getString("confirm"))
+                Spacer(modifier = Modifier.height(24.dp))
+                Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
+                    TextButton(onClick = onDismiss) { Text(preferencesManager.getString("cancel")) }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(onClick = {
+                        if (newPhone.isBlank()) {
+                            error = preferencesManager.getString("phone_required")
+                        } else if (!newPhone.matches(phoneRegex)) {
+                            error = preferencesManager.getString("invalid_phone")
+                        } else {
+                            onConfirm(newPhone)
+                        }
+                    }) {
+                        Text(preferencesManager.getString("save"))
                     }
                 }
             }
@@ -552,27 +368,18 @@ fun ChangePhoneDialog(
     }
 }
 
+// Helper functions for masking
 fun maskEmail(email: String): String {
+    if (email.isBlank()) return ""
     val parts = email.split("@")
     if (parts.size != 2) return email
-
-    val username = parts[0]
+    val name = parts[0]
     val domain = parts[1]
-
-    return if (username.length <= 2) {
-        email
-    } else {
-        val firstChar = username.first()
-        val lastChar = username.last()
-        val maskedLength = username.length - 2
-        "$firstChar${"*".repeat(maskedLength)}$lastChar@$domain"
-    }
+    if (name.length <= 2) return "$name***@$domain"
+    return "${name.first()}***${name.last()}@$domain"
 }
 
 fun maskPhone(phone: String): String {
-    return if (phone.length >= 3) {
-        "*".repeat(phone.length - 3) + phone.takeLast(3)
-    } else {
-        phone
-    }
+    if (phone.length < 4) return phone
+    return "*******${phone.takeLast(3)}"
 }
