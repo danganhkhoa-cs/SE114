@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "877136656930",
+    "project_id": "locasos-39c7f",
+    "storage_bucket": "locasos-39c7f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:877136656930:android:42346169e4e55ef616a87b",
+        "android_client_info": {
+          "package_name": "com.example.se114"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB8cDGtaDUxffTwa2q1N0J7hqAwMfjUSuM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
