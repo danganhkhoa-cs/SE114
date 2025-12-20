@@ -8,6 +8,7 @@ object PreferenceKeys {
     const val KEY_LANGUAGE = "language"
 
     // User Data Keys
+    const val KEY_USER_ID = "user_id" // <-- Thêm cái này
     const val KEY_USER_NAME = "user_name"
     const val KEY_USER_BIO = "user_bio"
     const val KEY_USER_EMAIL = "user_email"

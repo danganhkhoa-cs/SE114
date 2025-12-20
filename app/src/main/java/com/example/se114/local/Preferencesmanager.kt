@@ -11,8 +11,6 @@ class PreferencesManager(context: Context) {
         context.getSharedPreferences(Keys.PREF_NAME, Context.MODE_PRIVATE)
 
     // --- STATE FOR RECOMPOSITION ---
-    // Đây là các biến trạng thái (State) giúp Jetpack Compose nhận biết thay đổi để vẽ lại giao diện ngay lập tức
-
     var languageState = mutableStateOf(prefs.getString(Keys.KEY_LANGUAGE, "English") ?: "English")
         private set
 
@@ -23,31 +21,29 @@ class PreferencesManager(context: Context) {
     var isDarkMode: Boolean
         get() = darkModeState.value
         set(value) {
-            // 1. Cập nhật State -> UI đổi màu ngay lập tức
             darkModeState.value = value
-            // 2. Lưu vào bộ nhớ máy
             prefs.edit { putBoolean(Keys.KEY_DARK_MODE, value) }
         }
 
     var language: String
         get() = languageState.value
         set(value) {
-            // 1. Cập nhật State -> UI đổi chữ ngay lập tức
             languageState.value = value
-            // 2. Lưu vào bộ nhớ máy
             prefs.edit { putString(Keys.KEY_LANGUAGE, value) }
         }
 
     // --- LOCALIZATION HELPER ---
     fun getString(key: String): String {
-        // Truy cập vào .value để Compose biết cần phải theo dõi biến này
         val isVietnamese = languageState.value == "Tiếng Việt"
-
         return if (isVietnamese) StringResources.VI[key] ?: key
         else StringResources.EN[key] ?: key
     }
 
-    // --- USER DATA --- (DUMMY DATA)
+    // --- USER DATA ---
+    var userId: String
+        get() = prefs.getString(Keys.KEY_USER_ID, "") ?: ""
+        set(value) = prefs.edit { putString(Keys.KEY_USER_ID, value) }
+
     var userName: String
         get() = prefs.getString(Keys.KEY_USER_NAME, "Jonathan") ?: "Jonathan"
         set(value) = prefs.edit { putString(Keys.KEY_USER_NAME, value) }
@@ -60,7 +56,6 @@ class PreferencesManager(context: Context) {
         get() = prefs.getString(Keys.KEY_USER_PHONE, "0123456789") ?: "0123456789"
         set(value) = prefs.edit { putString(Keys.KEY_USER_PHONE, value) }
 
-    // Logic xử lý song ngữ cho Bio/Address/Job/Gender
     var userBio: String
         get() = getLocalizedField(
             key = Keys.KEY_USER_BIO,
@@ -90,13 +85,9 @@ class PreferencesManager(context: Context) {
             val defaultEn = "Male"
             val defaultVi = "Nam"
             val saved = prefs.getString(Keys.KEY_USER_GENDER, null)
-
-            // Nếu chưa lưu hoặc đang là default, trả về theo ngôn ngữ hiện tại
             if (saved == null || saved == defaultEn || saved == defaultVi) {
                 return if (language == "Tiếng Việt") defaultVi else defaultEn
             }
-
-            // Map các giá trị đặc biệt
             val isVi = language == "Tiếng Việt"
             return when (saved) {
                 "Male", "Nam" -> if (isVi) "Nam" else "Male"
@@ -108,11 +99,26 @@ class PreferencesManager(context: Context) {
         }
         set(value) = prefs.edit { putString(Keys.KEY_USER_GENDER, value) }
 
+    // --- OTP & RESET PASSWORD HELPER ---
+    fun saveOTPForReset(otp: String) {
+        prefs.edit { putString("temp_reset_otp", otp) }
+    }
+
+    fun getOTPForReset(): String? {
+        return prefs.getString("temp_reset_otp", null)
+    }
+
+    fun saveEmailForReset(email: String) {
+        prefs.edit { putString("temp_reset_email", email) }
+    }
+
+    fun getEmailForReset(): String? {
+        return prefs.getString("temp_reset_email", null)
+    }
+
     // --- HELPER FUNCTIONS ---
     private fun getLocalizedField(key: String, defaultEn: String, defaultVi: String): String {
         val saved = prefs.getString(key, null)
-        // Vì hàm này gọi 'language' (mà 'language' gọi 'languageState.value'),
-        // nên Compose cũng sẽ tự động vẽ lại các trường này khi đổi ngôn ngữ.
         if (saved == null || saved == defaultEn || saved == defaultVi) {
             return if (language == "Tiếng Việt") defaultVi else defaultEn
         }
@@ -120,20 +126,14 @@ class PreferencesManager(context: Context) {
     }
 
     fun clearUserData() {
-        // Save current settings
         val keepDarkMode = isDarkMode
         val keepLanguage = language
-
         prefs.edit { clear() }
-
-        // Restore settings
-        // Lưu ý: Việc gán lại này cũng sẽ kích hoạt State update, đảm bảo UI đồng bộ
         isDarkMode = keepDarkMode
         language = keepLanguage
     }
 
     fun clearAll() {
         prefs.edit { clear() }
-        // Reset states về default nếu cần, hoặc để nguyên tùy logic app
     }
 }
