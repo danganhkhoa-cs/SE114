@@ -45,26 +45,25 @@ fun ProfileScreen(
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val currentLanguage = preferencesManager.languageState.value
+    // Đã xóa biến currentLanguage không dùng đến để tránh warning
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
-    // Load Data
-    LaunchedEffect(Unit) {
-        viewModel.setInitialData(preferencesManager.userName, preferencesManager.userBio)
-    }
+
+    // Đã xóa LaunchedEffect gọi setInitialData vì ViewModel tự khởi tạo
 
     // --- LẮNG NGHE SỰ KIỆN LOGOUT THÀNH CÔNG ---
     LaunchedEffect(uiState.logoutSuccess) {
         if (uiState.logoutSuccess) {
-            // 1. Xóa dữ liệu local (nếu cần thiết, ví dụ clear token)
-            // preferencesManager.clearUserData() // Nếu bạn có hàm này
-
-            // 2. Điều hướng ra ngoài
             onLogout()
+            // Đã xóa dòng viewModel.onLogoutHandled() gây lỗi vì ViewModel sẽ bị hủy ngay sau khi navigate
+        }
+    }
 
-            // 3. Reset state viewModel
-            viewModel.onLogoutHandled()
+    // Hiển thị lỗi nếu có
+    LaunchedEffect(uiState.errorMessage) {
+        if (uiState.errorMessage != null) {
+            scope.launch { snackbarHostState.showSnackbar(uiState.errorMessage ?: "Error") }
         }
     }
 
@@ -90,7 +89,7 @@ fun ProfileScreen(
                         .verticalScroll(scrollState)
                         .padding(paddingValues)
                         .padding(horizontal = 20.dp)
-                        .padding(top = 50.dp, bottom = 30.dp), // Thêm bottom padding để khi scroll xuống cuối không bị sát mép
+                        .padding(top = 50.dp, bottom = 30.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
@@ -150,7 +149,7 @@ fun ProfileScreen(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // Logout Button (Trigger Dialog)
+                    // Logout Button
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -172,8 +171,8 @@ fun ProfileScreen(
             }
         }
 
-        // --- Loading Overlay (Khi đang logout) ---
-        if (uiState.isLoggingOut) {
+        // --- Loading Overlay ---
+        if (uiState.isLoggingOut || uiState.isLoading) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -193,8 +192,6 @@ fun ProfileScreen(
             currentBio = uiState.userBio,
             onDismiss = viewModel::hideEditProfileDialog,
             onSave = { name, bio ->
-                preferencesManager.userName = name
-                preferencesManager.userBio = bio
                 viewModel.updateUserInfo(name, bio)
             },
             preferencesManager = preferencesManager,
@@ -208,7 +205,6 @@ fun ProfileScreen(
         LogoutConfirmationDialog(
             onDismiss = viewModel::hideLogoutDialog,
             onConfirm = {
-                // Gọi ViewModel để xử lý Logout (kết nối server)
                 viewModel.logout()
             },
             preferencesManager = preferencesManager

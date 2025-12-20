@@ -2,105 +2,161 @@ package com.example.se114.ui.presentation.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.se114.local.PreferencesManager
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
 data class SettingsUiState(
-    // Block List
-    val blockedUsers: List<String> = listOf("user123", "anonymous_user", "john_doe"),
-
-    // Dialog Visibility
+    val blockedUsers: List<String> = emptyList(),
     val isShowingLanguageDialog: Boolean = false,
     val isShowingThemeDialog: Boolean = false,
     val isShowingBlockListDialog: Boolean = false,
     val isShowingDeleteAccountDialog: Boolean = false,
-
-    // Delete Account Logic State
     val deleteStep: Int = 1,
     val deleteError: String = "",
     val isDeleting: Boolean = false
 )
 
 @HiltViewModel
-class SettingsViewModel @Inject constructor(
-    // Không inject PreferencesManager, UI sẽ tự handle logic lưu prefs đơn giản
+class SettingsScreenViewModel @Inject constructor(
+    private val auth: FirebaseAuth,
+    private val firestore: FirebaseFirestore,
+    private val preferencesManager: PreferencesManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState = _uiState.asStateFlow()
 
-    // --- Block List Logic ---
-    fun unblockUser(username: String) {
-        _uiState.update { it.copy(blockedUsers = it.blockedUsers - username) }
-    }
+    // Biến này lưu mật khẩu đã được xác thực (Verified) để dùng cho bước xóa cuối cùng
+    private var validPasswordForDeletion: String = ""
 
-    // --- Dialog Controls ---
-    fun showLanguageDialog() { _uiState.update { it.copy(isShowingLanguageDialog = true) } }
-    fun hideLanguageDialog() { _uiState.update { it.copy(isShowingLanguageDialog = false) } }
-
-    fun showThemeDialog() { _uiState.update { it.copy(isShowingThemeDialog = true) } }
-    fun hideThemeDialog() { _uiState.update { it.copy(isShowingThemeDialog = false) } }
-
-    fun showBlockListDialog() { _uiState.update { it.copy(isShowingBlockListDialog = true) } }
-    fun hideBlockListDialog() { _uiState.update { it.copy(isShowingBlockListDialog = false) } }
-
-    fun showDeleteAccountDialog() {
-        // Reset state khi mở dialog
-        _uiState.update { it.copy(isShowingDeleteAccountDialog = true, deleteStep = 1, deleteError = "") }
-    }
-    fun hideDeleteAccountDialog() { _uiState.update { it.copy(isShowingDeleteAccountDialog = false) } }
-
-    // --- Delete Account Logic ---
-
-    fun onDeleteNextStep(currentStep: Int, passwordInput: String = "") {
-        _uiState.update { it.copy(deleteError = "") } // Clear error trước
-
-        when (currentStep) {
-            1 -> {
-                // Chuyển từ cảnh báo sang nhập pass
-                _uiState.update { it.copy(deleteStep = 2) }
+    // --- VERIFY PASSWORD (KIỂM TRA KÉP) ---
+    fun onDeleteNextStep(currentStep: Int, input: String) {
+        if (currentStep == 2) {
+            // Step 2: Verify Password
+            if (input.isBlank()) {
+                _uiState.update { it.copy(deleteError = "Vui lòng nhập mật khẩu") }
+                return
             }
-            2 -> {
-                // Validate password (giả lập)
-                if (passwordInput.isEmpty()) {
-                    _uiState.update { it.copy(deleteError = "Password required") } // Chuỗi này UI sẽ localize lại nếu cần
+            verifyPasswordAndDeleteStep(input)
+        } else if (currentStep == 1) {
+            _uiState.update { it.copy(deleteStep = 2, deleteError = "") }
+        }
+    }
+
+    private fun verifyPasswordAndDeleteStep(password: String) {
+        val uid = preferencesManager.userId
+        val email = preferencesManager.userEmail
+        if (uid.isBlank()) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isDeleting = true, deleteError = "") }
+            try {
+                var isVerified = false
+
+                // 1. Check Firestore
+                val doc = firestore.collection("users").document(uid).get().await()
+                val dbPass = doc.getString("password")
+
+                if (dbPass != null && dbPass == password) {
+                    isVerified = true
                 } else {
-                    // Giả sử check pass ok -> sang bước 3
-                    _uiState.update { it.copy(deleteStep = 3) }
+                    // 2. Check Auth
+                    try {
+                        if (email.isNotEmpty()) {
+                            auth.signInWithEmailAndPassword(email, password).await()
+                            isVerified = true
+                        }
+                    } catch (e: Exception) {
+                        isVerified = false
+                    }
                 }
+
+                if (isVerified) {
+                    validPasswordForDeletion = password // LƯU MẬT KHẨU ĐÚNG
+                    _uiState.update { it.copy(isDeleting = false, deleteStep = 3, deleteError = "") }
+                } else {
+                    _uiState.update { it.copy(isDeleting = false, deleteError = "Mật khẩu không đúng") }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isDeleting = false, deleteError = "Lỗi kết nối: ${e.message}") }
             }
         }
     }
 
-    fun onDeletePreviousStep() {
-        _uiState.update { state ->
-            if (state.deleteStep > 1) {
-                state.copy(deleteStep = state.deleteStep - 1, deleteError = "")
-            } else {
-                state
-            }
-        }
-    }
-
-    fun confirmDeleteAccount(confirmTextInput: String, onSuccess: () -> Unit) {
-        if (confirmTextInput != "DELETE") {
-            _uiState.update { it.copy(deleteError = "Please type DELETE exactly") }
+    // --- CONFIRM & DELETE (DÙNG MẬT KHẨU ĐÚNG ĐỂ XÓA) ---
+    fun confirmDeleteAccount(confirmText: String, onSuccess: () -> Unit) {
+        if (confirmText != "DELETE") {
+            _uiState.update { it.copy(deleteError = "Vui lòng nhập chính xác chữ DELETE") }
             return
         }
 
+        val uid = preferencesManager.userId
+        val email = preferencesManager.userEmail
+
         viewModelScope.launch {
-            _uiState.update { it.copy(isDeleting = true) }
+            _uiState.update { it.copy(isDeleting = true, deleteError = "") }
+            try {
+                // 1. XÓA FIREBASE AUTH (Dùng mật khẩu đã verify để ép đăng nhập lại)
+                if (email.isNotEmpty() && validPasswordForDeletion.isNotEmpty()) {
+                    try {
+                        val authResult = auth.signInWithEmailAndPassword(email, validPasswordForDeletion).await()
+                        authResult.user?.delete()?.await()
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        // Nếu xóa Auth lỗi, vẫn tiếp tục xóa Firestore để không bị kẹt
+                    }
+                } else {
+                    // Fallback
+                    try { auth.currentUser?.delete()?.await() } catch (e: Exception) {}
+                }
 
-            // Giả lập gọi API xóa tài khoản
-            delay(2000)
+                // 2. XÓA FIRESTORE
+                firestore.collection("users").document(uid).delete().await()
 
-            _uiState.update { it.copy(isDeleting = false, isShowingDeleteAccountDialog = false) }
-            onSuccess() // Callback để UI điều hướng về màn hình Login hoặc thoát app
+                // 3. CLEANUP
+                auth.signOut()
+                preferencesManager.clearUserData()
+
+                _uiState.update { it.copy(isDeleting = false, isShowingDeleteAccountDialog = false) }
+                onSuccess()
+
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isDeleting = false, deleteError = "Xóa thất bại: ${e.message}") }
+            }
         }
     }
+
+    // --- Helpers ---
+    fun showDeleteAccountDialog() {
+        validPasswordForDeletion = ""
+        _uiState.update { it.copy(isShowingDeleteAccountDialog = true, deleteStep = 1, deleteError = "") }
+    }
+    fun hideDeleteAccountDialog() { _uiState.update { it.copy(isShowingDeleteAccountDialog = false) } }
+    fun onDeletePreviousStep() {
+        _uiState.update {
+            if (it.deleteStep > 1) it.copy(deleteStep = it.deleteStep - 1, deleteError = "") else it
+        }
+    }
+
+    // --- Other Settings ---
+    fun updateLanguage(language: String) { preferencesManager.language = language; hideLanguageDialog() }
+    fun updateTheme(isDarkMode: Boolean) { preferencesManager.isDarkMode = isDarkMode; hideThemeDialog() }
+    fun unblockUser(user: String) {
+        val newList = _uiState.value.blockedUsers.toMutableList().apply { remove(user) }
+        _uiState.update { it.copy(blockedUsers = newList) }
+    }
+    fun showLanguageDialog() { _uiState.update { it.copy(isShowingLanguageDialog = true) } }
+    fun hideLanguageDialog() { _uiState.update { it.copy(isShowingLanguageDialog = false) } }
+    fun showThemeDialog() { _uiState.update { it.copy(isShowingThemeDialog = true) } }
+    fun hideThemeDialog() { _uiState.update { it.copy(isShowingThemeDialog = false) } }
+    fun showBlockListDialog() { _uiState.update { it.copy(isShowingBlockListDialog = true) } }
+    fun hideBlockListDialog() { _uiState.update { it.copy(isShowingBlockListDialog = false) } }
 }
