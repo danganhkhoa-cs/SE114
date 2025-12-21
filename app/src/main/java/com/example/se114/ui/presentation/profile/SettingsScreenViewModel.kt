@@ -99,7 +99,7 @@ class SettingsScreenViewModel @Inject constructor(
                     validPasswordForDeletion = password
                     _uiState.update { it.copy(isDeleting = false, deleteStep = 3, deleteError = "") }
                 } else {
-                    _uiState.update { it.copy(isDeleting = false, deleteError = "Mật khẩu không đúng") }
+                    _uiState.update { it.copy(isDeleting = false, deleteError = preferencesManager.getString("password_incorrect")) }
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isDeleting = false, deleteError = "Lỗi kết nối: ${e.message}") }

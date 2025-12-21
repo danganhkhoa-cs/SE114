@@ -66,6 +66,10 @@ class RegisterViewModel @Inject constructor(
                 val user = authResult.user
 
                 if (user != null) {
+
+                    // Gửi email xác thực
+                    user.sendEmailVerification().await()
+
                     // 2. Chuẩn bị dữ liệu User theo Schema
                     // Tên mặc định lấy từ email (phần trước @)
                     val defaultName = _uiState.value.email.substringBefore("@")
@@ -92,6 +96,8 @@ class RegisterViewModel @Inject constructor(
                         .document(user.uid)
                         .set(userMap)
                         .await()
+
+                    auth.signOut()
 
                     _uiState.update { it.copy(isLoading = false, registerSuccess = true) }
                 } else {

@@ -60,15 +60,15 @@ class LoginViewModel @Inject constructor(
 
                     // BƯỚC 2: Phân loại User
                     if (!dbPassword.isNullOrEmpty()) {
-                        // TRƯỜNG HỢP A: Bypass Login (Ưu tiên mật khẩu trong DB)
+                        // TRƯỜNG HỢP A: Bypass Login (Ưu tiên mật khẩu trong DB - thường không cần check verify email)
                         if (dbPassword == _uiState.value.password) {
                             saveUserDataAndProceed(document.id)
                         } else {
-                            // Sai mật khẩu -> CHỈ báo lỗi vào passwordError
+                            // Sai mật khẩu
                             _uiState.update {
                                 it.copy(
                                     isLoading = false,
-                                    emailError = null, // Email vẫn đúng format, không báo đỏ
+                                    emailError = null,
                                     passwordError = "Incorrect email or password",
                                     errorMessage = "Incorrect email or password"
                                 )
@@ -84,7 +84,6 @@ class LoginViewModel @Inject constructor(
                 }
 
             } catch (e: Exception) {
-                // Lỗi kết nối hoặc lỗi hệ thống
                 _uiState.update { it.copy(isLoading = false, errorMessage = "Connection error: ${e.message}") }
             }
         }
@@ -93,8 +92,24 @@ class LoginViewModel @Inject constructor(
     private suspend fun signInWithFirebaseAuth() {
         try {
             val authResult = auth.signInWithEmailAndPassword(_uiState.value.email, _uiState.value.password).await()
-            if (authResult.user != null) {
-                saveUserDataAndProceed(authResult.user!!.uid)
+            val user = authResult.user
+
+            if (user != null) {
+                // KIỂM TRA EMAIL ĐÃ KÍCH HOẠT CHƯA
+                if (user.isEmailVerified) {
+                    // Đã kích hoạt -> Cho phép đăng nhập
+                    saveUserDataAndProceed(user.uid)
+                } else {
+                    // Chưa kích hoạt -> Đăng xuất ngay và báo lỗi
+                    auth.signOut()
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = "Please activate your email to login!" // Thông báo lỗi cụ thể
+                        )
+                    }
+                }
+                // --------------------------------------------------------
             } else {
                 _uiState.update {
                     it.copy(
@@ -106,7 +121,6 @@ class LoginViewModel @Inject constructor(
                 }
             }
         } catch (e: Exception) {
-            // Bắt mọi lỗi từ Firebase -> CHỈ báo lỗi vào passwordError
             _uiState.update {
                 it.copy(
                     isLoading = false,
@@ -129,15 +143,13 @@ class LoginViewModel @Inject constructor(
                 val address = documentSnapshot.getString("address") ?: ""
                 val job = documentSnapshot.getString("job") ?: ""
 
-                // --- XỬ LÝ GENDER THÔNG MINH (Hỗ trợ cả Boolean cũ và String mới) ---
                 val genderRaw = documentSnapshot.get("gender")
                 val gender = when (genderRaw) {
-                    is String -> genderRaw // Nếu là String (Data mới): "Male", "Other", ...
-                    is Boolean -> if (genderRaw) "Male" else "Female" // Nếu là Boolean (Data cũ): true -> Male
-                    else -> "Male" // Mặc định
+                    is String -> genderRaw
+                    is Boolean -> if (genderRaw) "Male" else "Female"
+                    else -> "Male"
                 }
 
-                // Lưu vào Preferences
                 preferencesManager.userId = uid
                 preferencesManager.userName = name
                 preferencesManager.userEmail = _uiState.value.email
