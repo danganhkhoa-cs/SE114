@@ -49,6 +49,17 @@ class AccountSettingsViewModel @Inject constructor(
 
     // --- LOGIC ĐỔI MẬT KHẨU (CHUẨN FIREBASE AUTH) ---
     fun changePassword(currentPass: String, newPass: String) {
+        // 1. Validate độ mạnh mật khẩu
+        val hasLowercase = newPass.any { it.isLowerCase() }
+        val hasUppercase = newPass.any { it.isUpperCase() }
+        val hasNumber = newPass.any { it.isDigit() }
+        val hasMinimum8Chars = newPass.length >= 8
+
+        if (!hasLowercase || !hasUppercase || !hasNumber || !hasMinimum8Chars) {
+            _uiState.update { it.copy(errorMessage = preferencesManager.getString("password_not_strong")) }
+            return
+        }
+
         val user = auth.currentUser
         val email = user?.email ?: preferencesManager.userEmail
 
@@ -60,28 +71,25 @@ class AccountSettingsViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             try {
-                // BƯỚC 1: Re-authenticate (Xác thực lại người dùng bằng mật khẩu cũ)
-                // Đây là cách an toàn nhất thay vì so sánh chuỗi thủ công
+                // 2. Re-authenticate
                 val credential = EmailAuthProvider.getCredential(email, currentPass)
                 user.reauthenticate(credential).await()
 
-                // BƯỚC 2: Nếu xác thực thành công, tiến hành đổi mật khẩu trên Auth
+                // 3. Update Password
                 user.updatePassword(newPass).await()
-
-                // KHÔNG LƯU MẬT KHẨU VÀO FIRESTORE NỮA
 
                 _uiState.update {
                     it.copy(
                         isLoading = false,
                         isShowingPasswordDialog = false,
-                        successMessage = "Đổi mật khẩu thành công!"
+                        successMessage = preferencesManager.getString("change_password_successful")
                     )
                 }
             } catch (e: Exception) {
                 val msg = if (e is FirebaseAuthInvalidCredentialsException) {
-                    "Mật khẩu hiện tại không đúng"
+                    preferencesManager.getString("current_password_incorrect")
                 } else {
-                    e.message ?: "Đổi mật khẩu thất bại"
+                    e.message ?: preferencesManager.getString("change_password_failed")
                 }
                 _uiState.update { it.copy(isLoading = false, errorMessage = msg) }
             }
@@ -113,7 +121,7 @@ class AccountSettingsViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 val msg = if (e is FirebaseAuthInvalidCredentialsException) {
-                    "Mật khẩu không đúng"
+                    preferencesManager.getString("current_password_incorrect")
                 } else {
                     e.message
                 }
@@ -136,7 +144,7 @@ class AccountSettingsViewModel @Inject constructor(
                 preferencesManager.userPhone = newPhone
 
                 _uiState.update {
-                    it.copy(phone = newPhone, isShowingPhoneDialog = false, isLoading = false, successMessage = "Cập nhật số điện thoại thành công!")
+                    it.copy(phone = newPhone, isShowingPhoneDialog = false, isLoading = false, successMessage = preferencesManager.getString("change_phone_successful"))
                 }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, errorMessage = e.message) }
@@ -144,7 +152,6 @@ class AccountSettingsViewModel @Inject constructor(
         }
     }
 
-    // Các hàm Helper giữ nguyên
     fun showPasswordDialog() { _uiState.update { it.copy(isShowingPasswordDialog = true, errorMessage = null) } }
     fun hidePasswordDialog() { _uiState.update { it.copy(isShowingPasswordDialog = false) } }
     fun showPhoneDialog() { _uiState.update { it.copy(isShowingPhoneDialog = true, errorMessage = null) } }

@@ -10,6 +10,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -34,13 +36,11 @@ import com.example.se114.ui.theme.AppTealLight
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(
-
     viewModel: RegisterViewModel = hiltViewModel(),
     onRegisterSuccess: () -> Unit,
     onBackToLogin: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-
     val context = LocalContext.current
 
     LaunchedEffect(key1 = uiState.registerSuccess) {
@@ -50,7 +50,6 @@ fun RegisterScreen(
                 "Register successful! Please check your email to verify.",
                 Toast.LENGTH_LONG
             ).show()
-
             onBackToLogin()
         }
     }
@@ -60,6 +59,7 @@ fun RegisterScreen(
             .fillMaxSize()
             .background(AppTealLight)
     ) {
+        // ... (HeaderBlob giữ nguyên) ...
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -67,70 +67,44 @@ fun RegisterScreen(
                 .background(AppTealDark)
                 .clipToBounds()
         ) {
-            HeaderBlob(
-                modifier = Modifier
-                    .size(width = 250.dp, height = 220.dp)
-                    .align(Alignment.TopStart)
-                    .offset(x = (-80).dp, y = (-50).dp)
-            )
-
-            HeaderBlob(
-                modifier = Modifier
-                    .size(width = 150.dp, height = 130.dp)
-                    .align(Alignment.CenterEnd)
-                    .offset(x = 60.dp, y = (-20).dp)
-            )
-            HeaderBlob(
-                modifier = Modifier
-                    .size(width = 100.dp, height = 90.dp)
-                    .align(Alignment.BottomStart)
-                    .offset(x = (-30).dp, y = 30.dp)
-            )
+            HeaderBlob(modifier = Modifier.size(250.dp, 220.dp).align(Alignment.TopStart).offset((-80).dp, (-50).dp))
+            HeaderBlob(modifier = Modifier.size(150.dp, 130.dp).align(Alignment.CenterEnd).offset(60.dp, (-20).dp))
+            HeaderBlob(modifier = Modifier.size(100.dp, 90.dp).align(Alignment.BottomStart).offset((-30).dp, 30.dp))
         }
 
         RegisterForm(
             uiState = uiState,
             viewModel = viewModel,
             onBackToLogin = onBackToLogin,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = 140.dp)
+            modifier = Modifier.fillMaxSize().padding(top = 140.dp)
         )
+
         if (uiState.errorMessage != null) {
             Snackbar(
-                modifier = Modifier
-                    .padding(16.dp)
-                    .align(Alignment.BottomCenter),
+                modifier = Modifier.padding(16.dp).align(Alignment.BottomCenter),
                 containerColor = MaterialTheme.colorScheme.errorContainer,
                 contentColor = MaterialTheme.colorScheme.onErrorContainer
-            ) {
-                Text(text = uiState.errorMessage!!)
-            }
+            ) { Text(text = uiState.errorMessage!!) }
         }
+
         if (uiState.isLoading) {
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.5f)),
+                modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)),
                 contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator(color = Color.White)
-            }
+            ) { CircularProgressIndicator(color = Color.White) }
         }
     }
 }
 
 @Composable
 fun RegisterForm(
-
     uiState: RegisterUiState,
     viewModel: RegisterViewModel,
     onBackToLogin: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Surface(
-        modifier = modifier
-            .fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
         color = AppFormBackground,
         shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)
     ) {
@@ -138,48 +112,29 @@ fun RegisterForm(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 24.dp)
-                .verticalScroll(rememberScrollState()),
-
+                .verticalScroll(rememberScrollState())
         ) {
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-
-                TextButton(
-                    onClick = onBackToLogin,
-                    contentPadding = PaddingValues(end = 4.dp)
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
-                        tint = AppTealDark
-                    )
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = onBackToLogin, contentPadding = PaddingValues(end = 4.dp)) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = AppTealDark)
                     Spacer(Modifier.width(4.dp))
-                    Text(
-                        "Back to login",
-                        color = AppTealDark,
-                        style = MaterialTheme.typography.labelLarge
-                    )
+                    Text("Back to login", color = AppTealDark, style = MaterialTheme.typography.labelLarge)
                 }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
-
             Text(
                 text = "Sign Up",
                 fontWeight = FontWeight.SemiBold,
                 style = MaterialTheme.typography.headlineLarge,
-                modifier = Modifier.fillMaxWidth(), // 👈 Sẽ tự động căn lề trái
+                modifier = Modifier.fillMaxWidth(),
                 color = AppTealDark
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
             EmailTextField(
-
                 modifier = Modifier.fillMaxWidth(),
                 value = uiState.email,
                 onValueChange = viewModel::onEmailChange,
@@ -187,11 +142,9 @@ fun RegisterForm(
                 errorMessage = uiState.emailError
             )
 
-
             Spacer(modifier = Modifier.height(10.dp))
 
             PasswordTextField(
-
                 modifier = Modifier.fillMaxWidth(),
                 label = "Password",
                 value = uiState.password,
@@ -200,11 +153,16 @@ fun RegisterForm(
                 errorMessage = uiState.passwordError
             )
 
-
-            Spacer(modifier = Modifier.height(10.dp))
+            // --- HIỂN THỊ YÊU CẦU MẬT KHẨU ---
+            Spacer(modifier = Modifier.height(8.dp))
+            PasswordRequirement(text = "At least one lowercase letter", isMet = uiState.hasLowercase)
+            PasswordRequirement(text = "Minimum 8 characters", isMet = uiState.hasMinimum8Chars)
+            PasswordRequirement(text = "At least one uppercase letter", isMet = uiState.hasUppercase)
+            PasswordRequirement(text = "At least one number", isMet = uiState.hasNumber)
+            Spacer(modifier = Modifier.height(8.dp))
+            // ---------------------------------
 
             PasswordTextField(
-// ... (ConfirmPasswordTextField giữ nguyên) ...
                 modifier = Modifier.fillMaxWidth(),
                 label = "Confirm Password",
                 value = uiState.confirmPassword,
@@ -213,11 +171,9 @@ fun RegisterForm(
                 errorMessage = uiState.confirmPasswordError
             )
 
-
             Spacer(modifier = Modifier.height(10.dp))
 
             PhoneTextField(
-
                 modifier = Modifier.fillMaxWidth(),
                 value = uiState.phone,
                 onValueChange = viewModel::onPhoneChange,
@@ -225,15 +181,15 @@ fun RegisterForm(
                 errorMessage = uiState.phoneError
             )
 
-            // 👈 Khoảng cách nút "Sign Up" (giữ nguyên như bạn muốn)
             Spacer(modifier = Modifier.height(36.dp))
 
             Button(
-
                 onClick = viewModel::signUp,
                 modifier = Modifier.fillMaxWidth(),
                 shape = CircleShape,
-                colors = ButtonDefaults.buttonColors(containerColor = AppTealDark)
+                colors = ButtonDefaults.buttonColors(containerColor = AppTealDark),
+                // (Tùy chọn) Disable nút nếu chưa thỏa mãn đk
+                // enabled = uiState.hasLowercase && uiState.hasUppercase && uiState.hasNumber && uiState.hasMinimum8Chars
             ) {
                 Text(
                     text = "Sign Up",
@@ -242,31 +198,48 @@ fun RegisterForm(
                     fontWeight = FontWeight.ExtraBold
                 )
             }
-
             Spacer(modifier = Modifier.height(32.dp))
         }
     }
 }
 
+// --- COMPONENT HIỂN THỊ TRẠNG THÁI MẬT KHẨU ---
+@Composable
+private fun PasswordRequirement(
+    text: String,
+    isMet: Boolean
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(vertical = 2.dp)
+    ) {
+        Icon(
+            imageVector = if (isMet) Icons.Default.CheckCircle else Icons.Default.Cancel,
+            contentDescription = null,
+            tint = if (isMet) AppTealDark else Color.Gray,
+            modifier = Modifier.size(16.dp)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = text,
+            fontSize = 12.sp,
+            color = if (isMet) AppTealDark else Color.Gray
+        )
+    }
+}
+
 @Composable
 private fun HeaderBlob(modifier: Modifier = Modifier) {
-
     Canvas(modifier = modifier) {
         val width = size.width
         val height = size.height
-
-
         val path = Path().apply {
-
             moveTo(width * 0.2f, height * 0.3f)
             quadraticTo(width * 0.5f, -height * 0.1f, width * 0.8f, height * 0.3f)
             quadraticTo(width * 1.1f, height * 0.7f, width * 0.7f, height * 1.0f)
             quadraticTo(width * 0.3f, height * 1.1f, 0f, height * 0.7f)
             close()
         }
-        drawPath(
-            path = path,
-            color = AppTealBlob
-        )
+        drawPath(path = path, color = AppTealBlob)
     }
 }
