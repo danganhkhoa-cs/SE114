@@ -45,8 +45,13 @@ fun RegisterScreen(
 
     LaunchedEffect(key1 = uiState.registerSuccess) {
         if (uiState.registerSuccess) {
-            Toast.makeText(context, "Register Successful!", Toast.LENGTH_SHORT).show()
-            onRegisterSuccess()
+            Toast.makeText(
+                context,
+                "Register successful! Please check your email to verify.",
+                Toast.LENGTH_LONG
+            ).show()
+
+            onBackToLogin()
         }
     }
 

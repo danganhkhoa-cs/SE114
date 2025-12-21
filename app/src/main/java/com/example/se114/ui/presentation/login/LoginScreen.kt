@@ -33,7 +33,6 @@ import com.example.se114.ui.theme.AppTealLight
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
-
     viewModel: LoginViewModel = hiltViewModel(),
     onLoginSuccess: () -> Unit,
     onNavigateToRegister: () -> Unit,
@@ -43,6 +42,7 @@ fun LoginScreen(
 
     val context = LocalContext.current
 
+    // Xử lý khi đăng nhập thành công
     LaunchedEffect(key1 = uiState.loginSuccess) {
         if (uiState.loginSuccess) {
             Toast.makeText(context, "Login Successful!", Toast.LENGTH_SHORT).show()
@@ -50,11 +50,24 @@ fun LoginScreen(
         }
     }
 
+    // --- ĐOẠN CODE MỚI: HIỂN THỊ LỖI CHUNG (như chưa kích hoạt email) ---
+    LaunchedEffect(key1 = uiState.errorMessage) {
+        uiState.errorMessage?.let { error ->
+            // Chỉ hiện Toast nếu lỗi không trùng với passwordError (để tránh hiện 2 lần nếu UI đã hiện text đỏ)
+            // Nhưng với lỗi Verify Email thì passwordError sẽ null, nên Toast sẽ hiện.
+            if (uiState.passwordError == null) {
+                Toast.makeText(context, error, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+    // -------------------------------------------------------------------
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(AppTealLight)
     ) {
+        // ... (Giữ nguyên phần HeaderBlob và nội dung Box)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -125,6 +138,7 @@ fun LoginScreen(
     }
 }
 
+// ... (Phần còn lại giữ nguyên: LoginForm, HeaderBlob)
 @Composable
 fun LoginForm(
 
@@ -154,7 +168,7 @@ fun LoginForm(
                 text = "Login",
                 fontWeight = FontWeight.SemiBold,
                 style = MaterialTheme.typography.headlineLarge,
-                modifier = Modifier.fillMaxWidth(), // 👈 Sẽ tự động căn lề trái
+                modifier = Modifier.fillMaxWidth(),
                 color = AppTealDark
             )
 
