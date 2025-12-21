@@ -89,8 +89,7 @@ class OtherProfileViewModel @Inject constructor(
                     val genderVal = document.get("gender")
                     val genderDisplay = when (genderVal) {
                         is String -> genderVal
-                        is Boolean -> if (genderVal) "Nam" else "Nữ"
-                        else -> genderVal?.toString() ?: "Chưa cập nhật"
+                        else -> genderVal?.toString() ?: "not_update"
                     }
 
                     _uiState.update {

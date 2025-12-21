@@ -84,11 +84,11 @@ class AccountDataViewModel @Inject constructor(
 
         // Chuẩn hóa dữ liệu để lưu vào DB (Lưu tiếng Anh để thống nhất)
         val genderToSave = when (newGender) {
-            "Nam", "Male" -> "Male"
-            "Nữ", "Female" -> "Female"
-            "Khác", "Other" -> "Other"
-            "Không muốn tiết lộ", "Prefer not to say" -> "Prefer not to say"
-            else -> "Other"
+            "Nam", "Male" -> "male"
+            "Nữ", "Female" -> "female"
+            "Khác", "Other" -> "other"
+            "Không muốn tiết lộ", "Prefer not to say" -> "not_say"
+            else -> "other"
         }
 
         viewModelScope.launch {
