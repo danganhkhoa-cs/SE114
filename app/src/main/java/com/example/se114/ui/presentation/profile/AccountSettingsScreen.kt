@@ -269,7 +269,7 @@ fun ChangePasswordDialog(
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(onClick = {
                         if (newPassword.length < 6) {
-                            error = preferencesManager.getString("password_length_error")
+                            error = preferencesManager.getString("password_not_strong")
                         } else if (newPassword != confirmPassword) {
                             error = preferencesManager.getString("passwords_not_match")
                         } else {
