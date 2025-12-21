@@ -150,7 +150,8 @@ object StringResources {
         "male" to "Male",
         "female" to "Female",
         "other" to "Other",
-        "prefer_not_to_say" to "Prefer not to say",
+        "not_say" to "Prefer not to say",
+        "not_update" to "Not Update",
 
         // Account Settings Specific
         "change_password" to "Change Password",
@@ -355,7 +356,8 @@ object StringResources {
         "male" to "Nam",
         "female" to "Nữ",
         "other" to "Khác",
-        "prefer_not_to_say" to "Không muốn tiết lộ",
+        "not_say" to "Không muốn tiết lộ",
+        "not_update" to "Chưa cập nhật",
 
         // Account Settings Specific
         "change_password" to "Đổi mật khẩu",

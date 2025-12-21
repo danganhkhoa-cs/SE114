@@ -98,7 +98,7 @@ fun AccountDataScreen(
             DataItemCard(
                 icon = Icons.Default.Person,
                 title = preferencesManager.getString("gender"),
-                value = uiState.gender,
+                value = preferencesManager.getString(uiState.gender),
                 isEditable = true,
                 onEditClick = viewModel::showGenderDialog
             )
@@ -358,7 +358,7 @@ fun GenderSelectionDialog(
         preferencesManager.getString("male"),
         preferencesManager.getString("female"),
         preferencesManager.getString("other"),
-        preferencesManager.getString("prefer_not_to_say")
+        preferencesManager.getString("not_say")
     )
 
     Dialog(onDismissRequest = onDismiss) {

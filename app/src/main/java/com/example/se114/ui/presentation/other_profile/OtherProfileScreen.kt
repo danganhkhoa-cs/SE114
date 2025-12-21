@@ -224,7 +224,7 @@ fun InfoSection(
         ProfileInfoItem(icon = Icons.Default.Work, label = preferencesManager.getString("current_job"), value = job)
         ProfileInfoItem(icon = Icons.Default.LocationOn, label = preferencesManager.getString("address"), value = address)
         ProfileInfoItem(icon = Icons.Default.Phone, label = preferencesManager.getString("phone_number"), value = phone)
-        ProfileInfoItem(icon = Icons.Default.Person, label = preferencesManager.getString("gender"), value = gender)
+        ProfileInfoItem(icon = Icons.Default.Person, label = preferencesManager.getString("gender"), value = preferencesManager.getString(gender))
 
         Spacer(modifier = Modifier.height(16.dp))
 
