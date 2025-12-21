@@ -9,6 +9,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -19,6 +20,7 @@ import com.example.se114.ui.presentation.login.LoginScreen
 import com.example.se114.ui.presentation.main.MainScreen
 import com.example.se114.ui.presentation.register.RegisterScreen
 import com.example.se114.ui.theme.SE114Theme
+import com.google.firebase.auth.FirebaseAuth
 
 @Composable
 fun AppNavigation(
@@ -134,9 +136,16 @@ fun AppNavigation(
                             preferencesManager.isDarkMode = newTheme
                         },
                         onLogout = {
+                            // 1. Đảm bảo Auth signout (phòng hờ)
+                            FirebaseAuth.getInstance().signOut()
+
+                            // 2. Xóa dữ liệu local (QUAN TRỌNG: Làm ở đây là an toàn nhất)
                             preferencesManager.clearUserData()
+
+                            // 3. Navigate về Login
                             navController.navigate(Screen.Login.route) {
-                                popUpTo(navController.graph.id) { inclusive = true }
+                                popUpTo(navController.graph.findStartDestination().id) { inclusive = true }
+                                launchSingleTop = true
                             }
                         }
                     )

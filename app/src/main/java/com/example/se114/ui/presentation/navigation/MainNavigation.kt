@@ -54,11 +54,13 @@ fun MainNavGraph(
                 }
             )
         }
-        // Đặc biệt để ẩn thanh bottom bar
+
+        // Chat Nav Graph
         ChatNavGraph(
             navController,
             preferencesManager
         )
+
         composable(BottomNavItem.Profile.route) {
             ProfileNavGraph(
                 preferencesManager = preferencesManager,
@@ -86,6 +88,10 @@ fun MainNavGraph(
                 preferencesManager = preferencesManager,
                 onBackClick = {
                     navController.popBackStack()
+                },
+                onNavigateToChat = { conversationId ->
+                    // Logic nhảy thẳng vào đoạn chat
+                    navController.navigate("chat_detail/$conversationId")
                 }
             )
         }
