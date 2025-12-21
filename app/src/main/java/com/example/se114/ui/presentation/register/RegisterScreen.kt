@@ -96,7 +96,17 @@ fun RegisterScreen(
                 .fillMaxSize()
                 .padding(top = 140.dp)
         )
-
+        if (uiState.errorMessage != null) {
+            Snackbar(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .align(Alignment.BottomCenter),
+                containerColor = MaterialTheme.colorScheme.errorContainer,
+                contentColor = MaterialTheme.colorScheme.onErrorContainer
+            ) {
+                Text(text = uiState.errorMessage!!)
+            }
+        }
         if (uiState.isLoading) {
             Box(
                 modifier = Modifier

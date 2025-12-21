@@ -12,6 +12,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.util.Date
 import javax.inject.Inject
+import com.google.firebase.auth.FirebaseAuthUserCollisionException
+import com.example.se114.local.PreferencesManager
 
 data class RegisterUiState(
     val email: String = "",
@@ -29,6 +31,7 @@ data class RegisterUiState(
 
 @HiltViewModel
 class RegisterViewModel @Inject constructor(
+    private val preferencesManager: PreferencesManager,
     private val auth: FirebaseAuth,
     private val firestore: FirebaseFirestore
 ) : ViewModel() {
@@ -106,8 +109,25 @@ class RegisterViewModel @Inject constructor(
 
             } catch (e: Exception) {
                 // Xử lý lỗi (ví dụ: email đã tồn tại)
-                _uiState.update { it.copy(isLoading = false, errorMessage = e.message ?: "Registration failed") }
+                val errorMsg = when (e) {
+                    // Nếu lỗi là do trùng email
+                    is FirebaseAuthUserCollisionException -> {
+                        preferencesManager.getString("email_exists_error")
+                    }
+                    // Các lỗi khác
+                    else -> e.message ?: preferencesManager.getString("unknown_error")
+                }
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        // Nếu trùng mail thì gán vào emailError để hiện đỏ dưới ô input
+                        emailError = if (e is FirebaseAuthUserCollisionException) errorMsg else null,
+                        // Nếu lỗi khác thì gán vào errorMessage chung
+                        errorMessage = if (e !is FirebaseAuthUserCollisionException) errorMsg else null
+                    )
+                }
             }
+
         }
     }
 

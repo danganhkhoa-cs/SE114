@@ -29,22 +29,34 @@ fun AppNavigation(
     val navController = rememberNavController()
     var isDarkTheme by remember { mutableStateOf(preferencesManager.isDarkMode) }
 
+    // --- LOGIC MỚI: KIỂM TRA ĐĂNG NHẬP ---
+    // Kiểm tra xem đã có User ID lưu trong máy chưa VÀ Firebase còn phiên đăng nhập không
+    val isLoggedIn = remember {
+        preferencesManager.userId.isNotEmpty() && FirebaseAuth.getInstance().currentUser != null
+    }
+
+    // Xác định màn hình bắt đầu dựa trên trạng thái đăng nhập
+    val startDest = if (isLoggedIn) Screen.Main.route else Screen.Login.route
+    // --------------------------------------
+
     NavHost(
         navController = navController,
-        startDestination = Screen.Login.route,
+        startDestination = startDest, // <--- Thay đổi ở đây
     ) {
 
-        // Login/Register/ForgotPassword/OTPVerification Screen - LUÔN SÁNG
+        // Login Screen
         composable(route = Screen.Login.route) {
-            SE114Theme(darkTheme = false) {  // Force light mode
+            SE114Theme(darkTheme = false) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
                     LoginScreen(
                         onLoginSuccess = {
+                            // Cập nhật lại theme theo user setting khi vừa login xong
                             isDarkTheme = preferencesManager.isDarkMode
                             navController.navigate(Screen.Main.route) {
+                                // Xóa toàn bộ stack Login để không back lại được
                                 popUpTo(navController.graph.id) { inclusive = true }
                             }
                         },
@@ -59,8 +71,9 @@ fun AppNavigation(
             }
         }
 
+        // Register Screen
         composable(route = Screen.Register.route) {
-            SE114Theme(darkTheme = false) {  // Force light mode
+            SE114Theme(darkTheme = false) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -79,8 +92,9 @@ fun AppNavigation(
             }
         }
 
+        // Forgot Password Screen
         composable(route = Screen.ForgotPassword.route) {
-            SE114Theme(darkTheme = false) {  // Force light mode
+            SE114Theme(darkTheme = false) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -99,8 +113,9 @@ fun AppNavigation(
             }
         }
 
+        // OTP Verification Screen
         composable(route = Screen.OTPVerification.route) {
-            SE114Theme(darkTheme = false) {  // Force light mode
+            SE114Theme(darkTheme = false) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -121,7 +136,7 @@ fun AppNavigation(
             }
         }
 
-        // Main Screen - Dùng theme setting
+        // Main Screen
         composable(route = Screen.Main.route) {
             SE114Theme(darkTheme = isDarkTheme) {
                 Surface(
@@ -136,13 +151,13 @@ fun AppNavigation(
                             preferencesManager.isDarkMode = newTheme
                         },
                         onLogout = {
-                            // 1. Đảm bảo Auth signout (phòng hờ)
+                            // 1. Đăng xuất Firebase
                             FirebaseAuth.getInstance().signOut()
 
-                            // 2. Xóa dữ liệu local (QUAN TRỌNG: Làm ở đây là an toàn nhất)
+                            // 2. Xóa dữ liệu local
                             preferencesManager.clearUserData()
 
-                            // 3. Navigate về Login
+                            // 3. Chuyển về màn hình Login và xóa backstack
                             navController.navigate(Screen.Login.route) {
                                 popUpTo(navController.graph.findStartDestination().id) { inclusive = true }
                                 launchSingleTop = true

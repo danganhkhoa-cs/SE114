@@ -3,6 +3,8 @@ package com.example.se114.local
 object StringResources {
     val EN = mapOf(
         // Common
+        "email_exists_error" to "This email is already registered.", // <--- Thêm dòng này
+        "unknown_error" to "An unknown error occurred.",
         "app_name" to "LocaSOS",
         "cancel" to "Cancel",
         "save" to "Save",
@@ -208,6 +210,8 @@ object StringResources {
     )
 
     val VI = mapOf(
+        "email_exists_error" to "Email này đã được đăng ký tài khoản.", // <--- Thêm dòng này
+        "unknown_error" to "Đã xảy ra lỗi không xác định.",
         // Common
         "app_name" to "LocaSOS",
         "cancel" to "Hủy",
