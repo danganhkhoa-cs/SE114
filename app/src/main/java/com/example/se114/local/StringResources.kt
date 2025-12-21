@@ -173,6 +173,11 @@ object StringResources {
         "logout_confirm_title" to "Logout Confirmation",
         "logout_confirm_msg" to "Are you sure you want to logout?",
         "avatar_updated" to "Avatar updated!",
+        "current_password_incorrect" to "Current password is incorrect",
+        "password_not_strong" to "New password is not strong enough (Must have uppercase, lowercase, number, and > 8 characters)",
+        "change_password_successful" to "Password changed successfully!",
+        "change_password_failed" to "Password change failed.",
+        "change_phone_successful" to "Phone number changed successfully!",
 
         // Other Profile
         "other_profile_title" to "User Profile",
@@ -381,6 +386,11 @@ object StringResources {
         "logout_confirm_title" to "Xác nhận đăng xuất",
         "logout_confirm_msg" to "Bạn có chắc chắn muốn đăng xuất?",
         "avatar_updated" to "Đã cập nhật ảnh đại diện!",
+        "current_password_incorrect" to "Mật khẩu hiện tại không đúng",
+        "password_not_strong" to "Mật khẩu mới không đủ mạnh (Cần chữ hoa, thường, số và > 8 ký tự)",
+        "change_password_successful" to "Đổi mật khẩu thành công!",
+        "change_password_failed" to "Đổi mật khẩu thất bại.",
+        "change_phone_successful" to "Đổi số điện thoại thành công!",
 
         // Other Profile
         "other_profile_title" to "Hồ sơ người dùng",

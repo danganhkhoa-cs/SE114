@@ -2,7 +2,9 @@ package com.example.se114.ui.presentation.register
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.se114.local.PreferencesManager
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.firestore.FirebaseFirestore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -12,8 +14,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.util.Date
 import javax.inject.Inject
-import com.google.firebase.auth.FirebaseAuthUserCollisionException
-import com.example.se114.local.PreferencesManager
 
 data class RegisterUiState(
     val email: String = "",
@@ -26,7 +26,13 @@ data class RegisterUiState(
     val phoneError: String? = null,
     val isLoading: Boolean = false,
     val registerSuccess: Boolean = false,
-    val errorMessage: String? = null // Thêm để hiển thị lỗi từ Firebase
+    val errorMessage: String? = null,
+
+    // --- THÊM CÁC TRƯỜNG KIỂM TRA MẬT KHẨU ---
+    val hasLowercase: Boolean = false,
+    val hasUppercase: Boolean = false,
+    val hasNumber: Boolean = false,
+    val hasMinimum8Chars: Boolean = false
 )
 
 @HiltViewModel
@@ -39,14 +45,26 @@ class RegisterViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(RegisterUiState())
     val uiState = _uiState.asStateFlow()
 
-    private val phoneRegex = "^(0|\\+84)[35789]\\d{8}\$".toRegex()
+    private val phoneRegex = "^(0|\\+84)[35789]\\d{8}$".toRegex()
 
     fun onEmailChange(email: String) {
         _uiState.update { it.copy(email = email, emailError = null, errorMessage = null) }
     }
 
+    // --- CẬP NHẬT LOGIC CHECK PASSWORD KHI NHẬP ---
     fun onPasswordChange(password: String) {
-        _uiState.update { it.copy(password = password, passwordError = null, errorMessage = null) }
+        _uiState.update {
+            it.copy(
+                password = password,
+                passwordError = null,
+                errorMessage = null,
+                // Tự động kiểm tra các điều kiện
+                hasLowercase = password.any { char -> char.isLowerCase() },
+                hasUppercase = password.any { char -> char.isUpperCase() },
+                hasNumber = password.any { char -> char.isDigit() },
+                hasMinimum8Chars = password.length >= 8
+            )
+        }
     }
 
     fun onConfirmPasswordChange(confirmPass: String) {
@@ -69,14 +87,11 @@ class RegisterViewModel @Inject constructor(
                 val user = authResult.user
 
                 if (user != null) {
-
                     // Gửi email xác thực
                     user.sendEmailVerification().await()
 
-                    // 2. Chuẩn bị dữ liệu User theo Schema
-                    // Tên mặc định lấy từ email (phần trước @)
+                    // 2. Chuẩn bị dữ liệu User
                     val defaultName = _uiState.value.email.substringBefore("@")
-
                     val userMap = hashMapOf(
                         "firebase_uid" to user.uid,
                         "email" to _uiState.value.email,
@@ -94,40 +109,31 @@ class RegisterViewModel @Inject constructor(
                         "last_active_at" to Date()
                     )
 
-                    // 3. Lưu vào Firestore (Collection 'users', Document ID = UID)
+                    // 3. Lưu vào Firestore (Không lưu password)
                     firestore.collection("users")
                         .document(user.uid)
                         .set(userMap)
                         .await()
 
-                    auth.signOut()
-
+                    auth.signOut() // Đăng xuất để yêu cầu đăng nhập lại
                     _uiState.update { it.copy(isLoading = false, registerSuccess = true) }
                 } else {
                     _uiState.update { it.copy(isLoading = false, errorMessage = "Authentication failed.") }
                 }
 
             } catch (e: Exception) {
-                // Xử lý lỗi (ví dụ: email đã tồn tại)
                 val errorMsg = when (e) {
-                    // Nếu lỗi là do trùng email
-                    is FirebaseAuthUserCollisionException -> {
-                        preferencesManager.getString("email_exists_error")
-                    }
-                    // Các lỗi khác
+                    is FirebaseAuthUserCollisionException -> preferencesManager.getString("email_exists_error")
                     else -> e.message ?: preferencesManager.getString("unknown_error")
                 }
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        // Nếu trùng mail thì gán vào emailError để hiện đỏ dưới ô input
                         emailError = if (e is FirebaseAuthUserCollisionException) errorMsg else null,
-                        // Nếu lỗi khác thì gán vào errorMessage chung
                         errorMessage = if (e !is FirebaseAuthUserCollisionException) errorMsg else null
                     )
                 }
             }
-
         }
     }
 
@@ -140,8 +146,9 @@ class RegisterViewModel @Inject constructor(
             isValid = false
         }
 
-        if (state.password.length < 6) {
-            _uiState.update { it.copy(passwordError = "Password must contain at least 6 characters") }
+        // --- CẬP NHẬT VALIDATE PASSWORD MẠNH ---
+        if (!state.hasLowercase || !state.hasUppercase || !state.hasNumber || !state.hasMinimum8Chars) {
+            _uiState.update { it.copy(passwordError = "Password is not strong enough") }
             isValid = false
         }
 
