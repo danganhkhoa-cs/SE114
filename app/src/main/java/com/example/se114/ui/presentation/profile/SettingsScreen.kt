@@ -1,5 +1,6 @@
 package com.example.se114.ui.presentation.profile
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -19,6 +20,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -35,13 +37,19 @@ fun SettingsScreen(
     onBackClick: () -> Unit,
     isDarkTheme: Boolean,
     onThemeChange: (Boolean) -> Unit,
-    onLogout: () -> Unit, // <--- THÊM THAM SỐ NÀY ĐỂ ĐIỀU HƯỚNG VỀ LOGIN
+    onLogout: () -> Unit,
     viewModel: SettingsScreenViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-
-    // Quan sát thay đổi ngôn ngữ từ PreferencesManager
     val currentLanguage = preferencesManager.languageState.value
+    val context = LocalContext.current
+
+    // Hiển thị thông báo lỗi nếu có
+    LaunchedEffect(uiState.deleteError) {
+        if (uiState.deleteError.isNotEmpty()) {
+            Toast.makeText(context, uiState.deleteError, Toast.LENGTH_SHORT).show()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -189,12 +197,13 @@ fun SettingsScreen(
             error = uiState.deleteError,
             onDismiss = viewModel::hideDeleteAccountDialog,
             onNext = { password ->
+                // Sửa lại theo đúng giao diện cũ: truyền cả step và password
                 viewModel.onDeleteNextStep(uiState.deleteStep, password)
             },
             onPrevious = viewModel::onDeletePreviousStep,
             onConfirmDelete = { confirmText ->
+                // Logic cũ: truyền callback onLogout vào đây
                 viewModel.confirmDeleteAccount(confirmText) {
-                    // KHI XÓA THÀNH CÔNG -> GỌI CALLBACK LOGOUT ĐỂ VỀ MÀN HÌNH LOGIN
                     onLogout()
                 }
             },
@@ -203,7 +212,7 @@ fun SettingsScreen(
     }
 }
 
-// --- SUB COMPOSABLES ---
+// --- SUB COMPOSABLES (Giữ nguyên như file bạn gửi) ---
 
 @Composable
 fun SettingItem(
@@ -346,8 +355,6 @@ fun ThemeSelectionDialog(
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(20.dp))
-
-                // Light Option
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -360,10 +367,8 @@ fun ThemeSelectionDialog(
                         onClick = { selectedIsDark = false }
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = preferencesManager.getString("off"), color = MaterialTheme.colorScheme.onSurface)
+                    Text(text = preferencesManager.getString("light_mode"), color = MaterialTheme.colorScheme.onSurface)
                 }
-
-                // Dark Option
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -376,9 +381,8 @@ fun ThemeSelectionDialog(
                         onClick = { selectedIsDark = true }
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = preferencesManager.getString("on"), color = MaterialTheme.colorScheme.onSurface)
+                    Text(text = preferencesManager.getString("dark_mode"), color = MaterialTheme.colorScheme.onSurface)
                 }
-
                 Spacer(modifier = Modifier.height(20.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {
@@ -414,10 +418,9 @@ fun BlockListDialog(
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-
                 if (blockedUsers.isEmpty()) {
                     Text(
-                        text = "No blocked users",
+                        text = preferencesManager.getString("no_blocked_users"),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -438,14 +441,13 @@ fun BlockListDialog(
                                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
                                     modifier = Modifier.height(32.dp)
                                 ) {
-                                    Text("Unblock", fontSize = 12.sp)
+                                    Text(preferencesManager.getString("unblock"), fontSize = 12.sp)
                                 }
                             }
                             HorizontalDivider()
                         }
                     }
                 }
-
                 Spacer(modifier = Modifier.height(20.dp))
                 Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
                     Text(preferencesManager.getString("close"))
@@ -468,7 +470,6 @@ fun DeleteAccountDialog(
     var passwordInput by remember { mutableStateOf("") }
     var confirmTextInput by remember { mutableStateOf("") }
 
-    // Reset inputs when step changes
     LaunchedEffect(step) {
         if (step == 2) passwordInput = ""
         if (step == 3) confirmTextInput = ""
@@ -489,28 +490,23 @@ fun DeleteAccountDialog(
                     modifier = Modifier.size(48.dp).align(Alignment.CenterHorizontally)
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-
                 Text(
-                    text = preferencesManager.getString("delete_account"),
+                    text = preferencesManager.getString("delete_account_title"),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.align(Alignment.CenterHorizontally)
                 )
-
                 Spacer(modifier = Modifier.height(16.dp))
-
                 when (step) {
-                    1 -> {
-                        Text(
-                            text = "This action is irreversible. All your data will be permanently removed.",
-                            textAlign = TextAlign.Center,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
+                    1 -> Text(
+                        text = preferencesManager.getString("delete_warning_desc"),
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                     2 -> {
                         Text(
-                            text = "Please enter your password to confirm:",
+                            text = preferencesManager.getString("enter_password_continue"),
                             textAlign = TextAlign.Center,
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -525,7 +521,7 @@ fun DeleteAccountDialog(
                     }
                     3 -> {
                         Text(
-                            text = "Type 'DELETE' to confirm final deletion:",
+                            text = preferencesManager.getString("type_delete"),
                             textAlign = TextAlign.Center,
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -543,7 +539,6 @@ fun DeleteAccountDialog(
                         )
                     }
                 }
-
                 if (error.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
@@ -553,13 +548,8 @@ fun DeleteAccountDialog(
                         modifier = Modifier.align(Alignment.CenterHorizontally)
                     )
                 }
-
                 Spacer(modifier = Modifier.height(24.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     if (step == 1) {
                         OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {
                             Text(preferencesManager.getString("cancel"))
@@ -583,7 +573,7 @@ fun DeleteAccountDialog(
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text(if (step == 3) "DELETE" else preferencesManager.getString("next"))
+                            Text(if (step == 3) preferencesManager.getString("delete_forever") else preferencesManager.getString("next"))
                         }
                     }
                 }
