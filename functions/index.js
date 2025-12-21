@@ -50,13 +50,11 @@ exports.sendOtp = onCall(
 		const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
 		const expiresAt = Date.now() + 5 * 60 * 1000;
 
-		// --- SỬA LỖI TẠI ĐÂY: .document() -> .doc() ---
 		await admin.firestore().collection("password_resets").doc(email).set({
 			otp: otpCode,
 			expiresAt: expiresAt,
 			createdAt: admin.firestore.FieldValue.serverTimestamp(),
 		});
-		// ----------------------------------------------
 
 		const transporter = createTransporter(gmailUser.value(), gmailPass.value());
 
@@ -106,8 +104,6 @@ exports.resetPassword = onCall(
 				"Mật khẩu phải từ 6 ký tự trở lên."
 			);
 		}
-
-		// --- SỬA LỖI TẠI ĐÂY: .document() -> .doc() ---
 		const docRef = admin.firestore().collection("password_resets").doc(email);
 		const docSnap = await docRef.get();
 
@@ -135,11 +131,6 @@ exports.resetPassword = onCall(
 				password: newPassword,
 			});
 
-			// --- SỬA LỖI TẠI ĐÂY: .document() -> .doc() ---
-			await admin.firestore().collection("users").doc(userRecord.uid).update({
-				password: newPassword,
-			});
-
 			await docRef.delete();
 
 			return { success: true, message: "Đổi mật khẩu thành công." };
@@ -150,6 +141,9 @@ exports.resetPassword = onCall(
 	}
 );
 
+/**
+ * FUNCTION 3: Kiểm tra OTP (Verify OTP)
+ */
 exports.verifyOtp = onCall(
 	{
 		region: "asia-southeast1",

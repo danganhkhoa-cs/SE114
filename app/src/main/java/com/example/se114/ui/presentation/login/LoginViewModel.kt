@@ -48,41 +48,7 @@ class LoginViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
             try {
-                // BƯỚC 1: Tìm tài khoản trong Firestore trước
-                val querySnapshot = firestore.collection("users")
-                    .whereEqualTo("email", _uiState.value.email)
-                    .get()
-                    .await()
-
-                if (!querySnapshot.isEmpty) {
-                    val document = querySnapshot.documents[0]
-                    val dbPassword = document.getString("password")
-
-                    // BƯỚC 2: Phân loại User
-                    if (!dbPassword.isNullOrEmpty()) {
-                        // TRƯỜNG HỢP A: Bypass Login (Ưu tiên mật khẩu trong DB - thường không cần check verify email)
-                        if (dbPassword == _uiState.value.password) {
-                            saveUserDataAndProceed(document.id)
-                        } else {
-                            // Sai mật khẩu
-                            _uiState.update {
-                                it.copy(
-                                    isLoading = false,
-                                    emailError = null,
-                                    passwordError = "Incorrect email or password",
-                                    errorMessage = "Incorrect email or password"
-                                )
-                            }
-                        }
-                    } else {
-                        // TRƯỜNG HỢP B: User Firebase Auth chuẩn
-                        signInWithFirebaseAuth()
-                    }
-                } else {
-                    // Email không tồn tại trong Firestore -> Thử Auth lần cuối
-                    signInWithFirebaseAuth()
-                }
-
+                signInWithFirebaseAuth()
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, errorMessage = "Connection error: ${e.message}") }
             }
