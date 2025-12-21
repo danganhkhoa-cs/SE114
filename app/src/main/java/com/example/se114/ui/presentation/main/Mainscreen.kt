@@ -14,12 +14,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.se114.local.PreferencesManager
+import com.example.se114.ui.presentation.chat.ChatListViewModel
 import com.example.se114.ui.presentation.navigation.BottomNavItem
 import com.example.se114.ui.presentation.navigation.MainNavGraph
 import com.example.se114.ui.theme.AppTealDark
@@ -37,6 +42,13 @@ fun MainScreen(
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
+
+    // Inject ChatListViewModel để lấy số lượng tin nhắn chưa đọc
+    // Lưu ý: ViewModel này sẽ sống cùng scope với MainScreen (là toàn bộ Activity)
+    // Nếu bạn muốn scope nhỏ hơn thì cần điều chỉnh Graph, nhưng để làm Badge toàn cục thì ở đây là hợp lý.
+    val chatViewModel: ChatListViewModel = hiltViewModel()
+    val chatUiState by chatViewModel.uiState.collectAsStateWithLifecycle()
+    val unreadCount = chatUiState.totalUnreadCount
 
     val items = listOf(
         BottomNavItem.Home,
@@ -57,14 +69,12 @@ fun MainScreen(
         AppTealLight.copy(alpha = 0.95f)
     }
 
-    // Border phát sáng nhẹ ở Dark Mode
     val bottomBarBorderColor = if (isDarkTheme) {
         AppTealNeon.copy(alpha = 0.3f)
     } else {
         AppTealDark.copy(alpha = 0.2f)
     }
 
-    // Màu cho nút FAB (Create Post)
     val fabColor = if (isDarkTheme) AppTealNeon else AppTealDark
     val fabContentColor = if (isDarkTheme) Color(0xFF00363D) else Color.White
 
@@ -76,7 +86,6 @@ fun MainScreen(
                         .fillMaxWidth()
                         .navigationBarsPadding()
                 ) {
-                    // Main Bottom Bar with border and shadow
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -90,28 +99,17 @@ fun MainScreen(
                             .align(Alignment.BottomCenter),
                         color = bottomBarBaseColor,
                         tonalElevation = 0.dp,
-                        border = BorderStroke(
-                            width = 1.dp,
-                            color = bottomBarBorderColor
-                        )
+                        border = BorderStroke(width = 1.dp, color = bottomBarBorderColor)
                     ) {
-                        // Lớp phủ Gradient tạo hiệu ứng bóng (Glossy Effect)
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .background(
                                     brush = Brush.verticalGradient(
                                         colors = if (isDarkTheme) {
-                                            listOf(
-                                                Color.White.copy(alpha = 0.08f),
-                                                Color.White.copy(alpha = 0.02f),
-                                                Color.Transparent
-                                            )
+                                            listOf(Color.White.copy(alpha = 0.08f), Color.White.copy(alpha = 0.02f), Color.Transparent)
                                         } else {
-                                            listOf(
-                                                Color.White.copy(alpha = 0.6f),
-                                                Color.Transparent
-                                            )
+                                            listOf(Color.White.copy(alpha = 0.6f), Color.Transparent)
                                         }
                                     )
                                 )
@@ -125,72 +123,79 @@ fun MainScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 items.forEachIndexed { _, item ->
-                                    val selected = currentDestination?.hierarchy?.any {
-                                        it.route == item.route
-                                    } == true
+                                    val selected = currentDestination?.hierarchy?.any { it.route == item.route } == true
 
                                     if (!item.isEmergency) {
-                                        // Regular navigation items
                                         Column(
                                             horizontalAlignment = Alignment.CenterHorizontally,
                                             verticalArrangement = Arrangement.Center,
                                             modifier = Modifier.weight(1f)
                                         ) {
-                                            IconButton(
-                                                onClick = {
-                                                    navController.navigate(item.route) {
-                                                        popUpTo(navController.graph.findStartDestination().id) {
-                                                            saveState = true
+                                            Box {
+                                                IconButton(
+                                                    onClick = {
+                                                        navController.navigate(item.route) {
+                                                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                                            launchSingleTop = true
+                                                            restoreState = true
                                                         }
-                                                        launchSingleTop = true
-                                                        restoreState = true
-                                                    }
-                                                },
-                                                modifier = Modifier.size(64.dp)
-                                            ) {
-                                                Box(
-                                                    contentAlignment = Alignment.Center,
-                                                    modifier = Modifier
-                                                        .size(64.dp)
-                                                        .background(
-                                                            color = if (selected) {
-                                                                if (isDarkTheme) AppTealNeon.copy(alpha = 0.15f)
-                                                                else AppTealDark.copy(alpha = 0.2f)
-                                                            } else {
-                                                                Color.Transparent
-                                                            },
-                                                            shape = RoundedCornerShape(18.dp)
-                                                        )
+                                                    },
+                                                    modifier = Modifier.size(64.dp)
                                                 ) {
-                                                    Icon(
-                                                        imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
-                                                        contentDescription = "",
-                                                        modifier = Modifier.size(32.dp),
-                                                        tint = if (selected) {
-                                                            if (isDarkTheme) AppTealNeon else AppTealDark
-                                                        } else {
-                                                            if (isDarkTheme) Color(0xFF90A4AE) else Color(0xFF757575)
-                                                        }
-                                                    )
+                                                    Box(
+                                                        contentAlignment = Alignment.Center,
+                                                        modifier = Modifier
+                                                            .size(64.dp)
+                                                            .background(
+                                                                color = if (selected) {
+                                                                    if (isDarkTheme) AppTealNeon.copy(alpha = 0.15f)
+                                                                    else AppTealDark.copy(alpha = 0.2f)
+                                                                } else {
+                                                                    Color.Transparent
+                                                                },
+                                                                shape = RoundedCornerShape(18.dp)
+                                                            )
+                                                    ) {
+                                                        Icon(
+                                                            imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
+                                                            contentDescription = "",
+                                                            modifier = Modifier.size(32.dp),
+                                                            tint = if (selected) {
+                                                                if (isDarkTheme) AppTealNeon else AppTealDark
+                                                            } else {
+                                                                if (isDarkTheme) Color(0xFF90A4AE) else Color(0xFF757575)
+                                                            }
+                                                        )
+                                                    }
+                                                }
+
+                                                // --- HIỂN THỊ BADGE UNREAD COUNT ---
+                                                if (item == BottomNavItem.Chat && unreadCount > 0) {
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .align(Alignment.TopEnd)
+                                                            .offset(x = (-8).dp, y = 8.dp)
+                                                            .size(20.dp)
+                                                            .background(Color(0xFFFF1744), CircleShape),
+                                                        contentAlignment = Alignment.Center
+                                                    ) {
+                                                        Text(
+                                                            text = if (unreadCount > 9) "9+" else unreadCount.toString(),
+                                                            color = Color.White,
+                                                            fontSize = 11.sp,
+                                                            fontWeight = FontWeight.Bold
+                                                        )
+                                                    }
                                                 }
                                             }
 
-                                            // MERGED FEATURE: Selected indicator dot (from Mainscreen.kt)
                                             if (selected) {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .size(7.dp)
-                                                        .background(
-                                                            if (isDarkTheme) AppTealNeon else AppTealDark,
-                                                            shape = CircleShape
-                                                        )
-                                                )
+                                                Box(modifier = Modifier.size(7.dp).background(if (isDarkTheme) AppTealNeon else AppTealDark, shape = CircleShape))
                                             } else {
                                                 Spacer(modifier = Modifier.height(7.dp))
                                             }
                                         }
                                     } else {
-                                        // Spacer for emergency button
                                         Spacer(modifier = Modifier.weight(1f))
                                     }
                                 }
@@ -198,49 +203,23 @@ fun MainScreen(
                         }
                     }
 
-                    // Create Post FAB (Thay thế Emergency FAB cũ)
                     FloatingActionButton(
                         onClick = {
                             navController.navigate(BottomNavItem.Emergency.route) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
-                                }
+                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
                                 launchSingleTop = true
                                 restoreState = true
                             }
                         },
-                        containerColor = fabColor, // Dùng màu Theme
+                        containerColor = fabColor,
                         contentColor = fabContentColor,
-                        modifier = Modifier
-                            .size(70.dp)
-                            .align(Alignment.TopCenter)
-                            .offset(y = 8.dp),
+                        modifier = Modifier.size(70.dp).align(Alignment.TopCenter).offset(y = 8.dp),
                         shape = CircleShape,
-                        elevation = FloatingActionButtonDefaults.elevation(
-                            defaultElevation = 18.dp,
-                            pressedElevation = 22.dp,
-                            hoveredElevation = 20.dp
-                        )
+                        elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 18.dp, pressedElevation = 22.dp, hoveredElevation = 20.dp)
                     ) {
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(64.dp)
-                                    .background(
-                                        Color.White.copy(alpha = 0.1f),
-                                        shape = CircleShape
-                                    )
-                            )
-                            // Đổi Icon thành dấu cộng (Add)
-                            Icon(
-                                imageVector = Icons.Filled.Add,
-                                contentDescription = "Create Post",
-                                modifier = Modifier.size(38.dp),
-                                tint = fabContentColor
-                            )
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                            Box(modifier = Modifier.size(64.dp).background(Color.White.copy(alpha = 0.1f), shape = CircleShape))
+                            Icon(imageVector = Icons.Filled.Add, contentDescription = "Create Post", modifier = Modifier.size(38.dp), tint = fabContentColor)
                         }
                     }
                 }
@@ -253,9 +232,7 @@ fun MainScreen(
             isDarkTheme = isDarkTheme,
             onThemeChange = onThemeChange,
             onLogout = onLogout,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
+            modifier = Modifier.fillMaxSize().padding(innerPadding)
         )
     }
 }
