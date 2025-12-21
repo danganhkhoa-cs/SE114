@@ -1,6 +1,10 @@
 package com.example.se114.ui.presentation.chat
 
+import android.widget.Toast
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -10,22 +14,24 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.se114.data.DummyChatData
 import com.example.se114.data.model.ChatMessage
 import com.example.se114.local.PreferencesManager
 import com.example.se114.ui.theme.AppTealDark
-import com.example.se114.ui.theme.AppTealLight
 import com.example.se114.ui.theme.DarkSurface
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -33,24 +39,14 @@ import com.example.se114.ui.theme.DarkSurface
 fun ChatDetailScreen(
     conversationId: String,
     onBackClick: () -> Unit,
+    onUserClick: (String) -> Unit, // Callback mới để xem Profile
     preferencesManager: PreferencesManager,
     viewModel: ChatDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val isDarkMode = preferencesManager.isDarkMode
-
-    // Auto Scroll to bottom when new message arrives
-    val listState = rememberLazyListState()
-    LaunchedEffect(uiState.messages.size) {
-        if (uiState.messages.isNotEmpty()) {
-            listState.animateScrollToItem(uiState.messages.size - 1)
-        }
-    }
-
-    // Load conversation data when screen opens
-    LaunchedEffect(conversationId) {
-        viewModel.loadConversation(conversationId)
-    }
+    val myId = preferencesManager.userId
+    val context = LocalContext.current
 
     // Colors
     val headerColor = if (isDarkMode) Color.Black else AppTealDark
@@ -58,6 +54,34 @@ fun ChatDetailScreen(
     val inputAreaColor = if (isDarkMode) Color.Black else Color.White
     val inputFieldColor = if (isDarkMode) Color(0xFF333333) else Color(0xFFF0F2F5)
     val inputTextColor = if (isDarkMode) Color.White else Color.Black
+
+    // Menu state
+    var showMenu by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+
+    // Load conversation data
+    LaunchedEffect(conversationId) {
+        viewModel.loadConversation(conversationId)
+    }
+
+    // Identify partner ID for clicking
+    val partnerId = uiState.conversation?.participants?.find { it != myId } ?: ""
+
+    // Hiển thị Toast khi có lỗi gửi tin nhắn
+    LaunchedEffect(uiState.sendError) {
+        uiState.sendError?.let { error ->
+            Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
+            viewModel.clearError()
+        }
+    }
+
+    // Auto Scroll
+    val listState = rememberLazyListState()
+    LaunchedEffect(uiState.messages.size) {
+        if (uiState.messages.isNotEmpty()) {
+            listState.animateScrollToItem(uiState.messages.size - 1)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -73,8 +97,25 @@ fun ChatDetailScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
                     }
 
+                    val partnerName = uiState.partnerProfile?.name
+                        ?: uiState.conversation?.participantData?.get(partnerId)?.name
+                        ?: "Chat"
+
+                    val partnerAvatar = uiState.partnerProfile?.avatar
+                        ?: uiState.conversation?.participantData?.get(partnerId)?.avatar
+                        ?: ""
+
+                    // Row chứa Avatar và Tên, có thể click để xem Profile
                     Row(
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable {
+                                if (partnerId.isNotEmpty()) {
+                                    onUserClick(partnerId)
+                                }
+                            }
+                            .padding(vertical = 4.dp, horizontal = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box(
@@ -84,26 +125,39 @@ fun ChatDetailScreen(
                                 .background(Color.White),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(text = uiState.conversation?.avatar ?: "", fontSize = 20.sp)
+                            Text(text = partnerAvatar, fontSize = 20.sp)
                         }
 
                         Spacer(modifier = Modifier.width(12.dp))
 
                         Column {
                             Text(
-                                text = uiState.conversation?.name ?: "Chat",
+                                text = partnerName,
                                 color = Color.White,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 17.sp,
                                 maxLines = 1
                             )
-                            if (uiState.conversation?.isOnline == true) {
-                                Text(
-                                    preferencesManager.getString("chat_active_now"),
-                                    color = AppTealLight,
-                                    fontSize = 12.sp
-                                )
-                            }
+                        }
+                    }
+
+                    Box {
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "Menu", tint = Color.White)
+                        }
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false },
+                            modifier = Modifier.background(if(isDarkMode) Color(0xFF333333) else Color.White)
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(preferencesManager.getString("delete_chat_menu"), color = Color.Red) },
+                                onClick = {
+                                    showMenu = false
+                                    showDeleteConfirm = true
+                                },
+                                leadingIcon = { Icon(Icons.Default.Delete, null, tint = Color.Red) }
+                            )
                         }
                     }
                 }
@@ -111,66 +165,76 @@ fun ChatDetailScreen(
         },
         containerColor = backgroundColor,
         bottomBar = {
-            Surface(color = inputAreaColor, tonalElevation = 8.dp) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    OutlinedTextField(
-                        value = uiState.messageInput,
-                        onValueChange = viewModel::onMessageInputChange,
-                        modifier = Modifier
-                            .weight(1f)
-                            .heightIn(min = 48.dp, max = 100.dp),
-                        placeholder = {
-                            Text(
-                                preferencesManager.getString("chat_type_message"),
-                                fontSize = 15.sp,
-                                color = Color.Gray
-                            )
-                        },
-                        shape = RoundedCornerShape(24.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Color.Transparent,
-                            unfocusedBorderColor = Color.Transparent,
-                            focusedContainerColor = inputFieldColor,
-                            unfocusedContainerColor = inputFieldColor,
-                            focusedTextColor = inputTextColor,
-                            unfocusedTextColor = inputTextColor,
-                            cursorColor = AppTealDark
-                        ),
-                        maxLines = 4
-                    )
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    IconButton(
-                        onClick = {
-                            // Truyền text trả lời tự động để ViewModel xử lý
-                            viewModel.sendMessage(
-                                autoReplyText = preferencesManager.getString("chat_auto_reply")
-                            )
-                        },
-                        modifier = Modifier.size(40.dp)
+            if (uiState.isPending) {
+                Surface(color = inputAreaColor, tonalElevation = 16.dp, shadowElevation = 16.dp) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.Send,
-                            "Send",
-                            tint = if (uiState.messageInput.isNotBlank()) AppTealDark else Color.Gray,
-                            modifier = Modifier.size(24.dp)
+                        Text(
+                            text = preferencesManager.getString("stranger_chat_warning_msg"),
+                            fontSize = 13.sp,
+                            color = Color.Gray,
+                            textAlign = TextAlign.Center
                         )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Button(
+                                onClick = { viewModel.declineConversation(); onBackClick() },
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color.LightGray, contentColor = Color.Black),
+                                shape = RoundedCornerShape(12.dp)
+                            ) { Text(preferencesManager.getString("btn_decline_chat")) }
+                            Button(
+                                onClick = viewModel::acceptConversation,
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.buttonColors(containerColor = AppTealDark, contentColor = Color.White),
+                                shape = RoundedCornerShape(12.dp)
+                            ) { Text(preferencesManager.getString("btn_accept_chat")) }
+                        }
+                    }
+                }
+            } else {
+                Surface(color = inputAreaColor, tonalElevation = 8.dp) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = uiState.messageInput,
+                            onValueChange = viewModel::onMessageInputChange,
+                            modifier = Modifier.weight(1f).heightIn(min = 48.dp, max = 100.dp),
+                            placeholder = { Text(preferencesManager.getString("chat_type_message"), fontSize = 15.sp, color = Color.Gray) },
+                            shape = RoundedCornerShape(24.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color.Transparent,
+                                unfocusedBorderColor = Color.Transparent,
+                                focusedContainerColor = inputFieldColor,
+                                unfocusedContainerColor = inputFieldColor,
+                                focusedTextColor = inputTextColor,
+                                unfocusedTextColor = inputTextColor,
+                                cursorColor = AppTealDark
+                            ),
+                            maxLines = 4
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        IconButton(
+                            onClick = { viewModel.sendMessage() },
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.Send,
+                                "Send",
+                                tint = if (uiState.messageInput.isNotBlank()) AppTealDark else Color.Gray,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                     }
                 }
             }
         }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .padding(padding)
-                .fillMaxSize()
-        ) {
+        Column(modifier = Modifier.padding(padding).fillMaxSize()) {
             LazyColumn(
                 state = listState,
                 modifier = Modifier.weight(1f),
@@ -180,17 +244,47 @@ fun ChatDetailScreen(
                 items(uiState.messages) { msg ->
                     MessageBubble(
                         message = msg,
-                        isMe = msg.senderId == DummyChatData.CURRENT_USER_ID,
+                        isMe = msg.senderId == myId,
                         isDarkMode = isDarkMode
                     )
                 }
             }
         }
+
+        if (showDeleteConfirm) {
+            AlertDialog(
+                onDismissRequest = { showDeleteConfirm = false },
+                title = { Text(preferencesManager.getString("delete_chat_confirm_title")) },
+                text = { Text(preferencesManager.getString("delete_chat_confirm_msg")) },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            viewModel.deleteChatOneSided {
+                                showDeleteConfirm = false
+                                onBackClick()
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                    ) {
+                        Text(preferencesManager.getString("delete"))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteConfirm = false }) {
+                        Text(preferencesManager.getString("cancel"))
+                    }
+                }
+            )
+        }
     }
 }
 
 @Composable
-fun MessageBubble(message: ChatMessage, isMe: Boolean, isDarkMode: Boolean) {
+fun MessageBubble(
+    message: ChatMessage,
+    isMe: Boolean,
+    isDarkMode: Boolean
+) {
     val bubbleColor = if (isMe) AppTealDark else (if(isDarkMode) Color(0xFF333333) else Color(0xFFE4E6EB))
     val textColor = if (isMe) Color.White else (if(isDarkMode) Color.White else Color.Black)
 

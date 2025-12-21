@@ -1,43 +1,110 @@
 package com.example.se114.ui.presentation.chat
 
 import androidx.lifecycle.ViewModel
-import com.example.se114.data.DummyChatData
+import androidx.lifecycle.viewModelScope
+import com.example.se114.data.model.ChatStatus
 import com.example.se114.data.model.Conversation
+import com.example.se114.data.model.FriendshipState
+import com.example.se114.data.model.UserSummary
+import com.example.se114.local.PreferencesManager
+import com.google.firebase.firestore.FieldPath
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import java.util.UUID
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
 data class ChatListUiState(
-    val conversations: List<Conversation> = emptyList(),
+    val inboxConversations: List<Conversation> = emptyList(),
+    val spamConversations: List<Conversation> = emptyList(),
+    val friendConversations: List<Conversation> = emptyList(),
+
+    val sentFriendRequests: List<Conversation> = emptyList(),
+    val receivedFriendRequests: List<Conversation> = emptyList(),
+
+    val userProfiles: Map<String, UserSummary> = emptyMap(),
+    val totalUnreadCount: Int = 0,
     val searchQuery: String = "",
-    val isShowingAddFriendDialog: Boolean = false
+
+    val isShowingAddFriendDialog: Boolean = false,
+    val searchPhoneQuery: String = "",
+    val searchResults: List<UserSummary> = emptyList(),
+    val isSearching: Boolean = false,
+
+    val isShowingFriendsManagerDialog: Boolean = false,
+
+    val isLoading: Boolean = false,
+    val error: String? = null
 )
 
 @HiltViewModel
 class ChatListViewModel @Inject constructor(
-    // Inject Repository nếu có
+    private val firestore: FirebaseFirestore,
+    private val preferencesManager: PreferencesManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ChatListUiState())
     val uiState = _uiState.asStateFlow()
 
-    // Danh sách gốc để lọc
     private var allConversations: List<Conversation> = emptyList()
+    private val currentUserId = preferencesManager.userId
 
     init {
-        loadConversations()
+        listenToConversations()
     }
 
-    private fun loadConversations() {
-        // Giả lập lấy dữ liệu từ Dummy
-        allConversations = DummyChatData.conversations
-        updateFilteredList()
+    private fun listenToConversations() {
+        if (currentUserId.isBlank()) return
+
+        _uiState.update { it.copy(isLoading = true) }
+
+        firestore.collection("conversations")
+            .whereArrayContains("participants", currentUserId)
+            .addSnapshotListener { snapshot, e ->
+                if (e != null) {
+                    _uiState.update { it.copy(isLoading = false, error = e.message) }
+                    return@addSnapshotListener
+                }
+
+                if (snapshot != null) {
+                    val conversations = snapshot.toObjects(Conversation::class.java)
+                    allConversations = conversations.sortedByDescending { it.lastMessageTime }
+
+                    fetchLatestUserProfiles(allConversations)
+                    updateFilteredList()
+                    _uiState.update { it.copy(isLoading = false) }
+                }
+            }
     }
 
-    // --- Search Logic ---
+    private fun fetchLatestUserProfiles(conversations: List<Conversation>) {
+        viewModelScope.launch {
+            val partnerIds = conversations.flatMap { it.participants }
+                .filter { it != currentUserId }
+                .distinct()
+
+            if (partnerIds.isEmpty()) return@launch
+
+            val newUserMap = _uiState.value.userProfiles.toMutableMap()
+            partnerIds.chunked(10).forEach { chunk ->
+                try {
+                    val usersSnapshot = firestore.collection("users")
+                        .whereIn(FieldPath.documentId(), chunk).get().await()
+                    for (doc in usersSnapshot) {
+                        val name = doc.getString("name") ?: "Unknown"
+                        val avatar = doc.getString("avatar_url") ?: name.take(1).uppercase()
+                        val phone = doc.getString("phone") ?: ""
+                        newUserMap[doc.id] = UserSummary(doc.id, name, avatar, phone)
+                    }
+                } catch (e: Exception) { e.printStackTrace() }
+            }
+            _uiState.update { it.copy(userProfiles = newUserMap) }
+        }
+    }
 
     fun onSearchQueryChange(newQuery: String) {
         _uiState.update { it.copy(searchQuery = newQuery) }
@@ -46,53 +113,194 @@ class ChatListViewModel @Inject constructor(
 
     private fun updateFilteredList() {
         val query = _uiState.value.searchQuery
-        val filtered = if (query.isBlank()) {
-            allConversations
+
+        // 1. Danh sách bạn bè: Lấy từ TOÀN BỘ conversations, KHÔNG lọc theo deletedBy.
+        val friendsSource = allConversations.filter {
+            it.friendshipState == FriendshipState.FRIENDS
+        }
+
+        // 2. Danh sách hiển thị (Inbox, Spam): Cần lọc bỏ những cái đã xóa (deletedBy)
+        // Đây là những tin nhắn người dùng "nhìn thấy" trong Inbox/Spam
+        val visibleConversations = allConversations.filter { !it.isDeletedBy(currentUserId) }
+
+        // 3. Friend Requests: CẬP NHẬT QUAN TRỌNG
+        // Lấy từ TOÀN BỘ conversations. Dù người dùng có xóa/ẩn tin nhắn chat (deletedBy),
+        // thì Lời mời kết bạn (Friend Request) vẫn phải hiện ra để họ chấp nhận/từ chối.
+        val sentRequestsSource = allConversations.filter {
+            it.friendshipState == FriendshipState.PENDING && it.friendRequestSenderId == currentUserId
+        }
+
+        val receivedRequestsSource = allConversations.filter {
+            it.friendshipState == FriendshipState.PENDING && it.friendRequestSenderId != currentUserId
+        }
+
+        // --- INBOX LOGIC ---
+        val inboxSource = visibleConversations.filter { conv ->
+            val isChatAccepted = conv.status == ChatStatus.ACCEPTED
+            val isMySentChatPending = conv.status == ChatStatus.PENDING && conv.requestSenderId == currentUserId
+
+            // Điều kiện để hiện trong Inbox:
+            // 1. Trạng thái chat hợp lệ (Accepted hoặc Mình gửi Pending)
+            // 2. PHẢI CÓ TIN NHẮN (lastMessage không rỗng) -> Để tránh hiện mấy cái "kết bạn" rác
+            (isChatAccepted || isMySentChatPending) && conv.lastMessage.isNotBlank() && conv.lastMessage != "Đã gửi lời mời kết bạn"
+        }
+
+        // --- SPAM (TIN NHẮN CHỜ) LOGIC ---
+        val spamSource = visibleConversations.filter { conv ->
+            // Chỉ hiện Spam nếu có tin nhắn thực sự (lastMessage không rỗng)
+            conv.status == ChatStatus.PENDING && conv.requestSenderId != currentUserId && conv.lastMessage.isNotBlank() && conv.lastMessage != "Đã gửi lời mời kết bạn"
+        }
+
+        val filteredInbox = if (query.isBlank()) {
+            inboxSource
         } else {
-            allConversations.filter {
-                it.name.contains(query, ignoreCase = true) ||
-                        it.lastMessage.contains(query, ignoreCase = true)
+            inboxSource.filter { conv ->
+                val partnerId = conv.participants.find { it != currentUserId }
+                val partnerName = _uiState.value.userProfiles[partnerId]?.name ?: "Unknown"
+                partnerName.contains(query, ignoreCase = true) || conv.lastMessage.contains(query, ignoreCase = true)
             }
         }
-        _uiState.update { it.copy(conversations = filtered) }
-    }
 
-    // --- Actions ---
+        val unreadCount = (inboxSource + spamSource).count { it.isUnread(currentUserId) }
 
-    fun markAsRead(conversationId: String) {
-        DummyChatData.markAsRead(conversationId)
-        loadConversations() // Reload để cập nhật UI (bỏ chấm đỏ)
+        _uiState.update {
+            it.copy(
+                inboxConversations = filteredInbox,
+                spamConversations = spamSource,
+                friendConversations = friendsSource,
+                sentFriendRequests = sentRequestsSource,
+                receivedFriendRequests = receivedRequestsSource,
+                totalUnreadCount = unreadCount
+            )
+        }
     }
 
     fun deleteConversation(conversationId: String) {
-        DummyChatData.deleteConversation(conversationId)
-        loadConversations() // Reload list
+        viewModelScope.launch {
+            firestore.collection("conversations").document(conversationId)
+                .update(
+                    mapOf(
+                        "deletedBy" to FieldValue.arrayUnion(currentUserId),
+                        "hiddenTimestamps.$currentUserId" to System.currentTimeMillis()
+                    )
+                )
+        }
     }
 
-    fun addFriend(phoneNumber: String) {
-        // Logic thêm bạn giả lập
-        val newChat = Conversation(
-            id = UUID.randomUUID().toString(),
-            name = "User $phoneNumber",
-            avatar = phoneNumber.takeLast(1),
-            lastMessage = "Hello!",
-            lastMessageTime = "Now",
-            unreadCount = 0,
-            isOnline = true
-        )
-        DummyChatData.conversations.add(0, newChat)
+    fun onSearchPhoneChange(phone: String) { _uiState.update { it.copy(searchPhoneQuery = phone) } }
 
-        loadConversations()
-        hideAddFriendDialog()
+    fun searchUsersByPhone() {
+        val phone = _uiState.value.searchPhoneQuery.trim()
+        if (phone.isBlank()) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSearching = true, searchResults = emptyList(), error = null) }
+            try {
+                val querySnapshot = firestore.collection("users").whereEqualTo("phone", phone).get().await()
+                val results = querySnapshot.documents.mapNotNull { doc ->
+                    if (doc.id == currentUserId) null
+                    else UserSummary(doc.id, doc.getString("name")?:"Unknown", doc.getString("avatar_url")?:"", doc.getString("phone")?:"")
+                }
+                _uiState.update { it.copy(isSearching = false, searchResults = results) }
+                if (results.isEmpty()) _uiState.update { it.copy(error = "Không tìm thấy người dùng") }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isSearching = false, error = e.message) }
+            }
+        }
     }
 
-    // --- Dialog Controls ---
+    fun sendFriendRequest(targetUser: UserSummary) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            try {
+                val existingConv = allConversations.find { it.participants.contains(targetUser.uid) }
 
-    fun showAddFriendDialog() {
-        _uiState.update { it.copy(isShowingAddFriendDialog = true) }
+                if (existingConv != null) {
+                    val updates = hashMapOf<String, Any>(
+                        "friendshipState" to FriendshipState.PENDING,
+                        "friendRequestSenderId" to currentUserId,
+                        "deletedBy" to FieldValue.arrayRemove(currentUserId),
+                        "status" to if (existingConv.status == ChatStatus.ACCEPTED) ChatStatus.ACCEPTED else ChatStatus.PENDING,
+                        "requestSenderId" to if (existingConv.status == ChatStatus.ACCEPTED) existingConv.requestSenderId else currentUserId
+                    )
+
+                    firestore.collection("conversations").document(existingConv.id).update(updates)
+                    _uiState.update { it.copy(isLoading = false) }
+                    return@launch
+                }
+
+                val newConvId = "${currentUserId}_${targetUser.uid}_${System.currentTimeMillis()}"
+                val myName = preferencesManager.userName
+                val myAvatar = preferencesManager.userName.take(1).uppercase()
+                val participantData = mapOf(currentUserId to UserSummary(currentUserId, myName, myAvatar), targetUser.uid to targetUser)
+
+                val newConversation = Conversation(
+                    id = newConvId,
+                    lastMessage = "",
+                    lastMessageTime = System.currentTimeMillis(),
+                    status = ChatStatus.PENDING,
+                    friendshipState = FriendshipState.PENDING,
+                    friendRequestSenderId = currentUserId,
+                    requestSenderId = currentUserId,
+                    participants = listOf(currentUserId, targetUser.uid),
+                    participantData = participantData,
+                    lastSenderId = currentUserId,
+                    readBy = listOf(currentUserId),
+                    deletedBy = emptyList()
+                )
+                firestore.collection("conversations").document(newConvId).set(newConversation).await()
+                _uiState.update { it.copy(isLoading = false) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isLoading = false, error = e.message) }
+            }
+        }
     }
 
-    fun hideAddFriendDialog() {
-        _uiState.update { it.copy(isShowingAddFriendDialog = false) }
+    fun acceptRequest(conversationId: String) {
+        viewModelScope.launch {
+            firestore.collection("conversations").document(conversationId)
+                .update(
+                    mapOf(
+                        "friendshipState" to FriendshipState.FRIENDS,
+                        "status" to ChatStatus.ACCEPTED,
+                        "lastMessageTime" to System.currentTimeMillis()
+                    )
+                ).await()
+        }
     }
+
+    fun declineRequest(conversationId: String) {
+        viewModelScope.launch {
+            firestore.collection("conversations").document(conversationId)
+                .update(
+                    mapOf(
+                        "friendshipState" to FriendshipState.NONE,
+                        "friendRequestSenderId" to ""
+                    )
+                ).await()
+        }
+    }
+
+    fun unfriend(conversationId: String) {
+        viewModelScope.launch {
+            val conv = allConversations.find { it.id == conversationId }
+            if (conv != null) {
+                if (conv.friendshipState == FriendshipState.PENDING) {
+                    firestore.collection("conversations").document(conversationId).delete().await()
+                } else {
+                    firestore.collection("conversations").document(conversationId)
+                        .update(
+                            mapOf(
+                                "friendshipState" to FriendshipState.NONE,
+                                "friendRequestSenderId" to ""
+                            )
+                        ).await()
+                }
+            }
+        }
+    }
+
+    fun showAddFriendDialog() { _uiState.update { it.copy(isShowingAddFriendDialog = true, searchResults = emptyList(), searchPhoneQuery = "") } }
+    fun hideAddFriendDialog() { _uiState.update { it.copy(isShowingAddFriendDialog = false, error = null) } }
+    fun showFriendsManagerDialog() { _uiState.update { it.copy(isShowingFriendsManagerDialog = true) } }
+    fun hideFriendsManagerDialog() { _uiState.update { it.copy(isShowingFriendsManagerDialog = false) } }
 }

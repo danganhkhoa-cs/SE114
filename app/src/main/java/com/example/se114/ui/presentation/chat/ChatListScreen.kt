@@ -9,11 +9,18 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,31 +35,39 @@ import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.se114.data.model.Conversation
+import com.example.se114.data.model.FriendshipState
+import com.example.se114.data.model.UserSummary
 import com.example.se114.local.PreferencesManager
 import com.example.se114.ui.theme.AppTealDark
 import com.example.se114.ui.theme.DarkSurface
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun ChatListScreen(
     onConversationClick: (String) -> Unit,
+    onSpamClick: () -> Unit,
+    onUserClick: (String) -> Unit,
     preferencesManager: PreferencesManager,
     viewModel: ChatListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val isDarkMode = preferencesManager.isDarkMode
 
-    // Header Colors
-    val headerColor = AppTealDark
-    val sheetColor = if (isDarkMode) DarkSurface else Color.White
-    val deleteText = preferencesManager.getString("delete")
+    val backgroundColor = if (isDarkMode) DarkSurface else Color.White
 
-    Box(modifier = Modifier.fillMaxSize().background(headerColor)) {
+    // --- CUSTOM UI: TEAL HEADER ---
+    Box(modifier = Modifier.fillMaxSize().background(if (isDarkMode) DarkSurface else AppTealDark)) {
         Column(modifier = Modifier.fillMaxSize()) {
 
-            // --- HEADER ---
+            // Header Content
             Column(
-                modifier = Modifier.padding(top = 48.dp, bottom = 24.dp, start = 16.dp, end = 16.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 24.dp, end = 24.dp, top = 48.dp, bottom = 24.dp)
             ) {
+                // Title & Action Buttons
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -61,32 +76,52 @@ fun ChatListScreen(
                     Text(
                         text = preferencesManager.getString("chat_title"),
                         style = MaterialTheme.typography.headlineLarge,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
                     )
-                    IconButton(
-                        onClick = viewModel::showAddFriendDialog,
-                        modifier = Modifier
-                            .background(Color.White.copy(alpha = 0.2f), CircleShape)
-                            .size(40.dp)
-                    ) {
-                        Icon(Icons.Default.PersonAdd, contentDescription = "Add", tint = Color.White, modifier = Modifier.size(24.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        // Nút thêm bạn
+                        IconButton(
+                            onClick = { viewModel.showAddFriendDialog() },
+                            modifier = Modifier.background(Color.White.copy(0.2f), CircleShape).size(40.dp)
+                        ) {
+                            Icon(Icons.Default.PersonAdd, contentDescription = "Add Friend", tint = Color.White)
+                        }
+
+                        // Nút quản lý bạn bè + Badge thông báo đỏ
+                        val requestCount = uiState.receivedFriendRequests.size
+
+                        Box {
+                            IconButton(
+                                onClick = { viewModel.showFriendsManagerDialog() },
+                                modifier = Modifier.background(Color.White.copy(0.2f), CircleShape).size(40.dp)
+                            ) {
+                                Icon(Icons.Default.Group, contentDescription = "Friends", tint = Color.White)
+                            }
+                            if (requestCount > 0) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(10.dp)
+                                        .background(Color(0xFFFF5252), CircleShape)
+                                        .align(Alignment.TopEnd)
+                                        .offset(x = (-2).dp, y = 2.dp)
+                                )
+                            }
+                        }
                     }
                 }
 
-                // Search Bar
+                // Search Bar Custom
                 TextField(
                     value = uiState.searchQuery,
                     onValueChange = viewModel::onSearchQueryChange,
-                    placeholder = {
-                        Text(preferencesManager.getString("chat_search"), color = Color.White.copy(alpha = 0.7f))
-                    },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.White) },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(26.dp),
+                    placeholder = { Text(preferencesManager.getString("chat_search"), color = Color.White.copy(0.7f)) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.White) },
+                    shape = RoundedCornerShape(24.dp),
                     colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Color.White.copy(alpha = 0.2f),
-                        unfocusedContainerColor = Color.White.copy(alpha = 0.2f),
+                        focusedContainerColor = Color.White.copy(0.2f),
+                        unfocusedContainerColor = Color.White.copy(0.2f),
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent,
                         focusedTextColor = Color.White,
@@ -97,196 +132,440 @@ fun ChatListScreen(
                 )
             }
 
-            // --- LIST CONTENT ---
+            // List Content Surface
             Surface(
                 modifier = Modifier.fillMaxSize(),
-                color = sheetColor,
+                color = backgroundColor,
                 shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)
             ) {
-                LazyColumn(contentPadding = PaddingValues(top = 24.dp, bottom = 80.dp)) {
-                    items(uiState.conversations, key = { it.id }) { conversation ->
-                        ChatListItem(
-                            conversation = conversation,
-                            deleteText = deleteText,
-                            onClick = { id ->
-                                viewModel.markAsRead(id)
-                                onConversationClick(id)
-                            },
-                            onDelete = viewModel::deleteConversation,
-                            isDarkMode = isDarkMode
-                        )
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(top = 24.dp, bottom = 16.dp, start = 16.dp, end = 16.dp)
+                ) {
+                    // --- MỤC TIN NHẮN CHỜ (SPAM) ---
+                    // Chỉ hiện khi có tin nhắn trong danh sách spamConversations
+                    if (uiState.spamConversations.isNotEmpty()) {
+                        item {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable(onClick = onSpamClick)
+                                    .padding(vertical = 12.dp, horizontal = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(56.dp)
+                                        .background(Color.LightGray.copy(alpha = 0.3f), CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(Icons.Default.Warning, contentDescription = null, tint = Color.Gray)
+                                }
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        preferencesManager.getString("spam_messages_title"), // "Tin nhắn chờ"
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isDarkMode) Color.White else Color.Black
+                                    )
+                                    Text(
+                                        "${uiState.spamConversations.size} ${preferencesManager.getString("messages_count_suffix")}", // "tin nhắn"
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color.Gray
+                                    )
+                                }
+
+                                // Chấm đỏ nếu có tin nhắn mới trong spam (tùy chọn)
+                                Box(
+                                    modifier = Modifier
+                                        .size(10.dp)
+                                        .background(Color(0xFFFF5252), CircleShape)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+
+                                Icon(
+                                    Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = Color.Gray
+                                )
+                            }
+                            HorizontalDivider(color = Color.LightGray.copy(alpha = 0.2f))
+                        }
+                    }
+
+                    // Conversations List
+                    val displayList = uiState.inboxConversations
+                    if (displayList.isEmpty()) {
+                        item {
+                            Box(modifier = Modifier.fillMaxWidth().padding(top = 32.dp), contentAlignment = Alignment.Center) {
+                                Text(preferencesManager.getString("no_messages"), color = Color.Gray)
+                            }
+                        }
+                    } else {
+                        items(displayList, key = { it.id }) { conversation ->
+                            val myId = preferencesManager.userId
+                            val partnerId = conversation.participants.find { it != myId } ?: ""
+                            val partnerInfo = uiState.userProfiles[partnerId] ?: UserSummary("User", "")
+
+                            ChatListItem(
+                                conversation = conversation,
+                                partnerInfo = partnerInfo,
+                                myId = myId,
+                                onClick = { onConversationClick(conversation.id) },
+                                onDelete = { viewModel.deleteConversation(conversation.id) },
+                                isDarkMode = isDarkMode,
+                                onAvatarClick = { onUserClick(partnerId) },
+                                preferencesManager = preferencesManager
+                            )
+                        }
                     }
                 }
             }
         }
+    }
 
-        // --- DIALOG ---
-        if (uiState.isShowingAddFriendDialog) {
-            AddFriendDialog(
-                onDismiss = viewModel::hideAddFriendDialog,
-                onAdd = viewModel::addFriend,
-                preferencesManager = preferencesManager
-            )
+    // --- DIALOGS ---
+    if (uiState.isShowingAddFriendDialog) {
+        val allRelatedConvs = remember(uiState) {
+            (uiState.inboxConversations +
+                    uiState.friendConversations +
+                    uiState.spamConversations +
+                    uiState.sentFriendRequests +
+                    uiState.receivedFriendRequests).distinctBy { it.id }
         }
+
+        AddFriendDialog(
+            phoneQuery = uiState.searchPhoneQuery,
+            onPhoneChange = viewModel::onSearchPhoneChange,
+            onSearch = viewModel::searchUsersByPhone,
+            onDismiss = viewModel::hideAddFriendDialog,
+            searchResults = uiState.searchResults,
+            onAddFriend = viewModel::sendFriendRequest,
+            onCancelRequest = { userId ->
+                val conv = allRelatedConvs.find { it.participants.contains(userId) }
+                if (conv != null) viewModel.unfriend(conv.id)
+            },
+            onAcceptRequest = { userId ->
+                val conv = allRelatedConvs.find { it.participants.contains(userId) }
+                if (conv != null) viewModel.acceptRequest(conv.id)
+            },
+            isLoading = uiState.isLoading,
+            error = uiState.error,
+            preferencesManager = preferencesManager,
+            allConversations = allRelatedConvs,
+            currentUserId = preferencesManager.userId,
+            onUserClick = onUserClick
+        )
+    }
+
+    if (uiState.isShowingFriendsManagerDialog) {
+        FriendsManagerDialog(
+            receivedRequests = uiState.receivedFriendRequests,
+            friends = uiState.friendConversations,
+            userProfiles = uiState.userProfiles,
+            currentUserId = preferencesManager.userId,
+            onAccept = viewModel::acceptRequest,
+            onDecline = viewModel::declineRequest,
+            onUnfriend = viewModel::unfriend,
+            onDismiss = viewModel::hideFriendsManagerDialog,
+            preferencesManager = preferencesManager,
+            onUserClick = onUserClick
+        )
     }
 }
 
 @Composable
 fun AddFriendDialog(
+    phoneQuery: String,
+    onPhoneChange: (String) -> Unit,
+    onSearch: () -> Unit,
     onDismiss: () -> Unit,
-    onAdd: (String) -> Unit,
-    preferencesManager: PreferencesManager
+    searchResults: List<UserSummary>,
+    onAddFriend: (UserSummary) -> Unit,
+    onCancelRequest: (String) -> Unit,
+    onAcceptRequest: (String) -> Unit,
+    isLoading: Boolean,
+    error: String?,
+    preferencesManager: PreferencesManager,
+    allConversations: List<Conversation>,
+    currentUserId: String,
+    onUserClick: (String) -> Unit
 ) {
-    var phoneNumber by remember { mutableStateOf("") }
-    var errorMessage by remember { mutableStateOf("") }
-
-    val errorRequired = preferencesManager.getString("phone_required")
-
     Dialog(onDismissRequest = onDismiss) {
-        Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface, modifier = Modifier.fillMaxWidth()) {
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.surface,
+            modifier = Modifier.fillMaxWidth().heightIn(max = 600.dp)
+        ) {
             Column(modifier = Modifier.padding(24.dp)) {
-                Text(preferencesManager.getString("add_friend_title"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(16.dp))
+                Text(preferencesManager.getString("add_new_friend_title"), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = AppTealDark)
+                Text(preferencesManager.getString("search_by_phone_hint"), style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                Spacer(modifier = Modifier.height(20.dp))
 
                 OutlinedTextField(
-                    value = phoneNumber,
-                    onValueChange = { phoneNumber = it; errorMessage = "" },
-                    label = { Text(preferencesManager.getString("phone_number")) },
-                    leadingIcon = { Icon(Icons.Default.Phone, null) },
-                    modifier = Modifier.fillMaxWidth(),
+                    value = phoneQuery,
+                    onValueChange = onPhoneChange,
+                    label = { Text(preferencesManager.getString("phone_label")) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                    singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Color(0xFF006D66), focusedLabelColor = Color(0xFF006D66))
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    trailingIcon = { IconButton(onClick = onSearch) { Icon(Icons.Default.Search, null, tint = AppTealDark) } },
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = AppTealDark, focusedLabelColor = AppTealDark),
+                    singleLine = true
                 )
+                if (error != null) Text(error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
 
-                if (errorMessage.isNotEmpty()) {
-                    Text(errorMessage, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                Spacer(modifier = Modifier.height(20.dp))
+
+                if (isLoading) {
+                    Box(modifier = Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = AppTealDark) }
+                } else if (searchResults.isNotEmpty()) {
+                    Text(preferencesManager.getString("results_label"), fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 8.dp))
+                    LazyColumn {
+                        items(searchResults) { user ->
+                            val existingConv = allConversations.find { it.participants.contains(user.uid) }
+
+                            val isFriend = existingConv?.friendshipState == FriendshipState.FRIENDS
+                            val isPendingSentByMe = existingConv?.friendshipState == FriendshipState.PENDING && existingConv.friendRequestSenderId == currentUserId
+                            val isPendingReceived = existingConv?.friendshipState == FriendshipState.PENDING && existingConv.friendRequestSenderId != currentUserId
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { onUserClick(user.uid) }.padding(vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Surface(shape = CircleShape, color = AppTealDark.copy(alpha = 0.1f), modifier = Modifier.size(48.dp)) {
+                                    Box(contentAlignment = Alignment.Center) { Text(user.avatar.take(1).uppercase(), color = AppTealDark, fontWeight = FontWeight.Bold, fontSize = 20.sp) }
+                                }
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(user.name, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge)
+                                    Text(user.phone, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                }
+
+                                when {
+                                    isFriend -> Text(preferencesManager.getString("friend_status_friend"), color = AppTealDark, fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.padding(end = 8.dp))
+                                    isPendingSentByMe -> OutlinedButton(onClick = { onCancelRequest(user.uid) }, modifier = Modifier.height(36.dp), border = androidx.compose.foundation.BorderStroke(1.dp, Color.Gray), colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Gray)) { Text(preferencesManager.getString("friend_status_sent"), fontSize = 12.sp) }
+                                    isPendingReceived -> Button(onClick = { onAcceptRequest(user.uid) }, modifier = Modifier.height(36.dp), colors = ButtonDefaults.buttonColors(containerColor = AppTealDark)) { Text(preferencesManager.getString("friend_status_received"), fontSize = 12.sp) }
+                                    else -> Button(onClick = { onAddFriend(user) }, modifier = Modifier.height(36.dp), colors = ButtonDefaults.buttonColors(containerColor = AppTealDark)) { Text(preferencesManager.getString("btn_add_friend"), fontSize = 12.sp) }
+                                }
+                            }
+                        }
+                    }
+                } else if (phoneQuery.isNotEmpty() && !isLoading && error == null) {
+                    Box(modifier = Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) { Text(preferencesManager.getString("user_not_found"), color = Color.Gray) }
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.weight(1f))
+                TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) { Text(preferencesManager.getString("close"), color = Color.Gray) }
+            }
+        }
+    }
+}
 
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlinedButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.weight(1f),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF006D66))
-                    ) {
-                        Text(preferencesManager.getString("cancel"), color = Color(0xFF006D66))
+@Composable
+fun FriendsManagerDialog(
+    receivedRequests: List<Conversation>,
+    friends: List<Conversation>,
+    userProfiles: Map<String, UserSummary>,
+    currentUserId: String,
+    onAccept: (String) -> Unit,
+    onDecline: (String) -> Unit,
+    onUnfriend: (String) -> Unit,
+    onDismiss: () -> Unit,
+    preferencesManager: PreferencesManager,
+    onUserClick: (String) -> Unit
+) {
+    var selectedTab by remember { mutableIntStateOf(0) }
+    val tabs = listOf(preferencesManager.getString("tab_requests"), preferencesManager.getString("tab_friends"))
+
+    // State cho hộp thoại xác nhận xóa
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    var friendToDeleteId by remember { mutableStateOf<String?>(null) }
+    var friendToDeleteName by remember { mutableStateOf("") }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.surface, modifier = Modifier.fillMaxWidth().height(600.dp)) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                TabRow(
+                    selectedTabIndex = selectedTab,
+                    containerColor = Color.Transparent,
+                    contentColor = AppTealDark,
+                    divider = {},
+                    indicator = { tabPositions -> TabRowDefaults.SecondaryIndicator(Modifier.tabIndicatorOffset(tabPositions[selectedTab]), color = AppTealDark, height = 3.dp) }
+                ) {
+                    tabs.forEachIndexed { index, title ->
+                        Tab(
+                            selected = selectedTab == index,
+                            onClick = { selectedTab = index },
+                            text = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(title, fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal, color = if (selectedTab == index) AppTealDark else Color.Gray)
+                                    if (index == 0 && receivedRequests.isNotEmpty()) {
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Box(modifier = Modifier.size(20.dp).background(Color.Red, CircleShape), contentAlignment = Alignment.Center) {
+                                            Text(receivedRequests.size.toString(), color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                }
+                            }
+                        )
                     }
-                    Button(
-                        onClick = {
-                            if(phoneNumber.isBlank()) errorMessage = errorRequired
-                            else onAdd(phoneNumber)
-                        },
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF006D66))
-                    ) {
-                        Text(preferencesManager.getString("add"))
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Box(modifier = Modifier.weight(1f)) {
+                    when (selectedTab) {
+                        0 -> { // Requests
+                            if (receivedRequests.isEmpty()) {
+                                Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Icon(Icons.Default.Person, contentDescription = null, tint = Color.LightGray, modifier = Modifier.size(64.dp))
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Text(preferencesManager.getString("no_friend_requests"), color = Color.Gray)
+                                }
+                            } else {
+                                LazyColumn {
+                                    items(receivedRequests) { conv ->
+                                        val partnerId = conv.participants.find { it != currentUserId } ?: ""
+                                        val partner = userProfiles[partnerId] ?: UserSummary("", "Unknown")
+
+                                        Card(
+                                            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp).clickable { onUserClick(partnerId) },
+                                            shape = RoundedCornerShape(12.dp),
+                                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                                        ) {
+                                            Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                                Box(modifier = Modifier.size(50.dp).clip(CircleShape).background(Color.White), contentAlignment = Alignment.Center) {
+                                                    Text(partner.avatar.take(1).uppercase(), fontSize = 20.sp, fontWeight = FontWeight.Bold, color = AppTealDark)
+                                                }
+                                                Spacer(modifier = Modifier.width(12.dp))
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    Text(partner.name, fontWeight = FontWeight.Bold)
+                                                    Text(preferencesManager.getString("request_friend_msg"), style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                                }
+                                            }
+                                            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                Button(onClick = { onAccept(conv.id) }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = AppTealDark), shape = RoundedCornerShape(8.dp)) { Text(preferencesManager.getString("btn_accept")) }
+                                                OutlinedButton(onClick = { onDecline(conv.id) }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(8.dp)) { Text(preferencesManager.getString("delete"), color = Color.Gray) }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        1 -> { // Friends
+                            if (friends.isEmpty()) {
+                                Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Icon(Icons.Default.Group, contentDescription = null, tint = Color.LightGray, modifier = Modifier.size(64.dp))
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Text(preferencesManager.getString("no_friends_list"), color = Color.Gray)
+                                }
+                            } else {
+                                LazyColumn {
+                                    items(friends) { conv ->
+                                        val partnerId = conv.participants.find { it != currentUserId } ?: ""
+                                        val partner = userProfiles[partnerId] ?: UserSummary("", "Unknown")
+
+                                        Row(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).clickable { onUserClick(partnerId) }, verticalAlignment = Alignment.CenterVertically) {
+                                            Box(modifier = Modifier.size(48.dp).clip(CircleShape).background(AppTealDark.copy(alpha = 0.1f)), contentAlignment = Alignment.Center) {
+                                                Text(partner.avatar.take(1).uppercase(), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = AppTealDark)
+                                            }
+                                            Spacer(modifier = Modifier.width(16.dp))
+                                            Text(partner.name, modifier = Modifier.weight(1f), fontWeight = FontWeight.Medium, fontSize = 16.sp)
+
+                                            // Thay đổi icon Person thành Delete và thêm logic mở Confirm Dialog
+                                            IconButton(onClick = {
+                                                friendToDeleteId = conv.id
+                                                friendToDeleteName = partner.name
+                                                showDeleteConfirmDialog = true
+                                            }) {
+                                                Icon(Icons.Default.Delete, contentDescription = "Unfriend", tint = Color.Gray)
+                                            }
+                                        }
+                                        HorizontalDivider(color = Color.LightGray.copy(0.2f))
+                                    }
+                                }
+                            }
+                        }
                     }
+                }
+                Box(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), contentAlignment = Alignment.CenterEnd) {
+                    TextButton(onClick = onDismiss) { Text(preferencesManager.getString("close"), color = AppTealDark, fontWeight = FontWeight.Bold) }
                 }
             }
         }
+    }
+
+    // Hiển thị AlertDialog nếu biến showDeleteConfirmDialog = true
+    if (showDeleteConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmDialog = false },
+            title = { Text(preferencesManager.getString("unfriend_title")) },
+            text = { Text(String.format(preferencesManager.getString("unfriend_confirm_msg"), friendToDeleteName)) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        friendToDeleteId?.let { onUnfriend(it) }
+                        showDeleteConfirmDialog = false
+                        friendToDeleteId = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text(preferencesManager.getString("delete"))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmDialog = false }) {
+                    Text(preferencesManager.getString("cancel"))
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surface,
+            shape = RoundedCornerShape(16.dp)
+        )
     }
 }
 
 @Composable
 fun ChatListItem(
     conversation: Conversation,
-    deleteText: String,
-    onClick: (String) -> Unit,
-    onDelete: (String) -> Unit,
-    isDarkMode: Boolean
+    partnerInfo: UserSummary,
+    myId: String,
+    onClick: () -> Unit,
+    onDelete: () -> Unit = {},
+    isDarkMode: Boolean,
+    onAvatarClick: () -> Unit = {},
+    preferencesManager: PreferencesManager
 ) {
-    val nameColor = if (isDarkMode) Color.White else Color(0xFF006D66)
-    val messageColor = if (isDarkMode) Color.LightGray else Color.Gray
-    val isUnread = conversation.unreadCount > 0
-    var expanded by remember { mutableStateOf(false) }
+    val isUnread = conversation.isUnread(myId)
+    val nameColor = if (isDarkMode) Color.White else Color.Black
+    val messageColor = if (isUnread) (if (!isDarkMode) Color.Black else Color.White) else Color.Gray
+    val timeString = try {
+        SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(conversation.lastMessageTime))
+    } catch (e: Exception) { "" }
+
+    // Xử lý nội dung tin nhắn hiển thị (localize hệ thống)
+    val displayMessage = when (conversation.lastMessage) {
+        "Đã gửi lời mời kết bạn" -> preferencesManager.getString("msg_sent_friend_request")
+        "Bắt đầu cuộc trò chuyện" -> preferencesManager.getString("msg_start_conversation")
+        else -> conversation.lastMessage
+    }
 
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick(conversation.id) }
-            .padding(horizontal = 20.dp, vertical = 12.dp),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 12.dp, horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        if (isUnread) {
-            Box(modifier = Modifier.size(8.dp).background(Color(0xFFFF5252), CircleShape))
-        } else {
-            Spacer(modifier = Modifier.size(8.dp))
+        Surface(modifier = Modifier.size(56.dp).clickable { onAvatarClick() }, shape = CircleShape, color = AppTealDark) {
+            Box(contentAlignment = Alignment.Center) { Text(partnerInfo.avatar.ifEmpty { partnerInfo.name.take(1).uppercase() }, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp) }
         }
-
         Spacer(modifier = Modifier.width(16.dp))
-
-        Box {
-            Box(
-                modifier = Modifier
-                    .size(52.dp)
-                    .clip(CircleShape)
-                    .background(if(isDarkMode) Color.Gray.copy(alpha = 0.2f) else Color(0xFFE0F2F1)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = conversation.avatar,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if(isDarkMode) Color.White else Color(0xFF006D66)
-                )
-            }
-            if (conversation.isOnline) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .size(14.dp)
-                        .background(if(isDarkMode) DarkSurface else Color.White, CircleShape)
-                        .padding(2.dp)
-                ) {
-                    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF00E676), CircleShape))
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.width(16.dp))
-
         Column(modifier = Modifier.weight(1f)) {
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    text = conversation.name,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = if (isUnread) FontWeight.Bold else FontWeight.Medium,
-                    color = nameColor,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = conversation.lastMessageTime,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = messageColor
-                )
+                Text(partnerInfo.name, style = MaterialTheme.typography.bodyLarge, fontWeight = if (isUnread) FontWeight.ExtraBold else FontWeight.Bold, color = nameColor, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(timeString, style = MaterialTheme.typography.bodySmall, color = messageColor, fontWeight = if (isUnread) FontWeight.Bold else FontWeight.Normal)
             }
-            Text(
-                text = conversation.lastMessage,
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (isUnread && !isDarkMode) Color.Black else messageColor,
-                fontWeight = if (isUnread) FontWeight.Bold else FontWeight.Normal,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            Text(displayMessage, style = MaterialTheme.typography.bodyMedium, color = if (isUnread) (if (!isDarkMode) Color.Black else Color.White) else messageColor, fontWeight = if (isUnread) FontWeight.ExtraBold else FontWeight.Normal, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-
-        Box {
-            IconButton(onClick = { expanded = true }) {
-                Icon(Icons.Default.MoreVert, null, tint = messageColor)
-            }
-            DropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false },
-                modifier = Modifier.background(if(isDarkMode) Color(0xFF333333) else Color.White)
-            ) {
-                DropdownMenuItem(
-                    text = { Text(deleteText, color = Color.Red) },
-                    onClick = { onDelete(conversation.id); expanded = false }
-                )
-            }
-        }
+        if (isUnread) { Spacer(modifier = Modifier.width(8.dp)); Box(modifier = Modifier.size(12.dp).background(Color(0xFFFF5252), CircleShape)) }
     }
 }
