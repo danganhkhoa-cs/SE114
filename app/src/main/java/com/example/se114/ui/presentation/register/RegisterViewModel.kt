@@ -83,7 +83,7 @@ class RegisterViewModel @Inject constructor(
                         "phone" to _uiState.value.phone,
                         "name" to defaultName,
                         "address" to "",
-                        "gender" to "not_update", // Default: Male/True (có thể sửa logic sau)
+                        "gender" to "not_update",
                         "job" to "",
                         "bio" to "New member of LocaSOS",
                         "avatar_url" to "",
