@@ -3,6 +3,8 @@ package com.example.se114.ui.presentation.forgot_password
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.se114.local.PreferencesManager
+import com.google.firebase.functions.FirebaseFunctions
+import com.google.firebase.functions.FirebaseFunctionsException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,7 +32,8 @@ data class ForgotPasswordUiState(
 
 @HiltViewModel
 class ForgotPasswordViewModel @Inject constructor(
-    private val preferencesManager: PreferencesManager
+    private val preferencesManager: PreferencesManager,
+    private val functions: FirebaseFunctions
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ForgotPasswordUiState())
@@ -50,31 +53,27 @@ class ForgotPasswordViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
-            try {
-                val otpCode = (100000..999999).random().toString()
+            // Gọi Function 'sendOtp' trên Cloud
+            val data = hashMapOf("email" to _uiState.value.email)
 
-                withContext(Dispatchers.IO) {
-                    sendEmailWithGmail(
-                        toEmail = _uiState.value.email,
-                        otpCode = otpCode
-                    )
+            functions
+                .getHttpsCallable("sendOtp")
+                .call(data)
+                .addOnSuccessListener {
+                    // Thành công: Backend đã gửi mail và lưu OTP
+                    preferencesManager.saveEmailForReset(_uiState.value.email)
+                    _uiState.update { it.copy(isLoading = false, sendMailSuccess = true) }
                 }
-
-                // Lưu OTP và Email vào Preferences
-                preferencesManager.saveOTPForReset(otpCode)
-                preferencesManager.saveEmailForReset(_uiState.value.email) // <-- LƯU EMAIL TẠI ĐÂY
-
-                _uiState.update { it.copy(isLoading = false, sendMailSuccess = true) }
-
-            } catch (e: Exception) {
-                e.printStackTrace()
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        errorMessage = "Gửi mail lỗi: ${e.message}"
-                    )
+                .addOnFailureListener { e ->
+                    // Lỗi: Lấy message từ Backend trả về
+                    val msg = if (e is FirebaseFunctionsException) e.message else e.localizedMessage
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = msg ?: "Lỗi gửi mail"
+                        )
+                    }
                 }
-            }
         }
     }
 
