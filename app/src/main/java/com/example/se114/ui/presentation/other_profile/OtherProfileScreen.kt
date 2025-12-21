@@ -5,7 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -13,8 +12,8 @@ import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -29,345 +28,252 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.se114.local.PreferencesManager
+import kotlinx.coroutines.flow.collectLatest
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OtherProfileScreen(
-    onBackClick: () -> Unit,
-    viewModel: OtherProfileViewModel = hiltViewModel(),
     preferencesManager: PreferencesManager,
+    onBackClick: () -> Unit,
+    onNavigateToChat: (String) -> Unit,
+    viewModel: OtherProfileViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+
+    LaunchedEffect(key1 = true) {
+        viewModel.eventFlow.collectLatest { event ->
+            when (event) {
+                is OtherProfileEvent.NavigateToChat -> {
+                    onNavigateToChat(event.conversationId)
+                }
+            }
+        }
+    }
 
     Scaffold(
-        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
-                title = {
-                    Text(
-                        preferencesManager.getString("other_profile_title"),
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                },
+                title = { Text(preferencesManager.getString("other_profile_title")) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent // TopBar trong suốt để hòa hợp background (nếu cần)
-                )
+                }
             )
-        },
-        bottomBar = {
-            Spacer(modifier = Modifier.height(0.dp))
         }
     ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                            MaterialTheme.colorScheme.background
-                        )
-                    )
-                )
-        ) {
-            if (uiState.isLoading) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                }
-            } else {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues)
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    // --- SECTION 1: HEADER & AVATAR ---
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        // Avatar Lớn
-                        Surface(
-                            modifier = Modifier
-                                .size(120.dp)
-                                .shadow(16.dp, CircleShape, spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)),
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            border = BorderStroke(3.dp, MaterialTheme.colorScheme.background)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(
-                                    text = uiState.userName.firstOrNull()?.toString() ?: "?",
-                                    style = MaterialTheme.typography.displayMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        // Name
-                        Text(
-                            text = uiState.userName,
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        // Bio
-                        Text(
-                            text = uiState.userBio,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center,
-                            lineHeight = 20.sp
-                        )
-
-                        Spacer(modifier = Modifier.height(24.dp))
-
-                        // Action Buttons
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Button(
-                                onClick = viewModel::toggleFriendStatus,
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (uiState.isFollow) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.primary,
-                                    contentColor = if (uiState.isFollow) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onPrimary
-                                ),
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Icon(
-                                    imageVector = if (uiState.isFollow) Icons.Default.Check else Icons.Default.PersonAdd,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(if (uiState.isFollow) preferencesManager.getString("friends") else preferencesManager.getString("add_friend"))
-                            }
-
-                            Button(
-                                onClick = { /* Handle Message */ },
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                ),
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.Message,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(preferencesManager.getString("message"))
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(32.dp))
-
-                    // --- SECTION 2: RATING CARD ---
-                    RatingCard(
-                        rating = uiState.rating,
-                        reviewCount = uiState.reviewCount,
-                        preferencesManager = preferencesManager
-                    )
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    // --- SECTION 3: ACCOUNT INFO ---
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 20.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Text(
-                            text = preferencesManager.getString("account_data"),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.padding(start = 4.dp)
-                        )
-
-                        ReadOnlyDataItemCard(
-                            icon = Icons.Default.LocationOn,
-                            title = preferencesManager.getString("address"),
-                            value = uiState.address
-                        )
-
-                        ReadOnlyDataItemCard(
-                            icon = Icons.Default.Person,
-                            title = preferencesManager.getString("gender"),
-                            value = uiState.gender
-                        )
-
-                        ReadOnlyDataItemCard(
-                            icon = Icons.Default.Work,
-                            title = preferencesManager.getString("current_job"),
-                            value = uiState.job
-                        )
-
-                        ReadOnlyDataItemCard(
-                            icon = Icons.Default.CalendarMonth,
-                            title = preferencesManager.getString("joined_date"),
-                            value = uiState.joinedDate
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(40.dp))
-                }
+        if (uiState.isLoading) {
+            Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
             }
-        }
-    }
-}
-
-// --- SUB COMPONENTS (Giữ nguyên) ---
-
-@Composable
-fun ReadOnlyDataItemCard(
-    icon: ImageVector,
-    title: String,
-    value: String
-) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .shadow(4.dp, RoundedCornerShape(16.dp)),
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(
-            width = 1.dp,
-            color = MaterialTheme.colorScheme.outlineVariant
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
+        } else if (uiState.errorMessage != null) {
+            Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
+                Text(text = uiState.errorMessage ?: "Error", color = Color.Red)
+            }
+        } else {
+            Column(
                 modifier = Modifier
-                    .size(48.dp)
-                    .background(
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                        RoundedCornerShape(12.dp)
-                    ),
-                contentAlignment = Alignment.Center
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = title,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
+                // Header Profile
+                Box(modifier = Modifier.fillMaxWidth().height(220.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(150.dp)
+                            .background(
+                                Brush.horizontalGradient(
+                                    colors = listOf(Color(0xFF00695C), Color(0xFF4DB6AC))
+                                )
+                            )
+                    )
 
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Column {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 13.sp
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = value.ifEmpty { "N/A" },
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun RatingCard(
-    rating: Float,
-    reviewCount: Int,
-    preferencesManager: PreferencesManager
-) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp)
-            .shadow(8.dp, RoundedCornerShape(20.dp), spotColor = Color(0xFFFFC107).copy(alpha = 0.4f)),
-        shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(24.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column {
-                Text(
-                    text = preferencesManager.getString("rating_score"),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "$reviewCount ${preferencesManager.getString("reviews")}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = rating.toString(),
-                    style = MaterialTheme.typography.displaySmall,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Column(horizontalAlignment = Alignment.Start) {
-                    Row {
-                        repeat(5) { index ->
-                            Icon(
-                                imageVector = if (index < rating.toInt()) Icons.Default.Star else Icons.Default.StarBorder,
-                                contentDescription = null,
-                                tint = Color(0xFFFFC107),
-                                modifier = Modifier.size(16.dp)
+                    // Avatar
+                    Surface(
+                        modifier = Modifier
+                            .size(120.dp)
+                            .align(Alignment.BottomCenter)
+                            .shadow(8.dp, CircleShape),
+                        shape = CircleShape,
+                        color = Color.White
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                text = uiState.userAvatar,
+                                fontSize = 48.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF00695C)
                             )
                         }
                     }
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text("/ 5.0", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = uiState.userName,
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                val displayBio = if (uiState.userBio.isBlank() || uiState.userBio == "Chưa có giới thiệu") preferencesManager.getString("no_bio") else uiState.userBio
+                Text(
+                    text = displayBio,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 32.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Action Buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    val buttonText = when (uiState.friendshipStatus) {
+                        FriendshipStatus.FRIEND -> preferencesManager.getString("friends")
+                        FriendshipStatus.SENT_REQUEST -> preferencesManager.getString("btn_cancel_request")
+                        FriendshipStatus.RECEIVED_REQUEST -> preferencesManager.getString("friend_accept")
+                        FriendshipStatus.NONE -> preferencesManager.getString("btn_add_friend")
+                    }
+
+                    val buttonColor = if (uiState.friendshipStatus == FriendshipStatus.FRIEND)
+                        MaterialTheme.colorScheme.secondaryContainer
+                    else if (uiState.friendshipStatus == FriendshipStatus.SENT_REQUEST)
+                        Color.LightGray
+                    else
+                        MaterialTheme.colorScheme.primary
+
+                    val buttonContentColor = if (uiState.friendshipStatus == FriendshipStatus.FRIEND)
+                        MaterialTheme.colorScheme.onSecondaryContainer
+                    else if (uiState.friendshipStatus == FriendshipStatus.SENT_REQUEST)
+                        Color.Black
+                    else
+                        MaterialTheme.colorScheme.onPrimary
+
+                    Button(
+                        onClick = {
+                            when (uiState.friendshipStatus) {
+                                FriendshipStatus.NONE -> viewModel.onAddFriendClick()
+                                FriendshipStatus.RECEIVED_REQUEST -> viewModel.onAcceptFriendClick()
+                                FriendshipStatus.SENT_REQUEST -> viewModel.onCancelFriendRequest()
+                                else -> {}
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = buttonColor,
+                            contentColor = buttonContentColor
+                        ),
+                        enabled = true
+                    ) {
+                        Text(buttonText)
+                    }
+
+                    OutlinedButton(
+                        onClick = viewModel::onMessageClick,
+                        modifier = Modifier.weight(1f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.Message, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(preferencesManager.getString("message"))
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                val displayAddress = if (uiState.address == "Chưa cập nhật") preferencesManager.getString("not_updated") else uiState.address
+                val displayJob = if (uiState.job == "Chưa cập nhật") preferencesManager.getString("not_updated") else uiState.job
+                val displayPhone = if (uiState.phone == "Ẩn") preferencesManager.getString("hidden_info") else uiState.phone
+                val displayDate = if (uiState.joinedDate == "Thành viên LocaSOS") preferencesManager.getString("joined_date") else uiState.joinedDate
+
+                InfoSection(
+                    preferencesManager = preferencesManager,
+                    address = displayAddress,
+                    phone = displayPhone,
+                    gender = uiState.gender,
+                    job = displayJob,
+                    rating = uiState.rating,
+                    reviewCount = uiState.reviewCount
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun InfoSection(
+    preferencesManager: PreferencesManager,
+    address: String,
+    phone: String,
+    gender: String,
+    job: String,
+    rating: Float,
+    reviewCount: Int
+) {
+    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+        ProfileInfoItem(icon = Icons.Default.Work, label = preferencesManager.getString("current_job"), value = job)
+        ProfileInfoItem(icon = Icons.Default.LocationOn, label = preferencesManager.getString("address"), value = address)
+        ProfileInfoItem(icon = Icons.Default.Phone, label = preferencesManager.getString("phone_number"), value = phone)
+        ProfileInfoItem(icon = Icons.Default.Person, label = preferencesManager.getString("gender"), value = gender)
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+        ) {
+            Row(
+                modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text(
+                        text = preferencesManager.getString("rating_score"),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "$reviewCount ${preferencesManager.getString("reviews")}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = String.format("%.1f", rating),
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFC107))
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun ProfileInfoItem(icon: ImageVector, label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        Spacer(modifier = Modifier.width(16.dp))
+        Column {
+            Text(text = label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(text = value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
         }
     }
 }

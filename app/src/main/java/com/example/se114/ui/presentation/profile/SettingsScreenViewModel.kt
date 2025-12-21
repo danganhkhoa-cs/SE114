@@ -3,7 +3,9 @@ package com.example.se114.ui.presentation.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.se114.local.PreferencesManager
+import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,13 +36,27 @@ class SettingsScreenViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState = _uiState.asStateFlow()
 
-    // Biến này lưu mật khẩu đã được xác thực (Verified) để dùng cho bước xóa cuối cùng
     private var validPasswordForDeletion: String = ""
 
-    // --- VERIFY PASSWORD (KIỂM TRA KÉP) ---
+    init {
+        loadBlockedUsers()
+    }
+
+    private fun loadBlockedUsers() {
+        val uid = preferencesManager.userId
+        if (uid.isBlank()) return
+        viewModelScope.launch {
+            try {
+                val doc = firestore.collection("users").document(uid).get().await()
+                val blocked = doc.get("blockedUsers") as? List<String> ?: emptyList()
+                _uiState.update { it.copy(blockedUsers = blocked) }
+            } catch (e: Exception) { }
+        }
+    }
+
+    // --- VERIFY PASSWORD (LOGIC CŨ: nhận step và input) ---
     fun onDeleteNextStep(currentStep: Int, input: String) {
         if (currentStep == 2) {
-            // Step 2: Verify Password
             if (input.isBlank()) {
                 _uiState.update { it.copy(deleteError = "Vui lòng nhập mật khẩu") }
                 return
@@ -68,7 +84,7 @@ class SettingsScreenViewModel @Inject constructor(
                 if (dbPass != null && dbPass == password) {
                     isVerified = true
                 } else {
-                    // 2. Check Auth
+                    // 2. Check Auth (Fallback)
                     try {
                         if (email.isNotEmpty()) {
                             auth.signInWithEmailAndPassword(email, password).await()
@@ -80,7 +96,7 @@ class SettingsScreenViewModel @Inject constructor(
                 }
 
                 if (isVerified) {
-                    validPasswordForDeletion = password // LƯU MẬT KHẨU ĐÚNG
+                    validPasswordForDeletion = password
                     _uiState.update { it.copy(isDeleting = false, deleteStep = 3, deleteError = "") }
                 } else {
                     _uiState.update { it.copy(isDeleting = false, deleteError = "Mật khẩu không đúng") }
@@ -91,7 +107,7 @@ class SettingsScreenViewModel @Inject constructor(
         }
     }
 
-    // --- CONFIRM & DELETE (DÙNG MẬT KHẨU ĐÚNG ĐỂ XÓA) ---
+    // --- CONFIRM & DELETE (CÓ CALLBACK onSuccess) ---
     fun confirmDeleteAccount(confirmText: String, onSuccess: () -> Unit) {
         if (confirmText != "DELETE") {
             _uiState.update { it.copy(deleteError = "Vui lòng nhập chính xác chữ DELETE") }
@@ -104,27 +120,24 @@ class SettingsScreenViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isDeleting = true, deleteError = "") }
             try {
-                // 1. XÓA FIREBASE AUTH (Dùng mật khẩu đã verify để ép đăng nhập lại)
-                if (email.isNotEmpty() && validPasswordForDeletion.isNotEmpty()) {
-                    try {
-                        val authResult = auth.signInWithEmailAndPassword(email, validPasswordForDeletion).await()
-                        authResult.user?.delete()?.await()
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                        // Nếu xóa Auth lỗi, vẫn tiếp tục xóa Firestore để không bị kẹt
-                    }
-                } else {
-                    // Fallback
-                    try { auth.currentUser?.delete()?.await() } catch (e: Exception) {}
-                }
-
-                // 2. XÓA FIRESTORE
+                // 1. XÓA DỮ LIỆU FIRESTORE
+                handleChatDeletion(uid)
                 firestore.collection("users").document(uid).delete().await()
 
-                // 3. CLEANUP
-                auth.signOut()
-                preferencesManager.clearUserData()
+                // 2. XÓA AUTH
+                val user = auth.currentUser
+                if (user != null) {
+                    try {
+                        if (email.isNotEmpty() && validPasswordForDeletion.isNotEmpty()) {
+                            val credential = EmailAuthProvider.getCredential(email, validPasswordForDeletion)
+                            user.reauthenticate(credential).await()
+                        }
+                        user.delete().await()
+                    } catch (e: Exception) { e.printStackTrace() }
+                }
 
+                // 3. THÀNH CÔNG -> Gọi Callback (Sẽ gọi onLogout để clear data + navigate)
+                // QUAN TRỌNG: KHÔNG gọi preferencesManager.clearUserData() ở đây
                 _uiState.update { it.copy(isDeleting = false, isShowingDeleteAccountDialog = false) }
                 onSuccess()
 
@@ -132,6 +145,31 @@ class SettingsScreenViewModel @Inject constructor(
                 _uiState.update { it.copy(isDeleting = false, deleteError = "Xóa thất bại: ${e.message}") }
             }
         }
+    }
+
+    private suspend fun handleChatDeletion(uid: String) {
+        try {
+            val conversationsSnapshot = firestore.collection("conversations")
+                .whereArrayContains("participants", uid)
+                .get()
+                .await()
+
+            for (doc in conversationsSnapshot.documents) {
+                val convId = doc.id
+                val participants = doc.get("participants") as? List<String> ?: emptyList()
+
+                firestore.collection("conversations").document(convId)
+                    .update("deletedAccountUsers", FieldValue.arrayUnion(uid))
+                    .await()
+
+                val updatedDoc = firestore.collection("conversations").document(convId).get().await()
+                val deletedAccountUsers = updatedDoc.get("deletedAccountUsers") as? List<String> ?: emptyList()
+
+                if (participants.isNotEmpty() && deletedAccountUsers.containsAll(participants)) {
+                    firestore.collection("conversations").document(convId).delete()
+                }
+            }
+        } catch (e: Exception) { e.printStackTrace() }
     }
 
     // --- Helpers ---
@@ -150,8 +188,12 @@ class SettingsScreenViewModel @Inject constructor(
     fun updateLanguage(language: String) { preferencesManager.language = language; hideLanguageDialog() }
     fun updateTheme(isDarkMode: Boolean) { preferencesManager.isDarkMode = isDarkMode; hideThemeDialog() }
     fun unblockUser(user: String) {
-        val newList = _uiState.value.blockedUsers.toMutableList().apply { remove(user) }
-        _uiState.update { it.copy(blockedUsers = newList) }
+        viewModelScope.launch {
+            val uid = preferencesManager.userId
+            firestore.collection("users").document(uid).update("blockedUsers", FieldValue.arrayRemove(user))
+            val newList = _uiState.value.blockedUsers.toMutableList().apply { remove(user) }
+            _uiState.update { it.copy(blockedUsers = newList) }
+        }
     }
     fun showLanguageDialog() { _uiState.update { it.copy(isShowingLanguageDialog = true) } }
     fun hideLanguageDialog() { _uiState.update { it.copy(isShowingLanguageDialog = false) } }
