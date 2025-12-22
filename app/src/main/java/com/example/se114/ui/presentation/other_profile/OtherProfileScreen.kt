@@ -11,15 +11,15 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
 import com.example.se114.local.PreferencesManager
 import kotlinx.coroutines.flow.collectLatest
 
@@ -40,6 +41,9 @@ fun OtherProfileScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+
+    var showMenu by remember { mutableStateOf(false) }
+    var showBlockConfirmDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(key1 = true) {
         viewModel.eventFlow.collectLatest { event ->
@@ -59,17 +63,62 @@ fun OtherProfileScreen(
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
+                },
+                actions = {
+                    // Chỉ hiện Menu khi chưa Block và không có lỗi
+                    if (!uiState.isLoading && !uiState.isBlocked && uiState.errorMessage == null) {
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "Menu")
+                        }
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false },
+                            modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(preferencesManager.getString("block_user"), color = Color.Red) },
+                                onClick = {
+                                    showMenu = false
+                                    showBlockConfirmDialog = true
+                                },
+                                leadingIcon = { Icon(Icons.Default.Block, null, tint = Color.Red) }
+                            )
+                        }
+                    }
                 }
             )
         }
     ) { paddingValues ->
-        if (uiState.isLoading) {
+        if (uiState.isBlocked) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(32.dp)) {
+                    Icon(
+                        Icons.Default.Block,
+                        contentDescription = null,
+                        modifier = Modifier.size(64.dp),
+                        tint = Color.Gray
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = uiState.errorMessage ?: preferencesManager.getString("user_unavailable"),
+                        color = Color.Gray,
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+            }
+        } else if (uiState.isLoading) {
             Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
         } else if (uiState.errorMessage != null) {
             Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
-                Text(text = uiState.errorMessage ?: "Error", color = Color.Red)
+                Text(text = uiState.errorMessage ?: preferencesManager.getString("error"), color = Color.Red)
             }
         } else {
             Column(
@@ -101,13 +150,22 @@ fun OtherProfileScreen(
                         shape = CircleShape,
                         color = Color.White
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text(
-                                text = uiState.userAvatar,
-                                fontSize = 48.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF00695C)
-                            )
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                            if (uiState.userAvatar.startsWith("http")) {
+                                AsyncImage(
+                                    model = uiState.userAvatar,
+                                    contentDescription = "User Avatar",
+                                    modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Text(
+                                    text = uiState.userAvatar.ifEmpty { uiState.userName.take(1).uppercase() },
+                                    fontSize = 48.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF00695C)
+                                )
+                            }
                         }
                     }
                 }
@@ -207,6 +265,30 @@ fun OtherProfileScreen(
                 )
             }
         }
+    }
+
+    if (showBlockConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showBlockConfirmDialog = false },
+            title = { Text(preferencesManager.getString("block_user_title")) },
+            text = { Text(preferencesManager.getString("block_user_msg")) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.blockUser()
+                        showBlockConfirmDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text(preferencesManager.getString("block"))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showBlockConfirmDialog = false }) {
+                    Text(preferencesManager.getString("cancel"))
+                }
+            }
+        )
     }
 }
 
