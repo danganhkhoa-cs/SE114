@@ -2,9 +2,11 @@ package com.example.se114.ui.presentation.other_profile
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -25,11 +27,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import com.example.se114.data.model.Review
 import com.example.se114.local.PreferencesManager
 import kotlinx.coroutines.flow.collectLatest
+
+// Định nghĩa màu Teal giống SettingsScreen để đồng bộ giao diện
+val AppTealDark = Color(0xFF00695C)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,6 +52,7 @@ fun OtherProfileScreen(
 
     var showMenu by remember { mutableStateOf(false) }
     var showBlockConfirmDialog by remember { mutableStateOf(false) }
+    var showReviewDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(key1 = true) {
         viewModel.eventFlow.collectLatest { event ->
@@ -65,7 +74,6 @@ fun OtherProfileScreen(
                     }
                 },
                 actions = {
-                    // Chỉ hiện Menu khi chưa Block và không có lỗi
                     if (!uiState.isLoading && !uiState.isBlocked && uiState.errorMessage == null) {
                         IconButton(onClick = { showMenu = true }) {
                             Icon(Icons.Default.MoreVert, contentDescription = "Menu")
@@ -136,7 +144,7 @@ fun OtherProfileScreen(
                             .height(150.dp)
                             .background(
                                 Brush.horizontalGradient(
-                                    colors = listOf(Color(0xFF00695C), Color(0xFF4DB6AC))
+                                    colors = listOf(AppTealDark, Color(0xFF4DB6AC))
                                 )
                             )
                     )
@@ -163,7 +171,7 @@ fun OtherProfileScreen(
                                     text = uiState.userAvatar.ifEmpty { uiState.userName.take(1).uppercase() },
                                     fontSize = 48.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF00695C)
+                                    color = AppTealDark
                                 )
                             }
                         }
@@ -178,20 +186,9 @@ fun OtherProfileScreen(
                     fontWeight = FontWeight.Bold
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-                val displayBio = if (uiState.userBio.isBlank() || uiState.userBio == "Chưa có giới thiệu") preferencesManager.getString("no_bio") else uiState.userBio
-                Text(
-                    text = displayBio,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(horizontal = 32.dp),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Action Buttons
+                // --- ACTION BUTTONS ---
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -247,12 +244,22 @@ fun OtherProfileScreen(
                     }
                 }
 
+                Spacer(modifier = Modifier.height(16.dp))
+
+                val displayBio = if (uiState.userBio.isBlank() || uiState.userBio == "Chưa có giới thiệu") preferencesManager.getString("no_bio") else uiState.userBio
+                Text(
+                    text = displayBio,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 32.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
                 Spacer(modifier = Modifier.height(24.dp))
 
                 val displayAddress = if (uiState.address == "Chưa cập nhật") preferencesManager.getString("not_updated") else uiState.address
                 val displayJob = if (uiState.job == "Chưa cập nhật") preferencesManager.getString("not_updated") else uiState.job
                 val displayPhone = if (uiState.phone == "Ẩn") preferencesManager.getString("hidden_info") else uiState.phone
-                val displayDate = if (uiState.joinedDate == "Thành viên LocaSOS") preferencesManager.getString("joined_date") else uiState.joinedDate
 
                 InfoSection(
                     preferencesManager = preferencesManager,
@@ -261,8 +268,37 @@ fun OtherProfileScreen(
                     gender = uiState.gender,
                     job = displayJob,
                     rating = uiState.rating,
-                    reviewCount = uiState.reviewCount
+                    reviewCount = uiState.reviewCount,
+                    onSeeReviewsClick = {
+                        viewModel.loadReviews(reset = true)
+                        showReviewDialog = true
+                    }
                 )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // --- PHẦN ĐÁNH GIÁ (VOTE) ---
+                if (!uiState.isBlocked && uiState.canRate) {
+                    RatingInputSection(
+                        preferencesManager = preferencesManager,
+                        currentRating = uiState.myRating,
+                        currentComment = uiState.myComment,
+                        onRate = { stars, comment ->
+                            viewModel.submitRating(stars, comment)
+                        },
+                        onDelete = { viewModel.deleteRating() }
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                } else if (!uiState.canRate && !uiState.isBlocked) {
+                    Text(
+                        text = preferencesManager.getString("not_enough_messages"),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray,
+                        modifier = Modifier.padding(16.dp),
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
             }
         }
     }
@@ -290,6 +326,18 @@ fun OtherProfileScreen(
             }
         )
     }
+
+    if (showReviewDialog) {
+        ReviewListDialog(
+            reviews = uiState.reviewsList,
+            authorAvatars = uiState.reviewAuthorAvatars, // TRUYỀN MAP AVATAR MỚI VÀO
+            totalCount = uiState.reviewCount,
+            isLoading = uiState.isReviewsLoading,
+            onDismiss = { showReviewDialog = false },
+            onLoadMore = { viewModel.loadReviews(reset = false) },
+            preferencesManager = preferencesManager
+        )
+    }
 }
 
 @Composable
@@ -300,7 +348,8 @@ fun InfoSection(
     gender: String,
     job: String,
     rating: Float,
-    reviewCount: Int
+    reviewCount: Int,
+    onSeeReviewsClick: () -> Unit
 ) {
     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
         ProfileInfoItem(icon = Icons.Default.Work, label = preferencesManager.getString("current_job"), value = job)
@@ -311,7 +360,7 @@ fun InfoSection(
         Spacer(modifier = Modifier.height(16.dp))
 
         Card(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().clickable { onSeeReviewsClick() },
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
         ) {
             Row(
@@ -329,6 +378,12 @@ fun InfoSection(
                         text = "$reviewCount ${preferencesManager.getString("reviews")}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = preferencesManager.getString("see_reviews"),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
                     )
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -356,6 +411,234 @@ fun ProfileInfoItem(icon: ImageVector, label: String, value: String) {
         Column {
             Text(text = label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(text = value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+        }
+    }
+}
+
+@Composable
+fun RatingInputSection(
+    preferencesManager: PreferencesManager,
+    currentRating: Int,
+    currentComment: String,
+    onRate: (Int, String) -> Unit,
+    onDelete: () -> Unit
+) {
+    var selectedRating by remember(currentRating) { mutableIntStateOf(currentRating) }
+    var comment by remember(currentComment) { mutableStateOf(currentComment) }
+    val isEditing = currentRating > 0
+
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = if (isEditing) preferencesManager.getString("your_rating") else preferencesManager.getString("write_review"),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // 5 Stars Row
+            Row(horizontalArrangement = Arrangement.Center) {
+                for (i in 1..5) {
+                    Icon(
+                        imageVector = if (i <= selectedRating) Icons.Default.Star else Icons.Default.StarBorder,
+                        contentDescription = "$i Star",
+                        tint = if (i <= selectedRating) Color(0xFFFFC107) else Color.Gray,
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clickable { selectedRating = i }
+                            .padding(2.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedTextField(
+                value = comment,
+                onValueChange = { comment = it },
+                placeholder = { Text(preferencesManager.getString("write_review_hint")) },
+                modifier = Modifier.fillMaxWidth(),
+                maxLines = 3
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                if (isEditing) {
+                    TextButton(onClick = onDelete) {
+                        Text(preferencesManager.getString("delete_review"), color = MaterialTheme.colorScheme.error)
+                    }
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Button(
+                    onClick = { onRate(selectedRating, comment) },
+                    enabled = selectedRating > 0
+                ) {
+                    Text(preferencesManager.getString(if (isEditing) "save" else "submit_review"))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ReviewListDialog(
+    reviews: List<Review>,
+    authorAvatars: Map<String, String>, // Tham số mới
+    totalCount: Int,
+    isLoading: Boolean,
+    onDismiss: () -> Unit,
+    onLoadMore: () -> Unit,
+    preferencesManager: PreferencesManager
+) {
+    val currentUserId = preferencesManager.userId
+    val currentUserAvatar = preferencesManager.userAvatar
+    val currentUserName = preferencesManager.userName
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(24.dp), // Đồng bộ với BlockListDialog
+            color = MaterialTheme.colorScheme.surface,
+            modifier = Modifier.fillMaxWidth().heightIn(max = 600.dp)
+        ) {
+            Column(modifier = Modifier.padding(24.dp)) {
+                Text(
+                    text = "${preferencesManager.getString("rating_reviews")} ($totalCount)",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                if (reviews.isEmpty() && !isLoading) {
+                    Text(
+                        text = preferencesManager.getString("no_reviews_yet"),
+                        modifier = Modifier.padding(24.dp).align(Alignment.CenterHorizontally),
+                        color = Color.Gray
+                    )
+                } else {
+                    androidx.compose.foundation.lazy.LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.weight(1f, fill = false)
+                    ) {
+                        items(reviews.size) { index ->
+                            ReviewItem(
+                                review = reviews[index],
+                                authorAvatars = authorAvatars, // Truyền Map xuống
+                                currentUserId = currentUserId,
+                                currentUserAvatar = currentUserAvatar,
+                                currentUserName = currentUserName
+                            )
+                            HorizontalDivider(color = Color.Gray.copy(alpha = 0.2f), modifier = Modifier.padding(top = 8.dp))
+                        }
+
+                        item {
+                            if (isLoading) {
+                                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                }
+                            } else if (reviews.size < totalCount) {
+                                TextButton(
+                                    onClick = onLoadMore,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(preferencesManager.getString("load_more_reviews"))
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
+                    Text(preferencesManager.getString("close"))
+                }
+            }
+        }
+    }
+}
+
+// Hàm ReviewItem đã được cập nhật chính xác theo mẫu của Block List và thêm logic đồng bộ avatar cá nhân
+@Composable
+fun ReviewItem(
+    review: Review,
+    authorAvatars: Map<String, String>, // Tham số mới
+    currentUserId: String = "",
+    currentUserAvatar: String = "",
+    currentUserName: String = ""
+) {
+    // Nếu ID người review trùng với ID của mình (đang đăng nhập)
+    // -> Sử dụng avatar và tên mới nhất từ Preferences (local) thay vì từ review cũ (DB)
+    val isMe = review.reviewerId == currentUserId && currentUserId.isNotEmpty()
+
+    // LOGIC CHỌN AVATAR:
+    // 1. Nếu là chính mình -> lấy từ Preferences (mới nhất)
+    // 2. Nếu là người khác -> lấy từ Map (vừa fetch mới nhất từ Firestore)
+    // 3. Fallback -> lấy từ object review cũ (nếu không tìm thấy trong map)
+    val avatarToShow = if (isMe) {
+        currentUserAvatar
+    } else {
+        authorAvatars[review.reviewerId] ?: review.reviewerAvatar
+    }
+
+    val nameToShow = if (isMe) currentUserName else review.reviewerName
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top // Căn lề trên để đẹp hơn khi có comment dài
+    ) {
+        // --- LOGIC HIỂN THỊ AVATAR GIỐNG BLOCK LIST ---
+        Surface(
+            shape = CircleShape,
+            modifier = Modifier.size(40.dp),
+            color = AppTealDark.copy(alpha = 0.2f)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                if (avatarToShow.startsWith("http")) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(avatarToShow)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = "Reviewer Avatar",
+                        modifier = Modifier.fillMaxSize().clip(CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Text(
+                        text = if (nameToShow.isNotEmpty()) nameToShow.take(1).uppercase() else "?",
+                        fontWeight = FontWeight.Bold,
+                        color = AppTealDark
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Column {
+            Text(nameToShow, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+
+            // Stars
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                repeat(5) { i ->
+                    Icon(
+                        imageVector = Icons.Default.Star,
+                        contentDescription = null,
+                        tint = if (i < review.rating) Color(0xFFFFC107) else Color.LightGray,
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
+            }
+
+            if (review.comment.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(review.comment, style = MaterialTheme.typography.bodySmall)
+            }
         }
     }
 }
