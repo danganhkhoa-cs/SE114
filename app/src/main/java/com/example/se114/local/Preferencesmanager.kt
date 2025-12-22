@@ -71,7 +71,9 @@ class PreferencesManager(context: Context) {
             defaultVi = "123 Nguyễn Huệ, Quận 1, TP.HCM"
         )
         set(value) = prefs.edit { putString(Keys.KEY_USER_ADDRESS, value) }
-
+    var userAvatar: String
+        get() = prefs.getString("user_avatar_url", "") ?: ""
+        set(value) = prefs.edit { putString("user_avatar_url", value) }
     var userJob: String
         get() = getLocalizedField(
             key = Keys.KEY_USER_JOB,
