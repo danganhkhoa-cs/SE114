@@ -96,9 +96,13 @@ class ChatListViewModel @Inject constructor(
                         .whereIn(FieldPath.documentId(), chunk).get().await()
                     for (doc in usersSnapshot) {
                         val name = doc.getString("name") ?: "Unknown"
-                        val avatar = doc.getString("avatar_url") ?: name.take(1).uppercase()
+
+                        val avatarUrl = doc.getString("avatar_url")
+                        val avatar = if (!avatarUrl.isNullOrEmpty()) avatarUrl else name.take(1).uppercase()
+
                         val phone = doc.getString("phone") ?: ""
-                        newUserMap[doc.id] = UserSummary(doc.id, name, avatar, phone)
+                        val email = doc.getString("email") ?: ""
+                        newUserMap[doc.id] = UserSummary(doc.id, name, avatar, phone, email)
                     }
                 } catch (e: Exception) { e.printStackTrace() }
             }
@@ -114,18 +118,12 @@ class ChatListViewModel @Inject constructor(
     private fun updateFilteredList() {
         val query = _uiState.value.searchQuery
 
-        // 1. Danh sách bạn bè: Lấy từ TOÀN BỘ conversations, KHÔNG lọc theo deletedBy.
         val friendsSource = allConversations.filter {
             it.friendshipState == FriendshipState.FRIENDS
         }
 
-        // 2. Danh sách hiển thị (Inbox, Spam): Cần lọc bỏ những cái đã xóa (deletedBy)
-        // Đây là những tin nhắn người dùng "nhìn thấy" trong Inbox/Spam
         val visibleConversations = allConversations.filter { !it.isDeletedBy(currentUserId) }
 
-        // 3. Friend Requests: CẬP NHẬT QUAN TRỌNG
-        // Lấy từ TOÀN BỘ conversations. Dù người dùng có xóa/ẩn tin nhắn chat (deletedBy),
-        // thì Lời mời kết bạn (Friend Request) vẫn phải hiện ra để họ chấp nhận/từ chối.
         val sentRequestsSource = allConversations.filter {
             it.friendshipState == FriendshipState.PENDING && it.friendRequestSenderId == currentUserId
         }
@@ -134,20 +132,21 @@ class ChatListViewModel @Inject constructor(
             it.friendshipState == FriendshipState.PENDING && it.friendRequestSenderId != currentUserId
         }
 
-        // --- INBOX LOGIC ---
+        // --- SỬA LẠI LOGIC LỌC INBOX ---
         val inboxSource = visibleConversations.filter { conv ->
             val isChatAccepted = conv.status == ChatStatus.ACCEPTED
             val isMySentChatPending = conv.status == ChatStatus.PENDING && conv.requestSenderId == currentUserId
 
-            // Điều kiện để hiện trong Inbox:
-            // 1. Trạng thái chat hợp lệ (Accepted hoặc Mình gửi Pending)
-            // 2. PHẢI CÓ TIN NHẮN (lastMessage không rỗng) -> Để tránh hiện mấy cái "kết bạn" rác
-            (isChatAccepted || isMySentChatPending) && conv.lastMessage.isNotBlank() && conv.lastMessage != "Đã gửi lời mời kết bạn"
+            // THÊM: Cho phép hiện cả những đoạn chat bị chặn (REJECTED)
+            val isRejected = conv.status == ChatStatus.REJECTED
+
+            // Điều kiện cuối cùng:
+            (isChatAccepted || isMySentChatPending || isRejected) &&
+                    conv.lastMessage.isNotBlank() &&
+                    conv.lastMessage != "Đã gửi lời mời kết bạn"
         }
 
-        // --- SPAM (TIN NHẮN CHỜ) LOGIC ---
         val spamSource = visibleConversations.filter { conv ->
-            // Chỉ hiện Spam nếu có tin nhắn thực sự (lastMessage không rỗng)
             conv.status == ChatStatus.PENDING && conv.requestSenderId != currentUserId && conv.lastMessage.isNotBlank() && conv.lastMessage != "Đã gửi lời mời kết bạn"
         }
 
@@ -195,13 +194,35 @@ class ChatListViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isSearching = true, searchResults = emptyList(), error = null) }
             try {
+                // 1. Tìm user theo số điện thoại
                 val querySnapshot = firestore.collection("users").whereEqualTo("phone", phone).get().await()
+
+                // 2. Lấy Block list của mình
+                val myDoc = firestore.collection("users").document(currentUserId).get().await()
+                val myBlockedList = myDoc.get("blockedUsers") as? List<String> ?: emptyList()
+
                 val results = querySnapshot.documents.mapNotNull { doc ->
-                    if (doc.id == currentUserId) null
-                    else UserSummary(doc.id, doc.getString("name")?:"Unknown", doc.getString("avatar_url")?:"", doc.getString("phone")?:"")
+                    val targetId = doc.id
+                    // 3. Lấy Block list của người tìm thấy
+                    val targetBlockedList = doc.get("blockedUsers") as? List<String> ?: emptyList()
+
+                    // LOGIC CHẶN 2 CHIỀU: Nếu mình chặn họ HOẶC họ chặn mình -> Không tìm thấy
+                    val isHidden = myBlockedList.contains(targetId) || targetBlockedList.contains(currentUserId)
+
+                    if (doc.id == currentUserId || isHidden) {
+                        null
+                    } else {
+                        UserSummary(
+                            uid = targetId,
+                            name = doc.getString("name") ?: "Unknown",
+                            avatar = doc.getString("avatar_url") ?: "",
+                            phone = doc.getString("phone") ?: "",
+                            email = doc.getString("email") ?: ""
+                        )
+                    }
                 }
                 _uiState.update { it.copy(isSearching = false, searchResults = results) }
-                if (results.isEmpty()) _uiState.update { it.copy(error = "Không tìm thấy người dùng") }
+                if (results.isEmpty()) _uiState.update { it.copy(error = preferencesManager.getString("user_not_found")) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isSearching = false, error = e.message) }
             }

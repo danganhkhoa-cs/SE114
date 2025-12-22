@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -34,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
 import com.example.se114.data.model.Conversation
 import com.example.se114.data.model.FriendshipState
 import com.example.se114.data.model.UserSummary
@@ -143,7 +145,6 @@ fun ChatListScreen(
                     contentPadding = PaddingValues(top = 24.dp, bottom = 16.dp, start = 16.dp, end = 16.dp)
                 ) {
                     // --- MỤC TIN NHẮN CHỜ (SPAM) ---
-                    // Chỉ hiện khi có tin nhắn trong danh sách spamConversations
                     if (uiState.spamConversations.isNotEmpty()) {
                         item {
                             Row(
@@ -164,18 +165,17 @@ fun ChatListScreen(
                                 Spacer(modifier = Modifier.width(16.dp))
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        preferencesManager.getString("spam_messages_title"), // "Tin nhắn chờ"
+                                        preferencesManager.getString("spam_messages_title"),
                                         fontWeight = FontWeight.Bold,
                                         color = if (isDarkMode) Color.White else Color.Black
                                     )
                                     Text(
-                                        "${uiState.spamConversations.size} ${preferencesManager.getString("messages_count_suffix")}", // "tin nhắn"
+                                        "${uiState.spamConversations.size} ${preferencesManager.getString("messages_count_suffix")}",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = Color.Gray
                                     )
                                 }
 
-                                // Chấm đỏ nếu có tin nhắn mới trong spam (tùy chọn)
                                 Box(
                                     modifier = Modifier
                                         .size(10.dp)
@@ -334,13 +334,29 @@ fun AddFriendDialog(
                                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { onUserClick(user.uid) }.padding(vertical = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
+                                // --- AVATAR TRONG SEARCH RESULTS ---
                                 Surface(shape = CircleShape, color = AppTealDark.copy(alpha = 0.1f), modifier = Modifier.size(48.dp)) {
-                                    Box(contentAlignment = Alignment.Center) { Text(user.avatar.take(1).uppercase(), color = AppTealDark, fontWeight = FontWeight.Bold, fontSize = 20.sp) }
+                                    Box(contentAlignment = Alignment.Center) {
+                                        if (user.avatar.startsWith("http")) {
+                                            AsyncImage(
+                                                model = user.avatar,
+                                                contentDescription = "Avatar",
+                                                modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                                contentScale = ContentScale.Crop
+                                            )
+                                        } else {
+                                            Text(user.avatar.ifEmpty{user.name.take(1).uppercase()}, color = AppTealDark, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                                        }
+                                    }
                                 }
                                 Spacer(modifier = Modifier.width(16.dp))
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(user.name, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge)
                                     Text(user.phone, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                    // --- HIỂN THỊ EMAIL (NEW) ---
+                                    if (user.email.isNotEmpty()) {
+                                        Text(user.email, style = MaterialTheme.typography.bodySmall, color = Color.Gray, fontSize = 11.sp)
+                                    }
                                 }
 
                                 when {
@@ -379,7 +395,6 @@ fun FriendsManagerDialog(
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf(preferencesManager.getString("tab_requests"), preferencesManager.getString("tab_friends"))
 
-    // State cho hộp thoại xác nhận xóa
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var friendToDeleteId by remember { mutableStateOf<String?>(null) }
     var friendToDeleteName by remember { mutableStateOf("") }
@@ -437,7 +452,16 @@ fun FriendsManagerDialog(
                                         ) {
                                             Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                                                 Box(modifier = Modifier.size(50.dp).clip(CircleShape).background(Color.White), contentAlignment = Alignment.Center) {
-                                                    Text(partner.avatar.take(1).uppercase(), fontSize = 20.sp, fontWeight = FontWeight.Bold, color = AppTealDark)
+                                                    if (partner.avatar.startsWith("http")) {
+                                                        AsyncImage(
+                                                            model = partner.avatar,
+                                                            contentDescription = "Avatar",
+                                                            modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                                            contentScale = ContentScale.Crop
+                                                        )
+                                                    } else {
+                                                        Text(partner.avatar.ifEmpty{partner.name.take(1).uppercase()}, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = AppTealDark)
+                                                    }
                                                 }
                                                 Spacer(modifier = Modifier.width(12.dp))
                                                 Column(modifier = Modifier.weight(1f)) {
@@ -469,12 +493,20 @@ fun FriendsManagerDialog(
 
                                         Row(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).clickable { onUserClick(partnerId) }, verticalAlignment = Alignment.CenterVertically) {
                                             Box(modifier = Modifier.size(48.dp).clip(CircleShape).background(AppTealDark.copy(alpha = 0.1f)), contentAlignment = Alignment.Center) {
-                                                Text(partner.avatar.take(1).uppercase(), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = AppTealDark)
+                                                if (partner.avatar.startsWith("http")) {
+                                                    AsyncImage(
+                                                        model = partner.avatar,
+                                                        contentDescription = "Avatar",
+                                                        modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                                        contentScale = ContentScale.Crop
+                                                    )
+                                                } else {
+                                                    Text(partner.avatar.ifEmpty{partner.name.take(1).uppercase()}, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = AppTealDark)
+                                                }
                                             }
                                             Spacer(modifier = Modifier.width(16.dp))
                                             Text(partner.name, modifier = Modifier.weight(1f), fontWeight = FontWeight.Medium, fontSize = 16.sp)
 
-                                            // Thay đổi icon Person thành Delete và thêm logic mở Confirm Dialog
                                             IconButton(onClick = {
                                                 friendToDeleteId = conv.id
                                                 friendToDeleteName = partner.name
@@ -497,7 +529,6 @@ fun FriendsManagerDialog(
         }
     }
 
-    // Hiển thị AlertDialog nếu biến showDeleteConfirmDialog = true
     if (showDeleteConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirmDialog = false },
@@ -544,7 +575,6 @@ fun ChatListItem(
         SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(conversation.lastMessageTime))
     } catch (e: Exception) { "" }
 
-    // Xử lý nội dung tin nhắn hiển thị (localize hệ thống)
     val displayMessage = when (conversation.lastMessage) {
         "Đã gửi lời mời kết bạn" -> preferencesManager.getString("msg_sent_friend_request")
         "Bắt đầu cuộc trò chuyện" -> preferencesManager.getString("msg_start_conversation")
@@ -556,7 +586,18 @@ fun ChatListItem(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Surface(modifier = Modifier.size(56.dp).clickable { onAvatarClick() }, shape = CircleShape, color = AppTealDark) {
-            Box(contentAlignment = Alignment.Center) { Text(partnerInfo.avatar.ifEmpty { partnerInfo.name.take(1).uppercase() }, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp) }
+            Box(contentAlignment = Alignment.Center) {
+                if (partnerInfo.avatar.startsWith("http")) {
+                    AsyncImage(
+                        model = partnerInfo.avatar,
+                        contentDescription = "Avatar",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Text(partnerInfo.avatar.ifEmpty { partnerInfo.name.take(1).uppercase() }, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                }
+            }
         }
         Spacer(modifier = Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {

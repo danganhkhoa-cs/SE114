@@ -126,9 +126,14 @@ class ChatDetailViewModel @Inject constructor(
             try {
                 val doc = firestore.collection("users").document(partnerId).get().await()
                 val name = doc.getString("name") ?: "Unknown"
-                val avatar = doc.getString("avatar_url") ?: name.take(1).uppercase()
+
+                val avatarUrl = doc.getString("avatar_url")
+                val avatar = if (!avatarUrl.isNullOrEmpty()) avatarUrl else name.take(1).uppercase()
+
                 val phone = doc.getString("phone") ?: ""
-                val summary = UserSummary(partnerId, name, avatar, phone)
+                val email = doc.getString("email") ?: ""
+
+                val summary = UserSummary(partnerId, name, avatar, phone, email)
                 _uiState.update { it.copy(partnerProfile = summary) }
             } catch (e: Exception) { e.printStackTrace() }
         }
@@ -148,47 +153,66 @@ class ChatDetailViewModel @Inject constructor(
 
         val conversation = _uiState.value.conversation ?: return
 
-        // Kiểm tra nếu đối phương đã xóa tài khoản (giả sử có logic này trong model)
+        // 1. Kiểm tra nếu đối phương đã xóa tài khoản
         if (conversation.deletedAccountUsers.isNotEmpty()) {
-            _uiState.update { it.copy(sendError = "Người dùng này không còn hoạt động") }
+            _uiState.update { it.copy(sendError = preferencesManager.getString("user_inactive")) }
+            return
+        }
+
+        // 2. CHECK BLOCK: Nếu trạng thái Chat là REJECTED (Bị chặn)
+        if (conversation.status == ChatStatus.REJECTED) {
+            _uiState.update { it.copy(sendError = preferencesManager.getString("blocked_msg_error")) }
             return
         }
 
         viewModelScope.launch {
-            val messageId = UUID.randomUUID().toString()
-            val message = ChatMessage(
-                id = messageId,
-                senderId = currentUserId,
-                content = content,
-                timestamp = System.currentTimeMillis()
-            )
+            try {
+                // 3. CHECK BLOCK MẠNH HƠN: Kiểm tra trực tiếp blockedUsers list của đối phương
+                val partnerId = conversation.participants.find { it != currentUserId } ?: ""
+                if (partnerId.isNotEmpty()) {
+                    val partnerDoc = firestore.collection("users").document(partnerId).get().await()
+                    val blockedList = partnerDoc.get("blockedUsers") as? List<String> ?: emptyList()
+                    if (blockedList.contains(currentUserId)) {
+                        _uiState.update { it.copy(sendError = preferencesManager.getString("user_unavailable")) }
+                        return@launch
+                    }
+                }
 
-            // 1. Add Message
-            firestore.collection("conversations").document(currentConversationId)
-                .collection("messages").document(messageId).set(message).await()
+                val messageId = UUID.randomUUID().toString()
+                val message = ChatMessage(
+                    id = messageId,
+                    senderId = currentUserId,
+                    content = content,
+                    timestamp = System.currentTimeMillis()
+                )
 
-            // 2. Update Conversation Last Message
-            val updates = mutableMapOf<String, Any>(
-                "lastMessage" to content,
-                "lastMessageTime" to System.currentTimeMillis(),
-                "lastSenderId" to currentUserId,
-                "readBy" to listOf(currentUserId),
-                "deletedBy" to emptyList<String>() // Un-hide chat for everyone
-            )
+                // 4. Add Message
+                firestore.collection("conversations").document(currentConversationId)
+                    .collection("messages").document(messageId).set(message).await()
 
-            // Nếu status đang là REJECTED (đã chặn/từ chối), set lại PENDING để hiện bên Spam của họ
-            // Hoặc nếu đang PENDING thì giữ nguyên
-            if (conversation.status == ChatStatus.REJECTED) {
-                updates["status"] = ChatStatus.PENDING
-                updates["requestSenderId"] = currentUserId
+                // 5. Update Conversation Last Message
+                val updates = mutableMapOf<String, Any>(
+                    "lastMessage" to content,
+                    "lastMessageTime" to System.currentTimeMillis(),
+                    "lastSenderId" to currentUserId,
+                    "readBy" to listOf(currentUserId),
+                    "deletedBy" to emptyList<String>() // Un-hide chat for everyone
+                )
+
+                if (conversation.status == ChatStatus.REJECTED) {
+                    updates["status"] = ChatStatus.PENDING
+                    updates["requestSenderId"] = currentUserId
+                }
+
+                firestore.collection("conversations").document(currentConversationId)
+                    .update(updates)
+                    .await()
+
+                _uiState.update { it.copy(messageInput = "") }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _uiState.update { it.copy(sendError = "${preferencesManager.getString("error")}: ${e.message}") }
             }
-
-            // Nếu là lần đầu chat (status ACCEPTED nhưng deletedBy có người kia) -> Nó tự un-hide nhờ dòng deletedBy trên
-
-            firestore.collection("conversations").document(currentConversationId)
-                .update(updates)
-
-            _uiState.update { it.copy(messageInput = "") }
         }
     }
 
@@ -212,20 +236,24 @@ class ChatDetailViewModel @Inject constructor(
 
     fun acceptConversation() {
         viewModelScope.launch {
-            firestore.collection("conversations").document(currentConversationId)
-                .update("status", ChatStatus.ACCEPTED).await()
+            try {
+                firestore.collection("conversations").document(currentConversationId)
+                    .update("status", ChatStatus.ACCEPTED).await()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
-    // --- FIX: TỪ CHỐI TIN NHẮN CHỜ (DECLINE MESSAGE) ---
-    // Thay vì xóa vĩnh viễn (delete), ta dùng "Xóa mềm" (thêm vào deletedBy).
-    // Điều này làm ẩn tin nhắn khỏi danh sách Spam/Inbox của người dùng hiện tại,
-    // NHƯNG vẫn giữ lại Conversation Document để Lời mời kết bạn (Friend Request) không bị mất.
     fun declineConversation() {
         viewModelScope.launch {
-            firestore.collection("conversations").document(currentConversationId)
-                .update("deletedBy", FieldValue.arrayUnion(currentUserId))
-                .await()
+            try {
+                firestore.collection("conversations").document(currentConversationId)
+                    .update("deletedBy", FieldValue.arrayUnion(currentUserId))
+                    .await()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 }

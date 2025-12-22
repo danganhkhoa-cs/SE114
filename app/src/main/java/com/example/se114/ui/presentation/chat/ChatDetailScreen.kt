@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -29,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
 import com.example.se114.data.model.ChatMessage
 import com.example.se114.local.PreferencesManager
 import com.example.se114.ui.theme.AppTealDark
@@ -101,9 +103,13 @@ fun ChatDetailScreen(
                         ?: uiState.conversation?.participantData?.get(partnerId)?.name
                         ?: "Chat"
 
+                    // Logic fallback UI
                     val partnerAvatar = uiState.partnerProfile?.avatar
                         ?: uiState.conversation?.participantData?.get(partnerId)?.avatar
                         ?: ""
+
+                    // Xử lý hiển thị cuối cùng (nếu rỗng thì lấy chữ cái đầu)
+                    val displayAvatar = if (partnerAvatar.isNotEmpty()) partnerAvatar else partnerName.take(1).uppercase()
 
                     // Row chứa Avatar và Tên, có thể click để xem Profile
                     Row(
@@ -125,7 +131,21 @@ fun ChatDetailScreen(
                                 .background(Color.White),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(text = partnerAvatar, fontSize = 20.sp)
+                            if (displayAvatar.startsWith("http")) {
+                                AsyncImage(
+                                    model = displayAvatar,
+                                    contentDescription = "Avatar",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Text(
+                                    text = displayAvatar,
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = AppTealDark // Thêm màu cho chữ
+                                )
+                            }
                         }
 
                         Spacer(modifier = Modifier.width(12.dp))
