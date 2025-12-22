@@ -3,9 +3,11 @@ package com.example.se114.ui.presentation.profile
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.se114.data.model.Review
 import com.example.se114.local.PreferencesManager
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
 import com.google.firebase.storage.FirebaseStorage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,7 +28,16 @@ data class ProfileUiState(
     val logoutSuccess: Boolean = false,
 
     val isLoading: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+
+    // --- Rating fields ---
+    val rating: Float = 0f,
+    val reviewCount: Int = 0,
+    val reviewsList: List<Review> = emptyList(),
+    // Map lưu avatar mới nhất của người review: Map<ReviewerId, AvatarUrl>
+    val reviewAuthorAvatars: Map<String, String> = emptyMap(),
+    val isReviewsLoading: Boolean = false,
+    val lastReviewDoc: com.google.firebase.firestore.DocumentSnapshot? = null
 )
 
 @HiltViewModel
@@ -77,15 +88,84 @@ class ProfileViewModel @Inject constructor(
                     preferencesManager.userAvatar = avatarUrl
                     preferencesManager.userPhone = phone
 
+                    // Get Rating Info
+                    val ratingSum = document.getLong("ratingSum") ?: 0L
+                    val ratingCount = document.getLong("ratingCount") ?: 0L
+                    val avg = if (ratingCount > 0) ratingSum.toFloat() / ratingCount else 0f
+
                     _uiState.update {
                         it.copy(
                             userName = name,
-                            userBio = bio
+                            userBio = bio,
+                            rating = avg,
+                            reviewCount = ratingCount.toInt()
                         )
                     }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
+            }
+        }
+    }
+
+    fun loadMyReviews(reset: Boolean = false) {
+        val uid = preferencesManager.userId
+        if (uid.isBlank()) return
+        if (reset) {
+            _uiState.update { it.copy(reviewsList = emptyList(), lastReviewDoc = null) }
+        }
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isReviewsLoading = true) }
+            try {
+                var query = firestore.collection("users").document(uid)
+                    .collection("reviews")
+                    .orderBy("timestamp", Query.Direction.DESCENDING)
+                    .limit(10)
+
+                val lastDoc = _uiState.value.lastReviewDoc
+                if (!reset && lastDoc != null) {
+                    query = query.startAfter(lastDoc)
+                }
+
+                val snapshot = query.get().await()
+                if (!snapshot.isEmpty) {
+                    val newReviews = snapshot.toObjects(Review::class.java)
+                    val newLastDoc = snapshot.documents.lastOrNull()
+
+                    // --- LOGIC MỚI: FETCH AVATAR MỚI NHẤT CỦA CÁC REVIEWER ---
+                    val userIdsToFetch = newReviews.map { it.reviewerId }.distinct()
+                        .filter { !_uiState.value.reviewAuthorAvatars.containsKey(it) }
+
+                    val newAvatarsMap = _uiState.value.reviewAuthorAvatars.toMutableMap()
+
+                    if (userIdsToFetch.isNotEmpty()) {
+                        userIdsToFetch.chunked(10).forEach { chunkIds ->
+                            try {
+                                val usersSnap = firestore.collection("users")
+                                    .whereIn(com.google.firebase.firestore.FieldPath.documentId(), chunkIds)
+                                    .get().await()
+                                for (doc in usersSnap) {
+                                    val avatar = doc.getString("avatar_url") ?: ""
+                                    newAvatarsMap[doc.id] = avatar
+                                }
+                            } catch (e: Exception) { e.printStackTrace() }
+                        }
+                    }
+
+                    _uiState.update {
+                        it.copy(
+                            reviewsList = if (reset) newReviews else it.reviewsList + newReviews,
+                            lastReviewDoc = newLastDoc,
+                            reviewAuthorAvatars = newAvatarsMap, // Cập nhật Map
+                            isReviewsLoading = false
+                        )
+                    }
+                } else {
+                    _uiState.update { it.copy(isReviewsLoading = false) }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isReviewsLoading = false) }
             }
         }
     }
@@ -106,21 +186,30 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             try {
-                var finalAvatarUrl = preferencesManager.userAvatar
+                // Lấy avatar hiện tại để chuẩn bị xóa (nếu có thay đổi)
+                val oldAvatarUrl = preferencesManager.userAvatar
+                var finalAvatarUrl = oldAvatarUrl
 
-                // 1. Xử lý logic Avatar
+                // 1. XÓA ẢNH CŨ trên Storage nếu người dùng đổi ảnh hoặc xóa ảnh
+                if ((newAvatarUri != null || isAvatarDeleted) && oldAvatarUrl.isNotEmpty() && oldAvatarUrl.startsWith("http")) {
+                    try {
+                        val oldRef = storage.getReferenceFromUrl(oldAvatarUrl)
+                        oldRef.delete().await()
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+
+                // 2. Upload ảnh mới (nếu có)
                 if (isAvatarDeleted) {
-                    // Nếu người dùng chọn xóa avatar -> Set thành rỗng
                     finalAvatarUrl = ""
                 } else if (newAvatarUri != null) {
-                    // Nếu người dùng chọn ảnh mới -> Upload lên Storage
                     val storageRef = storage.reference.child("users/$uid/avatar_${System.currentTimeMillis()}.jpg")
                     storageRef.putFile(newAvatarUri).await()
                     finalAvatarUrl = storageRef.downloadUrl.await().toString()
                 }
-                // Nếu không xóa và không chọn ảnh mới -> Giữ nguyên finalAvatarUrl cũ
 
-                // 2. Cập nhật Firestore một lần duy nhất
+                // 3. Cập nhật Firestore một lần duy nhất
                 val updates = mapOf(
                     "name" to newName,
                     "bio" to newBio,
@@ -128,12 +217,12 @@ class ProfileViewModel @Inject constructor(
                 )
                 firestore.collection("users").document(uid).update(updates).await()
 
-                // 3. Cập nhật Local Preferences
+                // 4. Cập nhật Local Preferences
                 preferencesManager.userName = newName
                 preferencesManager.userBio = newBio
                 preferencesManager.userAvatar = finalAvatarUrl
 
-                // 4. Update UI State & Đóng Dialog
+                // 5. Update UI State & Đóng Dialog
                 _uiState.update {
                     it.copy(
                         userName = newName,

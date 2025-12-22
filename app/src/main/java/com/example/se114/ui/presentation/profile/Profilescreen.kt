@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Person
@@ -33,6 +34,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -41,6 +43,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import com.example.se114.data.model.Review
 import com.example.se114.local.PreferencesManager
 import kotlinx.coroutines.launch
 
@@ -58,6 +62,8 @@ fun ProfileScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
+
+    var showReviewDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState.logoutSuccess) {
         if (uiState.logoutSuccess) {
@@ -133,6 +139,38 @@ fun ProfileScreen(
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
+                                Spacer(modifier = Modifier.height(4.dp))
+
+                                // --- HIỂN THỊ RATING CỦA BẢN THÂN ---
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = String.format("%.1f", uiState.rating),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        // FIX: Đổi Color.Black thành onSurface để tự động chuyển trắng khi Dark Mode
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Icon(Icons.Default.Star, null, tint = Color(0xFFFFC107), modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "(${uiState.reviewCount})",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        // FIX: Dùng onSurfaceVariant thay vì Gray cứng để rõ hơn trên nền tối
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+
+                                Text(
+                                    text = preferencesManager.getString("see_reviews"),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.clickable {
+                                        viewModel.loadMyReviews(reset = true)
+                                        showReviewDialog = true
+                                    }
+                                )
+
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     uiState.userBio.ifBlank { "Chưa có tiểu sử" },
@@ -258,6 +296,18 @@ fun ProfileScreen(
             onConfirm = {
                 viewModel.logout()
             },
+            preferencesManager = preferencesManager
+        )
+    }
+
+    if (showReviewDialog) {
+        ReviewListDialogLocal(
+            reviews = uiState.reviewsList,
+            authorAvatars = uiState.reviewAuthorAvatars, // Truyền Map avatar mới
+            totalCount = uiState.reviewCount,
+            isLoading = uiState.isReviewsLoading,
+            onDismiss = { showReviewDialog = false },
+            onLoadMore = { viewModel.loadMyReviews(reset = false) },
             preferencesManager = preferencesManager
         )
     }
@@ -545,4 +595,125 @@ fun LogoutConfirmationDialog(onDismiss: () -> Unit, onConfirm: () -> Unit, prefe
         dismissButton = { TextButton(onClick = onDismiss) { Text(preferencesManager.getString("no"), color = MaterialTheme.colorScheme.onSurface) } },
         containerColor = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(16.dp)
     )
+}
+
+// Định nghĩa lại Dialog tại đây để dùng cho ProfileScreen (Code duplicate để dễ copy-paste 1 file)
+@Composable
+fun ReviewListDialogLocal(
+    reviews: List<Review>,
+    authorAvatars: Map<String, String>, // Tham số mới
+    totalCount: Int,
+    isLoading: Boolean,
+    onDismiss: () -> Unit,
+    onLoadMore: () -> Unit,
+    preferencesManager: PreferencesManager
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surface,
+            modifier = Modifier.fillMaxWidth().heightIn(max = 600.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "${preferencesManager.getString("rating_reviews")} ($totalCount)",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                if (reviews.isEmpty() && !isLoading) {
+                    Text(
+                        text = preferencesManager.getString("no_reviews_yet"),
+                        modifier = Modifier.padding(24.dp).align(Alignment.CenterHorizontally),
+                        color = Color.Gray
+                    )
+                } else {
+                    androidx.compose.foundation.lazy.LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.weight(1f, fill = false)
+                    ) {
+                        items(reviews.size) { index ->
+                            ReviewItemLocal(
+                                review = reviews[index],
+                                authorAvatars = authorAvatars // Truyền Map xuống
+                            )
+                            HorizontalDivider(color = Color.Gray.copy(alpha = 0.2f), modifier = Modifier.padding(top = 8.dp))
+                        }
+
+                        item {
+                            if (isLoading) {
+                                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                }
+                            } else if (reviews.size < totalCount) {
+                                TextButton(
+                                    onClick = onLoadMore,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(preferencesManager.getString("load_more_reviews"))
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
+                    Text(preferencesManager.getString("close"))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ReviewItemLocal(
+    review: Review,
+    authorAvatars: Map<String, String> // Tham số mới
+) {
+    // Ưu tiên lấy avatar từ Map (tươi mới), nếu không có mới dùng cái trong Review (cũ)
+    val avatarToShow = authorAvatars[review.reviewerId] ?: review.reviewerAvatar
+
+    Row(modifier = Modifier.fillMaxWidth()) {
+        if (avatarToShow.isNotEmpty()) {
+            // Dùng AsyncImage để load ảnh, hỗ trợ cache
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(avatarToShow)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = null,
+                modifier = Modifier.size(40.dp).clip(CircleShape),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            Box(
+                modifier = Modifier.size(40.dp).background(Color.LightGray, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(review.reviewerName.take(1).uppercase(), fontWeight = FontWeight.Bold)
+            }
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Column {
+            Text(review.reviewerName, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                repeat(5) { i ->
+                    Icon(
+                        imageVector = Icons.Default.Star,
+                        contentDescription = null,
+                        tint = if (i < review.rating) Color(0xFFFFC107) else Color.LightGray,
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
+            }
+            if (review.comment.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(review.comment, style = MaterialTheme.typography.bodySmall)
+            }
+        }
+    }
 }
