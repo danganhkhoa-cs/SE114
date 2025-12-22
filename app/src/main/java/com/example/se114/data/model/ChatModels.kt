@@ -67,5 +67,6 @@ data class UserSummary(
     val uid: String = "",
     val name: String = "",
     val avatar: String = "",
-    val phone: String = ""
+    val phone: String = "",
+    val email: String = "" // Thêm trường email
 )

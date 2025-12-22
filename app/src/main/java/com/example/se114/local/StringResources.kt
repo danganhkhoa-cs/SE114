@@ -3,7 +3,7 @@ package com.example.se114.local
 object StringResources {
     val EN = mapOf(
         // Common
-        "email_exists_error" to "This email is already registered.", // <--- Thêm dòng này
+        "email_exists_error" to "This email is already registered.",
         "unknown_error" to "An unknown error occurred.",
         "app_name" to "LocaSOS",
         "cancel" to "Cancel",
@@ -186,6 +186,7 @@ object StringResources {
         "message" to "Message",
         "friends" to "Friends",
         "friend_accept" to "Accept",
+        "no_bio" to "No bio yet",
 
         // Help & Support
         "need_help" to "Need Help?",
@@ -211,11 +212,25 @@ object StringResources {
         "delete_warning_desc" to "Warning: This action is irreversible. All your data, messages, and account information will be permanently deleted.",
         "enter_password_continue" to "Enter password to continue",
         "type_delete" to "Type 'DELETE' to confirm",
-        "delete_forever" to "Delete Forever"
+        "delete_forever" to "Delete Forever",
+
+        // --- NEW KEYS FOR BLOCKING & ERRORS ---
+        "block_user" to "Block User",
+        "block_user_title" to "Block this user?",
+        "block_user_msg" to "They won't be able to find your profile or send you messages. You can unblock them in Settings.",
+        "block" to "Block",
+        "user_unavailable" to "User not found or unavailable.",
+        "blocked_success" to "User blocked.",
+        "error_blocking" to "Error blocking user: ",
+        "error_friend_request" to "Error sending request: ",
+        "error_cancel_request" to "Error canceling request: ",
+        "error_create_chat" to "Cannot create conversation",
+        "user_inactive" to "This user is no longer active",
+        "blocked_msg_error" to "You cannot message this user."
     )
 
     val VI = mapOf(
-        "email_exists_error" to "Email này đã được đăng ký tài khoản.", // <--- Thêm dòng này
+        "email_exists_error" to "Email này đã được đăng ký tài khoản.",
         "unknown_error" to "Đã xảy ra lỗi không xác định.",
         // Common
         "app_name" to "LocaSOS",
@@ -399,6 +414,7 @@ object StringResources {
         "message" to "Nhắn tin",
         "friends" to "Bạn bè",
         "friend_accept" to "Chấp nhận",
+        "no_bio" to "Chưa có giới thiệu",
 
         // Help & Support
         "need_help" to "Cần trợ giúp?",
@@ -424,6 +440,20 @@ object StringResources {
         "delete_warning_desc" to "Cảnh báo: Hành động này không thể hoàn tác. Tất cả dữ liệu, tin nhắn và thông tin tài khoản sẽ bị xóa vĩnh viễn.",
         "enter_password_continue" to "Nhập mật khẩu để tiếp tục",
         "type_delete" to "Nhập 'DELETE' để xác nhận",
-        "delete_forever" to "Xóa vĩnh viễn"
+        "delete_forever" to "Xóa vĩnh viễn",
+
+        // --- NEW KEYS FOR BLOCKING & ERRORS ---
+        "block_user" to "Chặn người dùng",
+        "block_user_title" to "Chặn người dùng này?",
+        "block_user_msg" to "Họ sẽ không thể tìm thấy hồ sơ hoặc nhắn tin cho bạn. Bạn có thể bỏ chặn trong Cài đặt.",
+        "block" to "Chặn",
+        "user_unavailable" to "Người dùng không tồn tại hoặc không khả dụng.",
+        "blocked_success" to "Đã chặn người dùng.",
+        "error_blocking" to "Lỗi khi chặn: ",
+        "error_friend_request" to "Lỗi gửi kết bạn: ",
+        "error_cancel_request" to "Lỗi hủy lời mời: ",
+        "error_create_chat" to "Không thể tạo cuộc trò chuyện",
+        "user_inactive" to "Người dùng này không còn hoạt động",
+        "blocked_msg_error" to "Bạn không thể nhắn tin cho người này."
     )
 }

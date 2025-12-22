@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -20,6 +21,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -28,7 +30,10 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
+import com.example.se114.data.model.UserSummary
 import com.example.se114.local.PreferencesManager
+import com.example.se114.ui.theme.AppTealDark
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,7 +49,6 @@ fun SettingsScreen(
     val currentLanguage = preferencesManager.languageState.value
     val context = LocalContext.current
 
-    // Hiển thị thông báo lỗi nếu có
     LaunchedEffect(uiState.deleteError) {
         if (uiState.deleteError.isNotEmpty()) {
             Toast.makeText(context, uiState.deleteError, Toast.LENGTH_SHORT).show()
@@ -92,7 +96,6 @@ fun SettingsScreen(
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Language Setting
             SettingItem(
                 icon = Icons.Default.Language,
                 title = preferencesManager.getString("language"),
@@ -100,7 +103,6 @@ fun SettingsScreen(
                 onClick = viewModel::showLanguageDialog
             )
 
-            // Theme Setting
             SettingItem(
                 icon = if (isDarkTheme) Icons.Default.DarkMode else Icons.Default.LightMode,
                 title = preferencesManager.getString("dark_mode"),
@@ -108,7 +110,6 @@ fun SettingsScreen(
                 onClick = viewModel::showThemeDialog
             )
 
-            // Block List
             SettingItem(
                 icon = Icons.Default.Block,
                 title = preferencesManager.getString("block_list"),
@@ -118,7 +119,6 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Delete Account Button
             Button(
                 onClick = viewModel::showDeleteAccountDialog,
                 colors = ButtonDefaults.buttonColors(
@@ -143,7 +143,6 @@ fun SettingsScreen(
         }
     }
 
-    // Loading Overlay
     if (uiState.isDeleting) {
         Box(
             modifier = Modifier
@@ -196,23 +195,13 @@ fun SettingsScreen(
             step = uiState.deleteStep,
             error = uiState.deleteError,
             onDismiss = viewModel::hideDeleteAccountDialog,
-            onNext = { password ->
-                // Sửa lại theo đúng giao diện cũ: truyền cả step và password
-                viewModel.onDeleteNextStep(uiState.deleteStep, password)
-            },
+            onNext = { password -> viewModel.onDeleteNextStep(uiState.deleteStep, password) },
             onPrevious = viewModel::onDeletePreviousStep,
-            onConfirmDelete = { confirmText ->
-                // Logic cũ: truyền callback onLogout vào đây
-                viewModel.confirmDeleteAccount(confirmText) {
-                    onLogout()
-                }
-            },
+            onConfirmDelete = { confirmText -> viewModel.confirmDeleteAccount(confirmText) { onLogout() } },
             preferencesManager = preferencesManager
         )
     }
 }
-
-// --- SUB COMPOSABLES (Giữ nguyên như file bạn gửi) ---
 
 @Composable
 fun SettingItem(
@@ -285,47 +274,24 @@ fun LanguageSelectionDialog(
     var selected by remember { mutableStateOf(currentLanguage) }
 
     Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = RoundedCornerShape(20.dp),
-            color = MaterialTheme.colorScheme.surface,
-            modifier = Modifier.fillMaxWidth()
-        ) {
+        Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface, modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(24.dp)) {
-                Text(
-                    text = preferencesManager.getString("language"),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                Text(text = preferencesManager.getString("language"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(20.dp))
                 languages.forEach { language ->
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { selected = language }
-                            .padding(vertical = 12.dp),
+                        modifier = Modifier.fillMaxWidth().clickable { selected = language }.padding(vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        RadioButton(
-                            selected = (selected == language),
-                            onClick = { selected = language }
-                        )
+                        RadioButton(selected = (selected == language), onClick = { selected = language })
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = language,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
+                        Text(text = language, style = MaterialTheme.typography.bodyLarge)
                     }
                 }
                 Spacer(modifier = Modifier.height(20.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {
-                        Text(preferencesManager.getString("cancel"))
-                    }
-                    Button(onClick = { onConfirm(selected) }, modifier = Modifier.weight(1f)) {
-                        Text(preferencesManager.getString("apply"))
-                    }
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) { Text(preferencesManager.getString("cancel")) }
+                    Button(onClick = { onConfirm(selected) }, modifier = Modifier.weight(1f)) { Text(preferencesManager.getString("apply")) }
                 }
             }
         }
@@ -342,55 +308,30 @@ fun ThemeSelectionDialog(
     var selectedIsDark by remember { mutableStateOf(isDarkTheme) }
 
     Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = RoundedCornerShape(20.dp),
-            color = MaterialTheme.colorScheme.surface,
-            modifier = Modifier.fillMaxWidth()
-        ) {
+        Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface, modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(24.dp)) {
-                Text(
-                    text = preferencesManager.getString("dark_mode"),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                Text(text = preferencesManager.getString("dark_mode"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(20.dp))
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { selectedIsDark = false }
-                        .padding(vertical = 12.dp),
+                    modifier = Modifier.fillMaxWidth().clickable { selectedIsDark = false }.padding(vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    RadioButton(
-                        selected = !selectedIsDark,
-                        onClick = { selectedIsDark = false }
-                    )
+                    RadioButton(selected = !selectedIsDark, onClick = { selectedIsDark = false })
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = preferencesManager.getString("light_mode"), color = MaterialTheme.colorScheme.onSurface)
+                    Text(text = preferencesManager.getString("light_mode"))
                 }
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { selectedIsDark = true }
-                        .padding(vertical = 12.dp),
+                    modifier = Modifier.fillMaxWidth().clickable { selectedIsDark = true }.padding(vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    RadioButton(
-                        selected = selectedIsDark,
-                        onClick = { selectedIsDark = true }
-                    )
+                    RadioButton(selected = selectedIsDark, onClick = { selectedIsDark = true })
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = preferencesManager.getString("dark_mode"), color = MaterialTheme.colorScheme.onSurface)
+                    Text(text = preferencesManager.getString("dark_mode"))
                 }
                 Spacer(modifier = Modifier.height(20.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {
-                        Text(preferencesManager.getString("cancel"))
-                    }
-                    Button(onClick = { onConfirm(selectedIsDark) }, modifier = Modifier.weight(1f)) {
-                        Text(preferencesManager.getString("apply"))
-                    }
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) { Text(preferencesManager.getString("cancel")) }
+                    Button(onClick = { onConfirm(selectedIsDark) }, modifier = Modifier.weight(1f)) { Text(preferencesManager.getString("apply")) }
                 }
             }
         }
@@ -399,16 +340,16 @@ fun ThemeSelectionDialog(
 
 @Composable
 fun BlockListDialog(
-    blockedUsers: List<String>,
+    blockedUsers: List<UserSummary>,
     onDismiss: () -> Unit,
     onUnblock: (String) -> Unit,
     preferencesManager: PreferencesManager
 ) {
     Dialog(onDismissRequest = onDismiss) {
         Surface(
-            shape = RoundedCornerShape(20.dp),
+            shape = RoundedCornerShape(24.dp),
             color = MaterialTheme.colorScheme.surface,
-            modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)
+            modifier = Modifier.fillMaxWidth().heightIn(max = 500.dp)
         ) {
             Column(modifier = Modifier.padding(24.dp)) {
                 Text(
@@ -418,39 +359,81 @@ fun BlockListDialog(
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(16.dp))
+
                 if (blockedUsers.isEmpty()) {
-                    Text(
-                        text = preferencesManager.getString("no_blocked_users"),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                        Text(
+                            text = preferencesManager.getString("no_blocked_users"),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 } else {
-                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                        blockedUsers.forEach { user ->
+                    androidx.compose.foundation.lazy.LazyColumn {
+                        items(blockedUsers.size) { index ->
+                            val user = blockedUsers[index]
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 8.dp),
+                                    .padding(vertical = 12.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(user, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                                    Surface(
+                                        shape = CircleShape,
+                                        modifier = Modifier.size(40.dp),
+                                        color = AppTealDark.copy(alpha = 0.2f)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            if (user.avatar.startsWith("http")) {
+                                                AsyncImage(
+                                                    model = user.avatar,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                                    contentScale = ContentScale.Crop
+                                                )
+                                            } else {
+                                                Text(
+                                                    text = user.avatar.ifEmpty { user.name.take(1).uppercase() },
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = AppTealDark
+                                                )
+                                            }
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(
+                                        text = user.name,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+
                                 Button(
-                                    onClick = { onUnblock(user) },
-                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.error),
+                                    onClick = { onUnblock(user.uid) },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                                        contentColor = MaterialTheme.colorScheme.error
+                                    ),
+                                    shape = RoundedCornerShape(8.dp),
                                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                                    modifier = Modifier.height(32.dp)
+                                    modifier = Modifier.height(36.dp)
                                 ) {
-                                    Text(preferencesManager.getString("unblock"), fontSize = 12.sp)
+                                    Text(preferencesManager.getString("unblock"), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                 }
                             }
-                            HorizontalDivider()
+                            HorizontalDivider(color = Color.Gray.copy(alpha = 0.2f))
                         }
                     }
                 }
                 Spacer(modifier = Modifier.height(20.dp))
-                Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
-                    Text(preferencesManager.getString("close"))
+                TextButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(preferencesManager.getString("close"), fontWeight = FontWeight.Bold)
                 }
             }
         }
