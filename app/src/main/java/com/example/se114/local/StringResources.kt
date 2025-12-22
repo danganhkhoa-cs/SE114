@@ -226,7 +226,21 @@ object StringResources {
         "error_cancel_request" to "Error canceling request: ",
         "error_create_chat" to "Cannot create conversation",
         "user_inactive" to "This user is no longer active",
-        "blocked_msg_error" to "You cannot message this user."
+        "blocked_msg_error" to "You cannot message this user.",
+
+        // --- REVIEW & RATING ---
+        "rating_reviews" to "Ratings & Reviews",
+        "see_reviews" to "See Reviews",
+        "write_review" to "Write a review",
+        "write_review_hint" to "Share your experience...",
+        "submit_review" to "Submit",
+        "delete_review" to "Delete Rating",
+        "review_empty_error" to "Please select stars to rate.",
+        "not_enough_messages" to "You need to exchange at least 10 messages to rate this user.",
+        "load_more_reviews" to "Load more reviews",
+        "no_reviews_yet" to "No reviews yet.",
+        "your_rating" to "Your Rating",
+        "delete_review_confirm" to "Delete your review?"
     )
 
     val VI = mapOf(
@@ -454,6 +468,20 @@ object StringResources {
         "error_cancel_request" to "Lỗi hủy lời mời: ",
         "error_create_chat" to "Không thể tạo cuộc trò chuyện",
         "user_inactive" to "Người dùng này không còn hoạt động",
-        "blocked_msg_error" to "Bạn không thể nhắn tin cho người này."
+        "blocked_msg_error" to "Bạn không thể nhắn tin cho người này.",
+
+        // --- REVIEW & RATING ---
+        "rating_reviews" to "Đánh giá & Nhận xét",
+        "see_reviews" to "Xem đánh giá",
+        "write_review" to "Viết đánh giá",
+        "write_review_hint" to "Chia sẻ trải nghiệm của bạn...",
+        "submit_review" to "Gửi đánh giá",
+        "delete_review" to "Xóa đánh giá",
+        "review_empty_error" to "Vui lòng chọn số sao.",
+        "not_enough_messages" to "Cần nhắn tin qua lại ít nhất 10 tin để đánh giá.",
+        "load_more_reviews" to "Xem thêm đánh giá",
+        "no_reviews_yet" to "Chưa có đánh giá nào.",
+        "your_rating" to "Đánh giá của bạn",
+        "delete_review_confirm" to "Xóa đánh giá của bạn?"
     )
 }
