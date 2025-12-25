@@ -6,7 +6,6 @@ import com.example.se114.data.Post
 import com.example.se114.data.repository.PostRepository
 import com.example.se114.local.PreferencesManager
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -21,40 +20,76 @@ data class SavedUiState(
 @HiltViewModel
 class SavedViewModel @Inject constructor(
     private val repository: PostRepository,
-    private val preferencesManager: PreferencesManager
+    val preferencesManager: PreferencesManager
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(SavedUiState())
     val uiState = _uiState.asStateFlow()
 
     fun loadSavedPosts() {
         val userId = preferencesManager.userId
+        if (userId.isEmpty()) return
+
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
 
-            // Lấy tất cả bài viết và danh sách ID đã lưu để lọc
-            val postsDeferred = async { repository.getPosts() }
-            val savedIdsDeferred = async { repository.getUserSavedPostIds(userId) }
+            // 1. Lấy danh sách ID đã lưu
+            val savedIdsResult = repository.getUserSavedPostIds(userId)
 
-            val postsResult = postsDeferred.await()
-            val savedIdsResult = savedIdsDeferred.await()
+            if (savedIdsResult.isSuccess) {
+                val savedIds = savedIdsResult.getOrThrow()
 
-            if (postsResult.isSuccess && savedIdsResult.isSuccess) {
-                val allPosts = postsResult.getOrThrow()
-                val savedIds = savedIdsResult.getOrThrow().toSet()
+                if (savedIds.isEmpty()) {
+                    _uiState.update { it.copy(savedPosts = emptyList(), isLoading = false) }
+                } else {
+                    // 2. [CẬP NHẬT] Truyền userId vào để check Like status
+                    val postsResult = repository.getPostsByIds(savedIds, currentUserId = userId)
 
-                val filtered = allPosts.filter { it.id in savedIds }
-                _uiState.update { it.copy(savedPosts = filtered, isLoading = false) }
+                    if (postsResult.isSuccess) {
+                        _uiState.update { it.copy(savedPosts = postsResult.getOrThrow(), isLoading = false) }
+                    } else {
+                        _uiState.update { it.copy(isLoading = false) }
+                    }
+                }
             } else {
                 _uiState.update { it.copy(isLoading = false) }
             }
         }
     }
 
+    // [MỚI] Hàm xử lý Like (Logic tương tự HomeViewModel)
+    fun onToggleLike(postId: String) {
+        val currentList = _uiState.value.savedPosts
+        val currentPost = currentList.find { it.id == postId } ?: return
+        val isCurrentlyLiked = currentPost.isLiked
+        val userId = preferencesManager.userId
+
+        // 1. Cập nhật UI ngay lập tức (Optimistic Update)
+        _uiState.update { state ->
+            val updatedPosts = state.savedPosts.map { post ->
+                if (post.id == postId) {
+                    val newCount = if (post.isLiked) post.likeCount - 1 else post.likeCount + 1
+                    post.copy(isLiked = !post.isLiked, likeCount = newCount.coerceAtLeast(0))
+                } else post
+            }
+            state.copy(savedPosts = updatedPosts)
+        }
+
+        // 2. Gọi Repository để lưu xuống DB
+        viewModelScope.launch {
+            repository.toggleLikePost(postId, userId, isCurrentlyLiked)
+        }
+    }
+
     fun onUnsave(postId: String) {
         val userId = preferencesManager.userId
         viewModelScope.launch {
-            repository.toggleSavePost(postId, userId, true) // Xóa khỏi DB
-            loadSavedPosts() // Refresh danh sách
+            val result = repository.toggleSavePost(postId, userId, true)
+
+            if (result.isSuccess) {
+                _uiState.update { state ->
+                    state.copy(savedPosts = state.savedPosts.filter { it.id != postId })
+                }
+            }
         }
     }
 }

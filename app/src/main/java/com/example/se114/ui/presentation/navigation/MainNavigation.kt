@@ -2,6 +2,7 @@ package com.example.se114.ui.presentation.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -33,15 +34,41 @@ fun MainNavGraph(
             HomeScreen(
                 preferencesManager = preferencesManager,
                 onNavigateToNotification = {
-                    navController.navigate("notification")
+                    navController.navigate(Screen.Notification.route)
                 },
                 onNavigateToOtherProfile = { userId ->
                     navController.navigate(Screen.OtherProfile.createRoute(userId))
+                },
+                onNavigateToProfile = {
+                    // Điều hướng sang Tab Profile (BottomNavItem)
+                    navController.navigate(BottomNavItem.Profile.route) {
+                        // Các cờ này giúp giữ trạng thái giống như khi bấm vào Bottom Bar
+                        popUpTo(navController.graph.findStartDestination().id) {
+                            saveState = true
+                        }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
                 }
             )
         }
         composable(BottomNavItem.Saved.route) {
-            SavedScreen()
+            SavedScreen(
+                onNavigateToOtherProfile = { userId ->
+                    navController.navigate(Screen.OtherProfile.createRoute(userId))
+                },
+                onNavigateToProfile = {
+                    // Điều hướng sang Tab Profile (BottomNavItem)
+                    navController.navigate(BottomNavItem.Profile.route) {
+                        // Các cờ này giúp giữ trạng thái giống như khi bấm vào Bottom Bar
+                        popUpTo(navController.graph.findStartDestination().id) {
+                            saveState = true
+                        }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                }
+            )
         }
         composable(BottomNavItem.Emergency.route) {
             CreatePostScreen(

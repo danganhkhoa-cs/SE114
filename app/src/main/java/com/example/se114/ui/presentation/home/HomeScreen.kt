@@ -17,18 +17,23 @@ import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox // Import PullToRefresh
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.se114.data.Post
 import com.example.se114.local.PreferencesManager
 import com.example.se114.ui.presentation.components.CommentBottomSheet
@@ -42,13 +47,15 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
     preferencesManager: PreferencesManager,
     onNavigateToNotification: () -> Unit = {},
-    onNavigateToOtherProfile: (String) -> Unit = {}
+    onNavigateToOtherProfile: (String) -> Unit = {},
+    onNavigateToProfile: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var showSnackbar by remember { mutableStateOf(false) }
     var snackbarMessageText by remember { mutableStateOf("") }
     var showCommentSheet by remember { mutableStateOf(false) }
     var selectedPostForComment by remember { mutableStateOf<Post?>(null) }
+    val currentUserId = preferencesManager.userId // Lấy ID người dùng hiện tại
 
     // Logic Snackbar
     LaunchedEffect(uiState.currentMessage) {
@@ -87,20 +94,17 @@ fun HomeScreen(
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
 
-            // HEADER CŨ (Đã khôi phục)
             HomeHeader(
                 notificationCount = uiState.notificationUnreadCount,
                 onNavigateToNotification = onNavigateToNotification
             )
 
-            // TABS CŨ (Đã khôi phục)
             HomeTabs(
                 tabs = tabs,
                 selectedTabIndex = uiState.selectedTabIndex,
                 onTabSelected = viewModel::onTabSelected
             )
 
-            // PULL TO REFRESH + LIST
             PullToRefreshBox(
                 isRefreshing = uiState.isRefreshing,
                 onRefresh = { viewModel.onRefresh() },
@@ -114,7 +118,7 @@ fun HomeScreen(
                 ) {
                     items(
                         items = uiState.displayedPosts,
-                        key = { it.id } // ID giờ là String
+                        key = { it.id }
                     ) { post ->
                         PostCard(
                             post = post,
@@ -129,7 +133,12 @@ fun HomeScreen(
                                 showCommentSheet = true
                             },
                             onAvatarClick = {
-                                onNavigateToOtherProfile("user_${post.userName}")
+                                // Logic kiểm tra người dùng
+                                if (post.userId == currentUserId) {
+                                    onNavigateToProfile() // Về trang mình
+                                } else {
+                                    onNavigateToOtherProfile(post.userId) // Sang trang người khác
+                                }
                             }
                         )
                         Spacer(modifier = Modifier.height(8.dp))
@@ -167,8 +176,7 @@ fun HomeScreen(
     }
 }
 
-// --- SUB COMPONENTS (GIAO DIỆN CŨ ĐƯỢC KHÔI PHỤC) ---
-
+// ... (Giữ nguyên HomeHeader và HomeTabs như code cũ) ...
 @Composable
 fun HomeHeader(
     notificationCount: Int,
@@ -269,6 +277,7 @@ fun HomeTabs(
     }
 }
 
+
 @Composable
 fun PostCard(
     post: Post,
@@ -283,6 +292,7 @@ fun PostCard(
 ) {
     var showMenu by remember { mutableStateOf(false) }
     var showReportDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
     Card(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
@@ -298,29 +308,52 @@ fun PostCard(
                     .padding(16.dp)
             ) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    // Avatar & Name -> Clickable
+
+                    // --- AVATAR & NAME (CLICKABLE) ---
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.clickable { onAvatarClick() }
                     ) {
-                        Surface(modifier = Modifier.size(50.dp).shadow(6.dp, CircleShape), shape = CircleShape, color = MaterialTheme.colorScheme.primary, border = BorderStroke(2.dp, MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.5f))) {
+                        // [MỚI] Hiển thị Avatar bằng AsyncImage
+                        Surface(
+                            modifier = Modifier.size(50.dp).shadow(6.dp, CircleShape),
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primary,
+                            border = BorderStroke(2.dp, MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.5f))
+                        ) {
                             Box(contentAlignment = Alignment.Center) {
-                                Text(if(post.userName.isNotEmpty()) post.userName.first().toString() else "?", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 22.sp)
+                                if (post.userAvatar.startsWith("http")) {
+                                    AsyncImage(
+                                        model = ImageRequest.Builder(context)
+                                            .data(post.userAvatar)
+                                            .crossfade(true)
+                                            .build(),
+                                        contentDescription = "Avatar",
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize().clip(CircleShape)
+                                    )
+                                } else {
+                                    // Fallback: Chữ cái đầu
+                                    Text(
+                                        text = if(post.userName.isNotEmpty()) post.userName.first().toString() else "?",
+                                        color = MaterialTheme.colorScheme.onPrimary,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 22.sp
+                                    )
+                                }
                             }
                         }
+
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
                             Text(post.userName, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurface)
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Icon(Icons.Default.Schedule, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-
-                                // --- SỬA Ở ĐÂY: Gọi TimeUtils để tính thời gian ---
                                 Text(
                                     text = TimeUtils.getTimeAgo(post.createdAt),
                                     fontSize = 12.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                                // -------------------------------------------------
                             }
                         }
                     }
