@@ -6,40 +6,29 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Label
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.BookmarkBorder
-import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
 import com.example.se114.data.Post
 import com.example.se114.local.PreferencesManager
 import com.example.se114.ui.presentation.components.CommentBottomSheet
+import com.example.se114.ui.presentation.components.PostFeed
 import com.example.se114.ui.presentation.components.ReportDialog
 import com.example.se114.ui.theme.AppTealDark
-import com.example.se114.utils.TimeUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,8 +43,10 @@ fun HomeScreen(
     var showSnackbar by remember { mutableStateOf(false) }
     var snackbarMessageText by remember { mutableStateOf("") }
     var showCommentSheet by remember { mutableStateOf(false) }
+    var showReportDialog by remember { mutableStateOf(false) }
     var selectedPostForComment by remember { mutableStateOf<Post?>(null) }
-    val currentUserId = preferencesManager.userId // Lấy ID người dùng hiện tại
+
+    val currentUserId = preferencesManager.userId
 
     // Logic Snackbar
     LaunchedEffect(uiState.currentMessage) {
@@ -110,40 +101,23 @@ fun HomeScreen(
                 onRefresh = { viewModel.onRefresh() },
                 modifier = Modifier.fillMaxSize()
             ) {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.background),
-                    contentPadding = PaddingValues(vertical = 8.dp)
-                ) {
-                    items(
-                        items = uiState.displayedPosts,
-                        key = { it.id }
-                    ) { post ->
-                        PostCard(
-                            post = post,
-                            isSaved = post.id in uiState.savedPostIds,
-                            preferencesManager = preferencesManager,
-                            onLikeClick = { viewModel.onToggleLike(post.id) },
-                            onSaveClick = { viewModel.onToggleSave(post.id) },
-                            onHideClick = { viewModel.onHidePost(post.id) },
-                            onReportSubmitted = { viewModel.onReportSubmitted() },
-                            onCommentClick = {
-                                selectedPostForComment = post
-                                showCommentSheet = true
-                            },
-                            onAvatarClick = {
-                                // Logic kiểm tra người dùng
-                                if (post.userId == currentUserId) {
-                                    onNavigateToProfile() // Về trang mình
-                                } else {
-                                    onNavigateToOtherProfile(post.userId) // Sang trang người khác
-                                }
-                            }
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
-                }
+                // SỬ DỤNG COMPONENT CHUNG
+                PostFeed(
+                    posts = uiState.displayedPosts,
+                    savedPostIds = uiState.savedPostIds,
+                    preferencesManager = preferencesManager,
+                    onLikeClick = { postId -> viewModel.onToggleLike(postId) },
+                    onSaveClick = { postId -> viewModel.onToggleSave(postId) },
+                    onHideClick = { postId -> viewModel.onHidePost(postId) },
+                    onReportClick = { showReportDialog = true },
+                    onCommentClick = { post ->
+                        selectedPostForComment = post
+                        showCommentSheet = true
+                    },
+                    onNavigateToOtherProfile = onNavigateToOtherProfile,
+                    onNavigateToProfile = onNavigateToProfile,
+                    currentUserId = currentUserId
+                )
             }
         }
 
@@ -173,10 +147,19 @@ fun HomeScreen(
                 preferencesManager = preferencesManager
             )
         }
+
+        if (showReportDialog) {
+            ReportDialog(
+                onDismiss = { showReportDialog = false },
+                onSubmit = { _, _ -> viewModel.onReportSubmitted() },
+                preferencesManager = preferencesManager
+            )
+        }
     }
 }
 
-// ... (Giữ nguyên HomeHeader và HomeTabs như code cũ) ...
+// --- SUB COMPONENTS ---
+
 @Composable
 fun HomeHeader(
     notificationCount: Int,
@@ -270,210 +253,6 @@ fun HomeTabs(
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(title, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium, fontSize = 15.sp, color = if (isSelected) selectedContentColor else unselectedContentColor)
                         }
-                    }
-                }
-            }
-        }
-    }
-}
-
-
-@Composable
-fun PostCard(
-    post: Post,
-    isSaved: Boolean,
-    preferencesManager: PreferencesManager,
-    onLikeClick: () -> Unit,
-    onSaveClick: () -> Unit,
-    onHideClick: () -> Unit,
-    onReportSubmitted: () -> Unit,
-    onCommentClick: () -> Unit,
-    onAvatarClick: () -> Unit
-) {
-    var showMenu by remember { mutableStateOf(false) }
-    var showReportDialog by remember { mutableStateOf(false) }
-    val context = LocalContext.current
-
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-    ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Box(
-                modifier = Modifier.fillMaxWidth()
-                    .background(brush = Brush.verticalGradient(colors = listOf(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), Color.Transparent)))
-                    .padding(16.dp)
-            ) {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-
-                    // --- AVATAR & NAME (CLICKABLE) ---
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.clickable { onAvatarClick() }
-                    ) {
-                        // [MỚI] Hiển thị Avatar bằng AsyncImage
-                        Surface(
-                            modifier = Modifier.size(50.dp).shadow(6.dp, CircleShape),
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.primary,
-                            border = BorderStroke(2.dp, MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.5f))
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                if (post.userAvatar.startsWith("http")) {
-                                    AsyncImage(
-                                        model = ImageRequest.Builder(context)
-                                            .data(post.userAvatar)
-                                            .crossfade(true)
-                                            .build(),
-                                        contentDescription = "Avatar",
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier.fillMaxSize().clip(CircleShape)
-                                    )
-                                } else {
-                                    // Fallback: Chữ cái đầu
-                                    Text(
-                                        text = if(post.userName.isNotEmpty()) post.userName.first().toString() else "?",
-                                        color = MaterialTheme.colorScheme.onPrimary,
-                                        fontWeight = FontWeight.ExtraBold,
-                                        fontSize = 22.sp
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column {
-                            Text(post.userName, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurface)
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Icon(Icons.Default.Schedule, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text(
-                                    text = TimeUtils.getTimeAgo(post.createdAt),
-                                    fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-
-                    Box {
-                        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), modifier = Modifier.size(36.dp)) {
-                            IconButton(onClick = { showMenu = true }, modifier = Modifier.size(36.dp)) {
-                                Icon(Icons.Default.MoreVert, "More", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(22.dp))
-                            }
-                        }
-
-                        DropdownMenu(
-                            expanded = showMenu,
-                            onDismissRequest = { showMenu = false },
-                            modifier = Modifier.width(220.dp).background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp)).border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f), RoundedCornerShape(16.dp)),
-                            shape = RoundedCornerShape(16.dp)
-                        ) {
-                            DropdownMenuItem(
-                                text = {
-                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                        Icon(if (isSaved) Icons.Default.Bookmark else Icons.Default.BookmarkBorder, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
-                                        Text(if (isSaved) preferencesManager.getString("unsave_post") else preferencesManager.getString("save_post"), fontSize = 15.sp, fontWeight = FontWeight.Medium)
-                                    }
-                                },
-                                onClick = { showMenu = false; onSaveClick() },
-                                modifier = Modifier.padding(vertical = 4.dp)
-                            )
-                            HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
-                            DropdownMenuItem(
-                                text = {
-                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                        Icon(Icons.Default.VisibilityOff, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(22.dp))
-                                        Text(preferencesManager.getString("hide_post"), fontSize = 15.sp, fontWeight = FontWeight.Medium)
-                                    }
-                                },
-                                onClick = { showMenu = false; onHideClick() },
-                                modifier = Modifier.padding(vertical = 4.dp)
-                            )
-                            HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
-                            DropdownMenuItem(
-                                text = {
-                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                        Icon(Icons.Default.Flag, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(22.dp))
-                                        Text(preferencesManager.getString("report_post"), fontSize = 15.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.error)
-                                    }
-                                },
-                                onClick = { showMenu = false; showReportDialog = true },
-                                modifier = Modifier.padding(vertical = 4.dp)
-                            )
-                        }
-                    }
-                }
-
-                if (showReportDialog) {
-                    ReportDialog(
-                        onDismiss = { showReportDialog = false },
-                        onSubmit = { _, _ -> onReportSubmitted() },
-                        preferencesManager = preferencesManager
-                    )
-                }
-            }
-
-            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-                Text(post.content, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface, lineHeight = 21.sp)
-                Spacer(modifier = Modifier.height(12.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f), RoundedCornerShape(10.dp)).border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(10.dp)).padding(horizontal = 12.dp, vertical = 8.dp)
-                    ) {
-                        Icon(Icons.Default.LocationOn, "Location", tint = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("${post.district}, ${post.city}", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSecondaryContainer, fontWeight = FontWeight.Medium)
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f), RoundedCornerShape(10.dp)).border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(10.dp)).padding(horizontal = 12.dp, vertical = 8.dp)
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.Label, "Location", tint = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(post.category, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSecondaryContainer, fontWeight = FontWeight.Medium)
-                    }
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(brush = Brush.horizontalGradient(colors = listOf(Color.Transparent, MaterialTheme.colorScheme.outlineVariant, Color.Transparent))))
-
-            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                val likeBg = if (post.isLiked) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                val likeContentColor = if (post.isLiked) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
-
-                Surface(shape = RoundedCornerShape(14.dp), color = likeBg, modifier = Modifier.weight(1f)) {
-                    Row(
-                        modifier = Modifier.clickable { onLikeClick() }.padding(vertical = 12.dp),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(if (post.isLiked) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder, "Like", tint = likeContentColor, modifier = Modifier.size(20.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(post.likeCount.toString(), color = likeContentColor, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                    }
-                }
-
-                Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), modifier = Modifier.weight(1f)) {
-                    Row(
-                        modifier = Modifier.clickable { onCommentClick() }.padding(vertical = 12.dp),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Default.ChatBubbleOutline, "Comment", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(post.commentCount.toString(), color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                    }
-                }
-
-                Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), modifier = Modifier.size(48.dp)) {
-                    IconButton(onClick = { /* Handle share */ }) {
-                        Icon(Icons.Default.Share, "Share", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
                     }
                 }
             }

@@ -2,35 +2,35 @@ package com.example.se114.ui.presentation.saved
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BookmarkRemove
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.se114.ui.presentation.home.PostCard
+import com.example.se114.ui.presentation.components.PostFeed
+import com.example.se114.ui.presentation.home.HomeTabs
 import com.example.se114.ui.theme.AppTealDark
 
 @Composable
 fun SavedScreen(
     viewModel: SavedViewModel = hiltViewModel(),
-    // callback điều hướng giống HomeScreen
     onNavigateToOtherProfile: (String) -> Unit = {},
     onNavigateToProfile: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val preferencesManager = viewModel.preferencesManager
-    val currentUserId = preferencesManager.userId // Lấy ID hiện tại để so sánh avatar
+    val currentUserId = preferencesManager.userId
+
+    // Tabs Titles
+    val tabs = listOf(
+        preferencesManager.getString("tab_support"),
+        preferencesManager.getString("tab_service")
+    )
 
     LaunchedEffect(Unit) {
         viewModel.loadSavedPosts()
@@ -55,44 +55,32 @@ fun SavedScreen(
             }
         }
 
+        // [MỚI] Thêm Tabs y chang Home
+        // Nếu HomeTabs báo lỗi đỏ, hãy copy đoạn code @Composable HomeTabs từ HomeScreen.kt dán xuống cuối file này
+        HomeTabs(
+            tabs = tabs,
+            selectedTabIndex = uiState.selectedTabIndex,
+            onTabSelected = viewModel::onTabSelected
+        )
+
         if (uiState.isLoading) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-        } else if (uiState.savedPosts.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.BookmarkRemove, null, modifier = Modifier.size(80.dp), tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(preferencesManager.getString("empty_saved_posts"), fontSize = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
         } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                items(uiState.savedPosts, key = { it.id }) { post ->
-                    PostCard(
-                        post = post,
-                        isSaved = true, // Luôn là true ở màn hình này
-                        preferencesManager = preferencesManager,
-                        // [MỚI] Gắn logic toggle like từ ViewModel
-                        onLikeClick = { viewModel.onToggleLike(post.id) },
-                        onSaveClick = { viewModel.onUnsave(post.id) },
-                        onHideClick = { /* Logic ẩn */ },
-                        onReportSubmitted = { /* Logic báo cáo */ },
-                        onCommentClick = { /* Logic comment sau này */ },
-                        // [MỚI] Gắn logic điều hướng Avatar giống Home
-                        onAvatarClick = {
-                            if (post.userId == currentUserId) {
-                                onNavigateToProfile()
-                            } else {
-                                onNavigateToOtherProfile(post.userId)
-                            }
-                        }
-                    )
-                }
-            }
+            // Hiển thị displayedPosts (đã lọc theo tab) thay vì savedPosts
+            PostFeed(
+                posts = uiState.displayedPosts,
+                savedPostIds = uiState.allSavedPosts.map { it.id }.toSet(),
+                preferencesManager = preferencesManager,
+                currentUserId = currentUserId,
+                onLikeClick = { postId -> viewModel.onToggleLike(postId) },
+                onSaveClick = { postId -> viewModel.onUnsave(postId) },
+                onHideClick = { /* Logic ẩn */ },
+                onReportClick = { /* Logic báo cáo */ },
+                onCommentClick = { /* Logic comment */ },
+                onNavigateToOtherProfile = onNavigateToOtherProfile,
+                onNavigateToProfile = onNavigateToProfile,
+                emptyMessage = preferencesManager.getString("empty_saved_posts")
+            )
         }
     }
 }

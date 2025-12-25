@@ -12,6 +12,9 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 import com.google.firebase.firestore.FieldPath
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
 @Singleton
 class PostRepository @Inject constructor(
@@ -19,6 +22,9 @@ class PostRepository @Inject constructor(
 ) {
     private val postsCollection = firestore.collection("posts")
     private val usersCollection = firestore.collection("users")
+    //Nnguồn dữ liệu chung cho cả Home và Saved
+    private val _savedPostIdsFlow = MutableStateFlow<Set<String>>(emptySet())
+    val savedPostIdsFlow = _savedPostIdsFlow.asStateFlow()
 
     // 1. Lấy danh sách bài viết (Load Feed)
     suspend fun getPosts(currentUserId: String? = null): Result<List<Post>> {
@@ -243,13 +249,14 @@ class PostRepository @Inject constructor(
             val savedPostRef = usersCollection.document(userId).collection("saved_posts").document(postId)
 
             if (currentSaveStatus) {
-                // Đang lưu -> User muốn bỏ lưu -> Xóa doc
                 savedPostRef.delete().await()
+                // Cập nhật Flow: Xóa ID khỏi danh sách
+                _savedPostIdsFlow.update { it - postId }
             } else {
-                // Chưa lưu -> User muốn lưu -> Tạo doc
-                // Chỉ cần lưu timestamp, id lấy từ doc id
                 val data = mapOf("savedAt" to FieldValue.serverTimestamp())
                 savedPostRef.set(data).await()
+                // Cập nhật Flow: Thêm ID vào danh sách
+                _savedPostIdsFlow.update { it + postId }
             }
             Result.success(Unit)
         } catch (e: Exception) {
@@ -257,16 +264,20 @@ class PostRepository @Inject constructor(
         }
     }
 
-    // 5. Lấy danh sách ID bài đã lưu
+    // Cập nhật hàm getUserSavedPostIds: Khi lấy về -> Gán vào Flow luôn
     suspend fun getUserSavedPostIds(userId: String): Result<List<String>> {
         return try {
             val snapshot = usersCollection.document(userId)
                 .collection("saved_posts")
-                .orderBy("savedAt", Query.Direction.DESCENDING) // Lấy bài mới lưu nhất trước
+                .orderBy("savedAt", Query.Direction.DESCENDING)
                 .get()
                 .await()
 
             val ids = snapshot.documents.map { it.id }
+
+            // [MỚI] Cập nhật Flow ngay khi lấy từ server về
+            _savedPostIdsFlow.value = ids.toSet()
+
             Result.success(ids)
         } catch (e: Exception) {
             Result.failure(e)
