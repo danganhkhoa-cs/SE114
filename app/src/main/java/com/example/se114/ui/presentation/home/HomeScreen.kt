@@ -34,6 +34,7 @@ import com.example.se114.local.PreferencesManager
 import com.example.se114.ui.presentation.components.CommentBottomSheet
 import com.example.se114.ui.presentation.components.ReportDialog
 import com.example.se114.ui.theme.AppTealDark
+import com.example.se114.utils.TimeUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -291,9 +292,10 @@ fun PostCard(
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            // Header Card với Gradient Background
             Box(
-                modifier = Modifier.fillMaxWidth().background(brush = Brush.verticalGradient(colors = listOf(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), Color.Transparent))).padding(16.dp)
+                modifier = Modifier.fillMaxWidth()
+                    .background(brush = Brush.verticalGradient(colors = listOf(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), Color.Transparent)))
+                    .padding(16.dp)
             ) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     // Avatar & Name -> Clickable
@@ -311,7 +313,14 @@ fun PostCard(
                             Text(post.userName, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurface)
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Icon(Icons.Default.Schedule, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text(post.timeAgo, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+                                // --- SỬA Ở ĐÂY: Gọi TimeUtils để tính thời gian ---
+                                Text(
+                                    text = TimeUtils.getTimeAgo(post.createdAt),
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                // -------------------------------------------------
                             }
                         }
                     }
@@ -374,7 +383,6 @@ fun PostCard(
                 }
             }
 
-            // Content Post
             Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
                 Text(post.content, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface, lineHeight = 21.sp)
                 Spacer(modifier = Modifier.height(12.dp))
@@ -402,7 +410,6 @@ fun PostCard(
 
             Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(brush = Brush.horizontalGradient(colors = listOf(Color.Transparent, MaterialTheme.colorScheme.outlineVariant, Color.Transparent))))
 
-            // Footer Actions
             Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 val likeBg = if (post.isLiked) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                 val likeContentColor = if (post.isLiked) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
