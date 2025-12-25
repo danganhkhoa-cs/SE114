@@ -1,12 +1,11 @@
 package com.example.se114.ui.presentation.home
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -18,13 +17,13 @@ import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox // Import PullToRefresh
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -36,6 +35,7 @@ import com.example.se114.ui.presentation.components.CommentBottomSheet
 import com.example.se114.ui.presentation.components.ReportDialog
 import com.example.se114.ui.theme.AppTealDark
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
@@ -44,13 +44,12 @@ fun HomeScreen(
     onNavigateToOtherProfile: (String) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-
     var showSnackbar by remember { mutableStateOf(false) }
     var snackbarMessageText by remember { mutableStateOf("") }
-
     var showCommentSheet by remember { mutableStateOf(false) }
     var selectedPostForComment by remember { mutableStateOf<Post?>(null) }
 
+    // Logic Snackbar
     LaunchedEffect(uiState.currentMessage) {
         if (uiState.currentMessage != HomeMessage.NONE) {
             val message = when(uiState.currentMessage) {
@@ -60,7 +59,6 @@ fun HomeScreen(
                 HomeMessage.REPORT_SUCCESS -> preferencesManager.getString("report_success")
                 else -> ""
             }
-
             if (message.isNotEmpty()) {
                 snackbarMessageText = message
                 showSnackbar = true
@@ -88,48 +86,53 @@ fun HomeScreen(
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
 
+            // HEADER CŨ (Đã khôi phục)
             HomeHeader(
                 notificationCount = uiState.notificationUnreadCount,
                 onNavigateToNotification = onNavigateToNotification
             )
 
+            // TABS CŨ (Đã khôi phục)
             HomeTabs(
                 tabs = tabs,
                 selectedTabIndex = uiState.selectedTabIndex,
                 onTabSelected = viewModel::onTabSelected
             )
 
-
-            val displayedPosts = uiState.displayedPosts
-
-            // Chỉ hiển thị danh sách bài viết
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background),
-                contentPadding = PaddingValues(vertical = 8.dp)
+            // PULL TO REFRESH + LIST
+            PullToRefreshBox(
+                isRefreshing = uiState.isRefreshing,
+                onRefresh = { viewModel.onRefresh() },
+                modifier = Modifier.fillMaxSize()
             ) {
-                items(
-                    items = displayedPosts,
-                    key = { it.id }
-                ) { post ->
-                    PostCard(
-                        post = post,
-                        isSaved = post.id in uiState.savedPostIds,
-                        preferencesManager = preferencesManager,
-                        onLikeClick = { viewModel.onToggleLike(post.id) },
-                        onSaveClick = { viewModel.onToggleSave(post.id) },
-                        onHideClick = { viewModel.onHidePost(post.id) },
-                        onReportSubmitted = { viewModel.onReportSubmitted() },
-                        onCommentClick = {
-                            selectedPostForComment = post
-                            showCommentSheet = true
-                        },
-                        onAvatarClick = {
-                            onNavigateToOtherProfile("user_${post.userName}")
-                        }
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background),
+                    contentPadding = PaddingValues(vertical = 8.dp)
+                ) {
+                    items(
+                        items = uiState.displayedPosts,
+                        key = { it.id } // ID giờ là String
+                    ) { post ->
+                        PostCard(
+                            post = post,
+                            isSaved = post.id in uiState.savedPostIds,
+                            preferencesManager = preferencesManager,
+                            onLikeClick = { viewModel.onToggleLike(post.id) },
+                            onSaveClick = { viewModel.onToggleSave(post.id) },
+                            onHideClick = { viewModel.onHidePost(post.id) },
+                            onReportSubmitted = { viewModel.onReportSubmitted() },
+                            onCommentClick = {
+                                selectedPostForComment = post
+                                showCommentSheet = true
+                            },
+                            onAvatarClick = {
+                                onNavigateToOtherProfile("user_${post.userName}")
+                            }
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
                 }
             }
         }
@@ -140,8 +143,7 @@ fun HomeScreen(
                 contentAlignment = Alignment.BottomCenter
             ) {
                 Snackbar(
-                    modifier = Modifier
-                        .padding(16.dp),
+                    modifier = Modifier.padding(16.dp),
                     containerColor = MaterialTheme.colorScheme.inverseSurface,
                     contentColor = MaterialTheme.colorScheme.inverseOnSurface,
                     shape = RoundedCornerShape(12.dp)
@@ -164,7 +166,7 @@ fun HomeScreen(
     }
 }
 
-// --- SUB COMPONENTS ---
+// --- SUB COMPONENTS (GIAO DIỆN CŨ ĐƯỢC KHÔI PHỤC) ---
 
 @Composable
 fun HomeHeader(
@@ -266,8 +268,6 @@ fun HomeTabs(
     }
 }
 
-// --- ĐÃ XÓA Composable HomeSavedFilter VÀ EmptySavedState ---
-
 @Composable
 fun PostCard(
     post: Post,
@@ -291,6 +291,7 @@ fun PostCard(
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
+            // Header Card với Gradient Background
             Box(
                 modifier = Modifier.fillMaxWidth().background(brush = Brush.verticalGradient(colors = listOf(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), Color.Transparent))).padding(16.dp)
             ) {
@@ -302,7 +303,7 @@ fun PostCard(
                     ) {
                         Surface(modifier = Modifier.size(50.dp).shadow(6.dp, CircleShape), shape = CircleShape, color = MaterialTheme.colorScheme.primary, border = BorderStroke(2.dp, MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.5f))) {
                             Box(contentAlignment = Alignment.Center) {
-                                Text(post.userName.first().toString(), color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 22.sp)
+                                Text(if(post.userName.isNotEmpty()) post.userName.first().toString() else "?", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 22.sp)
                             }
                         }
                         Spacer(modifier = Modifier.width(12.dp))
@@ -360,25 +361,6 @@ fun PostCard(
                                 onClick = { showMenu = false; showReportDialog = true },
                                 modifier = Modifier.padding(vertical = 4.dp)
                             )
-                            HorizontalDivider(modifier = Modifier.padding(horizontal = 12.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
-                            DropdownMenuItem(
-                                text = {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                    ) {
-                                        Icon(Icons.Default.Info, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(22.dp))
-                                        Column {
-                                            Text("${preferencesManager.getString("about_user")} ${post.userName}", fontSize = 15.sp, fontWeight = FontWeight.Medium)
-                                        }
-                                    }
-                                },
-                                onClick = {
-                                    showMenu = false
-                                    onAvatarClick()
-                                },
-                                modifier = Modifier.padding(vertical = 4.dp)
-                            )
                         }
                     }
                 }
@@ -392,6 +374,7 @@ fun PostCard(
                 }
             }
 
+            // Content Post
             Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
                 Text(post.content, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface, lineHeight = 21.sp)
                 Spacer(modifier = Modifier.height(12.dp))
@@ -419,6 +402,7 @@ fun PostCard(
 
             Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(brush = Brush.horizontalGradient(colors = listOf(Color.Transparent, MaterialTheme.colorScheme.outlineVariant, Color.Transparent))))
 
+            // Footer Actions
             Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 val likeBg = if (post.isLiked) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                 val likeContentColor = if (post.isLiked) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant

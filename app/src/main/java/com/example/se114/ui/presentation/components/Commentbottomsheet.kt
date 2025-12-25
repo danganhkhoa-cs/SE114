@@ -50,7 +50,7 @@ data class Comment(
 @Composable
 fun CommentBottomSheet(
     onDismiss: () -> Unit,
-    postId: Int,
+    postId: String,
     preferencesManager: PreferencesManager
 ) {
     var offsetY by remember { mutableStateOf(0f) }

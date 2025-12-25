@@ -46,8 +46,6 @@ fun CreatePostScreen(
     val postButtonColor = if (isDark) AppTealNeon else AppTealDark
     val postButtonContentColor = if (isDark) Color(0xFF00363D) else Color.White
 
-    // --- ERROR HANDLING ---
-    // Hiển thị toast nếu bấm đăng mà thiếu thông tin
     val errorMessage = preferencesManager.getString("fill_all_fields")
 
     LaunchedEffect(uiState.isSuccess) {
@@ -190,11 +188,12 @@ fun CreatePostScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             // 3. DROPDOWNS (City, District, Category)
+
             // City Dropdown
             SimpleDropdown(
                 label = preferencesManager.getString("label_city"),
                 placeholder = preferencesManager.getString("select_city"),
-                options = viewModel.cities,
+                options = viewModel.cities, // List thành phố vẫn là biến public
                 selectedOption = uiState.selectedCity,
                 onOptionSelected = viewModel::onCitySelected,
                 isDark = isDark
@@ -202,8 +201,7 @@ fun CreatePostScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // District Dropdown (Depends on City)
-            val availableDistricts = viewModel.districtsMap[uiState.selectedCity] ?: emptyList()
+            val availableDistricts = viewModel.getDistricts(uiState.selectedCity)
             SimpleDropdown(
                 label = preferencesManager.getString("label_district"),
                 placeholder = if(uiState.selectedCity.isEmpty()) preferencesManager.getString("select_city") else preferencesManager.getString("select_district"),
@@ -216,11 +214,11 @@ fun CreatePostScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Category Dropdown
+            val availableCategories = viewModel.getCategories(uiState.selectedPostType)
             SimpleDropdown(
                 label = preferencesManager.getString("label_category"),
                 placeholder = preferencesManager.getString("select_category"),
-                options = viewModel.categories,
+                options = availableCategories,
                 selectedOption = uiState.selectedCategory,
                 onOptionSelected = viewModel::onCategorySelected,
                 isDark = isDark
