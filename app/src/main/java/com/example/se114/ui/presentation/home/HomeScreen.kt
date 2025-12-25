@@ -43,7 +43,7 @@ fun HomeScreen(
     var showSnackbar by remember { mutableStateOf(false) }
     var snackbarMessageText by remember { mutableStateOf("") }
     var showCommentSheet by remember { mutableStateOf(false) }
-    var showReportDialog by remember { mutableStateOf(false) }
+    var reportPostId by remember { mutableStateOf<String?>(null) }
     var selectedPostForComment by remember { mutableStateOf<Post?>(null) }
 
     val currentUserId = preferencesManager.userId
@@ -56,6 +56,8 @@ fun HomeScreen(
                 HomeMessage.UNSAVED -> preferencesManager.getString("unsave_post")
                 HomeMessage.HIDDEN -> preferencesManager.getString("post_hidden")
                 HomeMessage.REPORT_SUCCESS -> preferencesManager.getString("report_success")
+                HomeMessage.REPORT_DUPLICATE -> preferencesManager.getString("report_duplicate_post") // Nên đưa vào StringResources
+                HomeMessage.REPORT_ERROR -> preferencesManager.getString("unknown_error")
                 else -> ""
             }
             if (message.isNotEmpty()) {
@@ -109,7 +111,7 @@ fun HomeScreen(
                     onLikeClick = { postId -> viewModel.onToggleLike(postId) },
                     onSaveClick = { postId -> viewModel.onToggleSave(postId) },
                     onHideClick = { postId -> viewModel.onHidePost(postId) },
-                    onReportClick = { showReportDialog = true },
+                    onReportClick = { clickedPostId -> reportPostId = clickedPostId },
                     onCommentClick = { post ->
                         selectedPostForComment = post
                         showCommentSheet = true
@@ -148,10 +150,13 @@ fun HomeScreen(
             )
         }
 
-        if (showReportDialog) {
+        if (reportPostId != null) {
             ReportDialog(
-                onDismiss = { showReportDialog = false },
-                onSubmit = { _, _ -> viewModel.onReportSubmitted() },
+                onDismiss = { reportPostId = null }, // Reset về null để đóng dialog
+                onSubmit = { reason, description ->
+                    // Gọi ViewModel với ID đã lưu
+                    viewModel.onSubmitReport(reportPostId!!, reason, description)
+                },
                 preferencesManager = preferencesManager
             )
         }

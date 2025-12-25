@@ -15,8 +15,9 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import com.example.se114.data.PostEventBus
 import com.example.se114.data.PostUpdateEvent
+import com.example.se114.data.Report
 
-enum class HomeMessage { NONE, SAVED, UNSAVED, HIDDEN, REPORT_SUCCESS }
+enum class HomeMessage { NONE, SAVED, UNSAVED, HIDDEN, REPORT_SUCCESS, REPORT_DUPLICATE, REPORT_ERROR }
 
 data class HomeUiState(
     val allPosts: List<Post> = emptyList(),
@@ -160,7 +161,34 @@ class HomeViewModel @Inject constructor(
         calculateDisplayedPosts()
     }
 
-    fun onReportSubmitted() { _uiState.update { it.copy(currentMessage = HomeMessage.REPORT_SUCCESS) } }
+    fun onSubmitReport(postId: String, reason: String, description: String) {
+        val userId = preferencesManager.userId
+        if (userId.isEmpty()) return
+
+        viewModelScope.launch {
+            val report = Report(
+                reporterId = userId,
+                postId = postId,
+                reason = reason,
+                description = description
+            )
+
+            val result = repository.createReport(report)
+
+            if (result.isSuccess) {
+                _uiState.update { it.copy(currentMessage = HomeMessage.REPORT_SUCCESS) }
+            } else {
+                val error = result.exceptionOrNull()
+                if (error?.message == "duplicate") {
+                    _uiState.update { it.copy(currentMessage = HomeMessage.REPORT_DUPLICATE) }
+                } else {
+                    android.util.Log.e("REPORT_ERROR", "Lỗi gửi report: ${error?.message}")
+                    error?.printStackTrace()
+                    _uiState.update { it.copy(currentMessage = HomeMessage.REPORT_ERROR) }
+                }
+            }
+        }
+    }
     fun onMessageShown() { _uiState.update { it.copy(currentMessage = HomeMessage.NONE) } }
 
     private fun calculateDisplayedPosts() {

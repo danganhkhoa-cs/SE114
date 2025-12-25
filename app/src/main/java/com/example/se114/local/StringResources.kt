@@ -242,22 +242,40 @@ object StringResources {
         "your_rating" to "Your Rating",
         "delete_review_confirm" to "Delete your review?",
 
-        // --- REPORT DIALOG ---
+        // --- REPORT DIALOG (POSTS & USERS) ---
         "report_title" to "Report Post",
+        "report_user_title" to "Report User",
         "report_reason" to "Reason",
         "select_reason" to "Select a reason",
+        "report_cancel" to "Cancel",
+        "report_submit" to "Submit Report",
+
+        // Reasons for POSTS
         "report_fraud" to "Fraud or Scam",
         "report_inappropriate" to "Inappropriate Content",
         "report_trading" to "Prohibited Items/Trading",
         "report_offensive" to "Hate Speech or Offensive",
         "report_misinformation" to "False Information",
+
+        // Reasons for USERS (Mới)
+        "report_reason_spam" to "Spam or Scam",
+        "report_reason_harassment" to "Harassment or Bullying",
+        "report_reason_fake" to "Fake Account",
+        "report_reason_inappropriate" to "Inappropriate Content",
+        "report_reason_other" to "Other",
+
         "report_other" to "Other",
         "report_other_hint" to "Please specify the reason...",
         "report_select_reason_required" to "Please select a reason",
         "report_description" to "Description",
         "report_description_hint" to "Provide more details about the issue (Optional)",
         "report_cancel" to "Cancel",
-        "report_submit" to "Submit Report"
+        "report_submit" to "Submit Report",
+        "report_submitted_success" to "Report submitted. Thank you!",
+        "report_user" to "Report User",
+        "report_duplicate_post" to "You have already reported this post", // Đổi key cũ cho rõ nghĩa
+        "report_duplicate_user" to "You have already reported this user", // Thêm key mới
+        "report_error" to "Error sending report: ",
     )
 
     val VI = mapOf(
@@ -501,21 +519,40 @@ object StringResources {
         "your_rating" to "Đánh giá của bạn",
         "delete_review_confirm" to "Xóa đánh giá của bạn?",
 
-        // --- REPORT DIALOG (NEW) ---
+        // --- REPORT DIALOG (POSTS & USERS) ---
         "report_title" to "Báo cáo bài viết",
+        "report_user_title" to "Báo cáo người dùng",
         "report_reason" to "Lý do báo cáo",
         "select_reason" to "Chọn lý do",
+        "report_cancel" to "Hủy",
+        "report_submit" to "Gửi báo cáo",
+
+        // Reasons for POSTS
         "report_fraud" to "Lừa đảo hoặc Spam",
         "report_inappropriate" to "Nội dung không phù hợp",
         "report_trading" to "Hàng hóa/Giao dịch bị cấm",
         "report_offensive" to "Ngôn từ xúc phạm / Thù ghét",
         "report_misinformation" to "Thông tin sai lệch",
+
+        // Reasons for USERS (Mới)
+        "report_reason_spam" to "Spam hoặc Lừa đảo",
+        "report_reason_harassment" to "Quấy rối hoặc Bắt nạt",
+        "report_reason_fake" to "Tài khoản giả mạo",
+        "report_reason_inappropriate" to "Nội dung không phù hợp",
+        "report_reason_other" to "Khác",
+
         "report_other" to "Khác",
         "report_other_hint" to "Vui lòng ghi rõ lý do...",
         "report_select_reason_required" to "Vui lòng chọn một lý do",
         "report_description" to "Mô tả thêm",
         "report_description_hint" to "Cung cấp thêm chi tiết về vấn đề (Tùy chọn)",
         "report_cancel" to "Hủy",
-        "report_submit" to "Gửi báo cáo"
+        "report_submit" to "Gửi báo cáo",
+        "report_submitted_success" to "Đã gửi báo cáo. Cảm ơn bạn!",
+        "report_user" to "Báo cáo người dùng",
+        "report_duplicate_post" to "Bạn đã báo cáo bài viết này rồi",
+        "report_duplicate_user" to "Bạn đã báo cáo người dùng này rồi",
+        "report_submitted_success" to "Đã gửi báo cáo. Cảm ơn bạn!",
+        "report_error" to "Lỗi gửi báo cáo: ",
     )
 }
