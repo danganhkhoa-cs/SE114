@@ -19,9 +19,8 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.se114.local.PreferencesManager
-import com.example.se114.ui.presentation.home.PostCard // Import PostCard từ Home
+import com.example.se114.ui.presentation.home.PostCard // Import PostCard
 import com.example.se114.ui.theme.AppTealDark
-
 
 @Composable
 fun SavedScreen(
@@ -32,64 +31,34 @@ fun SavedScreen(
     val context = LocalContext.current
     val preferencesManager = remember { PreferencesManager(context) }
 
-    // Reload dữ liệu mỗi khi màn hình hiển thị lại
     LaunchedEffect(Unit) {
         viewModel.loadSavedPosts()
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-    ) {
-        // --- HEADER (Màu AppTealDark) ---
+    Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        // Header
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            color = AppTealDark, // Đồng bộ màu với Home Header
+            color = AppTealDark,
             shadowElevation = 4.dp,
             shape = RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 20.dp, horizontal = 16.dp)
-            ) {
-                Text(
-                    text = preferencesManager.getString("saved_posts"),
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.align(Alignment.Center)
-                )
+            Box(modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp)) {
+                Text(preferencesManager.getString("saved_posts"), style = MaterialTheme.typography.headlineMedium, color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.Center))
             }
         }
 
-        // --- CONTENT ---
-        if (uiState.savedPosts.isEmpty()) {
-            // Màn hình trống
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
+        if (uiState.isLoading) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+        } else if (uiState.savedPosts.isEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        imageVector = Icons.Default.BookmarkRemove,
-                        contentDescription = null,
-                        modifier = Modifier.size(80.dp),
-                        tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-                    )
+                    Icon(Icons.Default.BookmarkRemove, null, modifier = Modifier.size(80.dp), tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                     Spacer(modifier = Modifier.height(16.dp))
-
-                    Text(
-                        text = preferencesManager.getString("empty_saved_posts"),
-                        fontSize = 18.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = FontWeight.Medium
-                    )
+                    Text(preferencesManager.getString("empty_saved_posts"), fontSize = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         } else {
-            // Danh sách bài đã lưu
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp),
@@ -98,17 +67,14 @@ fun SavedScreen(
                 items(uiState.savedPosts, key = { it.id }) { post ->
                     PostCard(
                         post = post,
-                        isSaved = true, // Luôn true ở màn hình Saved
+                        isSaved = true,
                         preferencesManager = preferencesManager,
-                        onLikeClick = { /* Xử lý like nếu cần */ },
-                        onSaveClick = {
-                            // Xử lý bỏ lưu ngay tại màn hình Saved
-                            viewModel.onUnsave(post.id)
-                        },
-                        onHideClick = { /* Xử lý ẩn */ },
-                        onReportSubmitted = { /* Xử lý báo cáo */ },
-                        onCommentClick = { /* Mở comment */ },
-                        onAvatarClick = { /* Chuyển đến profile */ }
+                        onLikeClick = { /* Logic like ở saved có thể thêm sau */ },
+                        onSaveClick = { viewModel.onUnsave(post.id) },
+                        onHideClick = { },
+                        onReportSubmitted = { },
+                        onCommentClick = { },
+                        onAvatarClick = { }
                     )
                 }
             }

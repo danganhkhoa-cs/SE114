@@ -1,12 +1,17 @@
 package com.example.se114.ui.presentation.create_post
 
 import androidx.lifecycle.ViewModel
-import com.example.se114.data.DummyPostData
+import androidx.lifecycle.viewModelScope
+import com.example.se114.data.Post
 import com.example.se114.data.PostType
+import com.example.se114.data.SelectionData
+import com.example.se114.data.repository.PostRepository
+import com.example.se114.local.PreferencesManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class CreatePostUiState(
@@ -20,37 +25,31 @@ data class CreatePostUiState(
 )
 
 @HiltViewModel
-class CreatePostViewModel @Inject constructor() : ViewModel() {
+class CreatePostViewModel @Inject constructor(
+    private val repository: PostRepository,
+    private val preferencesManager: PreferencesManager
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CreatePostUiState())
     val uiState = _uiState.asStateFlow()
 
-    // --- DUMMY DATA FOR DROPDOWNS ---
-    val cities = listOf("Hồ Chí Minh", "Hà Nội", "Đà Nẵng", "Cần Thơ", "Hải Phòng")
+    // Dữ liệu dropdown lấy từ SelectionData
+    val cities = SelectionData.locations.keys.toList()
 
-    val districtsMap = mapOf(
-        "Hồ Chí Minh" to listOf("Quận 1", "Quận 3", "Quận 5", "Quận 10", "Bình Thạnh", "Tân Bình", "Thủ Đức"),
-        "Hà Nội" to listOf("Ba Đình", "Hoàn Kiếm", "Tây Hồ", "Cầu Giấy", "Đống Đa"),
-        "Đà Nẵng" to listOf("Hải Châu", "Thanh Khê", "Sơn Trà", "Ngũ Hành Sơn"),
-        "Cần Thơ" to listOf("Ninh Kiều", "Bình Thủy", "Cái Răng"),
-        "Hải Phòng" to listOf("Hồng Bàng", "Ngô Quyền", "Lê Chân")
-    )
+    fun getDistricts(city: String): List<String> {
+        return SelectionData.locations[city] ?: emptyList()
+    }
 
-    val categories = listOf(
-        "Cứu hộ khẩn cấp", "Y tế", "Sửa chữa", "Vệ sinh", "Gia sư", "Vận chuyển", "Tìm đồ thất lạc", "Khác"
-    )
+    fun getCategories(type: PostType): List<String> {
+        return SelectionData.getCategories(type)
+    }
 
     fun onContentChanged(newContent: String) {
         _uiState.update { it.copy(content = newContent) }
     }
 
     fun onCitySelected(city: String) {
-        _uiState.update {
-            it.copy(
-                selectedCity = city,
-                selectedDistrict = "" // Reset district khi đổi city
-            )
-        }
+        _uiState.update { it.copy(selectedCity = city, selectedDistrict = "") }
     }
 
     fun onDistrictSelected(district: String) {
@@ -62,45 +61,37 @@ class CreatePostViewModel @Inject constructor() : ViewModel() {
     }
 
     fun onPostTypeChanged(type: PostType) {
-        _uiState.update { it.copy(selectedPostType = type) }
+        _uiState.update { it.copy(selectedPostType = type, selectedCategory = "") }
     }
 
     fun createPost() {
         val currentState = _uiState.value
-        if (currentState.content.isBlank()
-            || currentState.selectedCity.isEmpty()
-            || currentState.selectedDistrict.isEmpty()
-            || currentState.selectedCategory.isEmpty()) return
+        if (currentState.content.isBlank() || currentState.selectedCity.isEmpty() ||
+            currentState.selectedDistrict.isEmpty() || currentState.selectedCategory.isEmpty()) return
 
         _uiState.update { it.copy(isLoading = true) }
 
-        // Format lại nội dung để gửi vào Dummy
-        // Thực tế sẽ gửi từng field lên server
-        val fullContent = currentState.content
-        val city = currentState.selectedCity
-        val district = currentState.selectedDistrict
-        val category = currentState.selectedCategory
-        val type = currentState.selectedPostType
-
-
-        DummyPostData.addPost(
-            fullContent,
-            district,
-            city,
-            category,
-            null,
-            type
-        )
-
-        _uiState.update {
-            it.copy(
-                isLoading = false,
-                isSuccess = true,
-                content = "",
-                selectedCity = "",
-                selectedDistrict = "",
-                selectedCategory = ""
+        viewModelScope.launch {
+            val newPost = Post(
+                userId = preferencesManager.userId,
+                userName = preferencesManager.userName,
+                userAvatar = preferencesManager.userAvatar,
+                content = currentState.content,
+                district = currentState.selectedDistrict,
+                city = currentState.selectedCity,
+                category = currentState.selectedCategory,
+                type = currentState.selectedPostType.name
             )
+
+            val result = repository.createPost(newPost)
+
+            if (result.isSuccess) {
+                _uiState.update {
+                    it.copy(isLoading = false, isSuccess = true, content = "", selectedCity = "", selectedDistrict = "", selectedCategory = "")
+                }
+            } else {
+                _uiState.update { it.copy(isLoading = false) }
+            }
         }
     }
 

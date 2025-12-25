@@ -1,88 +1,107 @@
 package com.example.se114.ui.presentation.home
 
 import androidx.lifecycle.ViewModel
-import com.example.se114.data.DummyPostData
+import androidx.lifecycle.viewModelScope
 import com.example.se114.data.Post
 import com.example.se114.data.PostType
+import com.example.se114.data.repository.PostRepository
+import com.example.se114.local.PreferencesManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-enum class HomeMessage {
-    NONE, SAVED, UNSAVED, HIDDEN, REPORT_SUCCESS
-}
+enum class HomeMessage { NONE, SAVED, UNSAVED, HIDDEN, REPORT_SUCCESS }
 
 data class HomeUiState(
     val allPosts: List<Post> = emptyList(),
-    val savedPostIds: Set<Int> = emptySet(),
-    val hiddenPostIds: Set<Int> = emptySet(),
+    val savedPostIds: Set<String> = emptySet(), // Set<String>
+    val hiddenPostIds: Set<String> = emptySet(),
     val selectedTabIndex: Int = 0,
     val displayedPosts: List<Post> = emptyList(),
     val notificationUnreadCount: Int = 5,
-    val currentMessage: HomeMessage = HomeMessage.NONE
+    val currentMessage: HomeMessage = HomeMessage.NONE,
+    val isRefreshing: Boolean = false
 )
 
 @HiltViewModel
-class HomeViewModel @Inject constructor() : ViewModel() {
+class HomeViewModel @Inject constructor(
+    private val repository: PostRepository,
+    private val preferencesManager: PreferencesManager
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState = _uiState.asStateFlow()
 
     init {
-        loadInitialData()
+        loadPosts()
     }
 
-    private fun loadInitialData() {
-        val initialPosts = DummyPostData.posts
-        val initialSaved = DummyPostData.savedPostIds.toSet()
+    fun loadPosts() {
+        val userId = preferencesManager.userId
+        viewModelScope.launch {
+            _uiState.update { it.copy(isRefreshing = true) }
 
-        _uiState.update {
-            it.copy(
-                allPosts = initialPosts,
-                savedPostIds = initialSaved
-            )
+            val postsDeferred = async { repository.getPosts() }
+            val savedIdsDeferred = async { repository.getUserSavedPostIds(userId) }
+
+            val postsResult = postsDeferred.await()
+            val savedIdsResult = savedIdsDeferred.await()
+
+            if (postsResult.isSuccess) {
+                val posts = postsResult.getOrDefault(emptyList())
+                val savedIds = savedIdsResult.getOrDefault(emptyList()).toSet()
+                _uiState.update { it.copy(allPosts = posts, savedPostIds = savedIds, isRefreshing = false) }
+                calculateDisplayedPosts()
+            } else {
+                _uiState.update { it.copy(isRefreshing = false) }
+            }
         }
-        calculateDisplayedPosts()
     }
+
+    fun onRefresh() { loadPosts() }
 
     fun onTabSelected(index: Int) {
         _uiState.update { it.copy(selectedTabIndex = index) }
         calculateDisplayedPosts()
     }
 
-    fun onToggleLike(postId: Int) {
-        _uiState.update { currentState ->
-            val updatedPosts = currentState.allPosts.map { post ->
-                if (post.id == postId) {
-                    val newLikeStatus = !post.isLiked
-                    post.copy(
-                        isLiked = newLikeStatus,
-                        likeCount = if (newLikeStatus) post.likeCount + 1 else post.likeCount - 1
-                    )
-                } else {
-                    post
-                }
-            }
-            currentState.copy(allPosts = updatedPosts)
-        }
-        calculateDisplayedPosts()
-    }
-
-    fun onToggleSave(postId: Int) {
-        DummyPostData.toggleSave(postId)
+    fun onToggleLike(postId: String) {
+        val currentPost = _uiState.value.allPosts.find { it.id == postId } ?: return
+        val isCurrentlyLiked = currentPost.isLiked
+        val userId = preferencesManager.userId
 
         _uiState.update { state ->
-            val newSavedIds = DummyPostData.savedPostIds.toSet()
-            val message = if (newSavedIds.contains(postId)) HomeMessage.SAVED else HomeMessage.UNSAVED
-
-            state.copy(savedPostIds = newSavedIds, currentMessage = message)
+            val updatedPosts = state.allPosts.map { post ->
+                if (post.id == postId) {
+                    val newCount = if (post.isLiked) post.likeCount - 1 else post.likeCount + 1
+                    post.copy(isLiked = !post.isLiked, likeCount = newCount.coerceAtLeast(0))
+                } else post
+            }
+            state.copy(allPosts = updatedPosts)
         }
         calculateDisplayedPosts()
+
+        viewModelScope.launch { repository.toggleLikePost(postId, userId, isCurrentlyLiked) }
     }
 
-    fun onHidePost(postId: Int) {
+    fun onToggleSave(postId: String) {
+        val isSaved = _uiState.value.savedPostIds.contains(postId)
+        val userId = preferencesManager.userId
+
+        _uiState.update { state ->
+            val newSavedIds = state.savedPostIds.toMutableSet()
+            if (isSaved) newSavedIds.remove(postId) else newSavedIds.add(postId)
+            val message = if (!isSaved) HomeMessage.SAVED else HomeMessage.UNSAVED
+            state.copy(savedPostIds = newSavedIds, currentMessage = message)
+        }
+        viewModelScope.launch { repository.toggleSavePost(postId, userId, isSaved) }
+    }
+
+    fun onHidePost(postId: String) {
         _uiState.update { state ->
             val newHiddenIds = state.hiddenPostIds.toMutableSet()
             newHiddenIds.add(postId)
@@ -91,29 +110,13 @@ class HomeViewModel @Inject constructor() : ViewModel() {
         calculateDisplayedPosts()
     }
 
-    fun onReportSubmitted() {
-        _uiState.update { it.copy(currentMessage = HomeMessage.REPORT_SUCCESS) }
-    }
-
-    fun onMessageShown() {
-        _uiState.update { it.copy(currentMessage = HomeMessage.NONE) }
-    }
+    fun onReportSubmitted() { _uiState.update { it.copy(currentMessage = HomeMessage.REPORT_SUCCESS) } }
+    fun onMessageShown() { _uiState.update { it.copy(currentMessage = HomeMessage.NONE) } }
 
     private fun calculateDisplayedPosts() {
         val state = _uiState.value
-
-        // Logic lọc bài viết: Dựa trên Tab và Loại bài viết
-        val filteredByType = when (state.selectedTabIndex) {
-            0 -> state.allPosts.filter { it.type == PostType.SUPPORT } // Tab Support
-            1 -> state.allPosts.filter { it.type == PostType.SERVICE } // Tab Service
-            else -> state.allPosts
-        }
-
-        // Lọc tiếp các bài bị ẩn
-        val finalFiltered = filteredByType.filter { post ->
-             post.id !in state.hiddenPostIds
-        }
-
-        _uiState.update { it.copy(displayedPosts = finalFiltered) }
+        val targetType = if (state.selectedTabIndex == 0) PostType.SUPPORT.name else PostType.SERVICE.name
+        val filtered = state.allPosts.filter { it.type == targetType && it.id !in state.hiddenPostIds }
+        _uiState.update { it.copy(displayedPosts = filtered) }
     }
 }
