@@ -13,6 +13,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.example.se114.data.PostEventBus
+import com.example.se114.data.PostUpdateEvent
 
 enum class HomeMessage { NONE, SAVED, UNSAVED, HIDDEN, REPORT_SUCCESS }
 
@@ -30,7 +32,8 @@ data class HomeUiState(
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val repository: PostRepository,
-    private val preferencesManager: PreferencesManager
+    private val preferencesManager: PreferencesManager,
+    private val postEventBus: PostEventBus
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -38,6 +41,40 @@ class HomeViewModel @Inject constructor(
 
     init {
         loadPosts()
+        observeSavedPosts()
+        observeBusEvents()
+    }
+
+    private fun observeSavedPosts() {
+        viewModelScope.launch {
+            repository.savedPostIdsFlow.collect { savedIds ->
+                _uiState.update { it.copy(savedPostIds = savedIds) }
+            }
+        }
+    }
+
+    private fun observeBusEvents() {
+        viewModelScope.launch {
+            postEventBus.events.collect { event ->
+                // Update local list (Logic y hệt SavedViewModel)
+                val currentAll = _uiState.value.allPosts
+                if (currentAll.none { it.id == event.postId }) return@collect
+
+                _uiState.update { state ->
+                    val updatedPosts = state.allPosts.map { post ->
+                        if (post.id == event.postId) {
+                            post.copy(
+                                isLiked = event.isLiked ?: post.isLiked,
+                                likeCount = event.likeCount ?: post.likeCount,
+                                commentCount = event.commentCount ?: post.commentCount
+                            )
+                        } else post
+                    }
+                    state.copy(allPosts = updatedPosts)
+                }
+                calculateDisplayedPosts()
+            }
+        }
     }
 
     fun loadPosts() {
@@ -45,16 +82,15 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true) }
 
-            val postsDeferred = async { repository.getPosts(currentUserId = userId) }
-            val savedIdsDeferred = async { repository.getUserSavedPostIds(userId) }
+            // Repository fetch data và update vào Flow
+            async { repository.getUserSavedPostIds(userId) }
 
+            val postsDeferred = async { repository.getPosts(currentUserId = userId) }
             val postsResult = postsDeferred.await()
-            val savedIdsResult = savedIdsDeferred.await()
 
             if (postsResult.isSuccess) {
                 val posts = postsResult.getOrDefault(emptyList())
-                val savedIds = savedIdsResult.getOrDefault(emptyList()).toSet()
-                _uiState.update { it.copy(allPosts = posts, savedPostIds = savedIds, isRefreshing = false) }
+                _uiState.update { it.copy(allPosts = posts, isRefreshing = false) }
                 calculateDisplayedPosts()
             } else {
                 _uiState.update { it.copy(isRefreshing = false) }
@@ -74,18 +110,25 @@ class HomeViewModel @Inject constructor(
         val isCurrentlyLiked = currentPost.isLiked
         val userId = preferencesManager.userId
 
+        // Update UI Local
+        val newLikeStatus = !isCurrentlyLiked
+        val newLikeCount = (if (isCurrentlyLiked) currentPost.likeCount - 1 else currentPost.likeCount + 1).coerceAtLeast(0)
+
         _uiState.update { state ->
             val updatedPosts = state.allPosts.map { post ->
                 if (post.id == postId) {
-                    val newCount = if (post.isLiked) post.likeCount - 1 else post.likeCount + 1
-                    post.copy(isLiked = !post.isLiked, likeCount = newCount.coerceAtLeast(0))
+                    post.copy(isLiked = newLikeStatus, likeCount = newLikeCount)
                 } else post
             }
             state.copy(allPosts = updatedPosts)
         }
         calculateDisplayedPosts()
 
-        viewModelScope.launch { repository.toggleLikePost(postId, userId, isCurrentlyLiked) }
+        // Bắn sự kiện & Gọi API
+        viewModelScope.launch {
+            postEventBus.emitEvent(PostUpdateEvent(postId, isLiked = newLikeStatus, likeCount = newLikeCount))
+            repository.toggleLikePost(postId, userId, isCurrentlyLiked)
+        }
     }
 
     fun onToggleSave(postId: String) {
@@ -93,11 +136,10 @@ class HomeViewModel @Inject constructor(
         val userId = preferencesManager.userId
 
         _uiState.update { state ->
-            val newSavedIds = state.savedPostIds.toMutableSet()
-            if (isSaved) newSavedIds.remove(postId) else newSavedIds.add(postId)
             val message = if (!isSaved) HomeMessage.SAVED else HomeMessage.UNSAVED
-            state.copy(savedPostIds = newSavedIds, currentMessage = message)
+            state.copy(currentMessage = message)
         }
+
         viewModelScope.launch { repository.toggleSavePost(postId, userId, isSaved) }
     }
 
