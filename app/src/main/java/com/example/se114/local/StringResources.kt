@@ -240,7 +240,24 @@ object StringResources {
         "load_more_reviews" to "Load more reviews",
         "no_reviews_yet" to "No reviews yet.",
         "your_rating" to "Your Rating",
-        "delete_review_confirm" to "Delete your review?"
+        "delete_review_confirm" to "Delete your review?",
+
+        // --- REPORT DIALOG ---
+        "report_title" to "Report Post",
+        "report_reason" to "Reason",
+        "select_reason" to "Select a reason",
+        "report_fraud" to "Fraud or Scam",
+        "report_inappropriate" to "Inappropriate Content",
+        "report_trading" to "Prohibited Items/Trading",
+        "report_offensive" to "Hate Speech or Offensive",
+        "report_misinformation" to "False Information",
+        "report_other" to "Other",
+        "report_other_hint" to "Please specify the reason...",
+        "report_select_reason_required" to "Please select a reason",
+        "report_description" to "Description",
+        "report_description_hint" to "Provide more details about the issue (Optional)",
+        "report_cancel" to "Cancel",
+        "report_submit" to "Submit Report"
     )
 
     val VI = mapOf(
@@ -482,6 +499,23 @@ object StringResources {
         "load_more_reviews" to "Xem thêm đánh giá",
         "no_reviews_yet" to "Chưa có đánh giá nào.",
         "your_rating" to "Đánh giá của bạn",
-        "delete_review_confirm" to "Xóa đánh giá của bạn?"
+        "delete_review_confirm" to "Xóa đánh giá của bạn?",
+
+        // --- REPORT DIALOG (NEW) ---
+        "report_title" to "Báo cáo bài viết",
+        "report_reason" to "Lý do báo cáo",
+        "select_reason" to "Chọn lý do",
+        "report_fraud" to "Lừa đảo hoặc Spam",
+        "report_inappropriate" to "Nội dung không phù hợp",
+        "report_trading" to "Hàng hóa/Giao dịch bị cấm",
+        "report_offensive" to "Ngôn từ xúc phạm / Thù ghét",
+        "report_misinformation" to "Thông tin sai lệch",
+        "report_other" to "Khác",
+        "report_other_hint" to "Vui lòng ghi rõ lý do...",
+        "report_select_reason_required" to "Vui lòng chọn một lý do",
+        "report_description" to "Mô tả thêm",
+        "report_description_hint" to "Cung cấp thêm chi tiết về vấn đề (Tùy chọn)",
+        "report_cancel" to "Hủy",
+        "report_submit" to "Gửi báo cáo"
     )
 }
