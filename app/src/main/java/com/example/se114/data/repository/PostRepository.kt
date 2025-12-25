@@ -100,7 +100,7 @@ class PostRepository @Inject constructor(
         }
     }
 
-    // --- [MỚI] Hàm tối ưu: Chỉ lấy các bài viết theo danh sách ID ---
+    // --- Hàm tối ưu: Chỉ lấy các bài viết theo danh sách ID ---
     suspend fun getPostsByIds(postIds: List<String>, currentUserId: String? = null): Result<List<Post>> {
         if (postIds.isEmpty()) return Result.success(emptyList())
 
@@ -196,7 +196,7 @@ class PostRepository @Inject constructor(
                 val postRef = postsCollection.document(postId)
                 val likeRef = postRef.collection("likes").document(userId)
 
-                // [MỚI] Tham chiếu đến collection liked_posts của User
+                // Tham chiếu đến collection liked_posts của User
                 val userLikeRef = usersCollection.document(userId).collection("liked_posts").document(postId)
 
                 val postSnapshot = transaction.get(postRef)
@@ -213,14 +213,14 @@ class PostRepository @Inject constructor(
                 if (currentLikeStatus) {
                     // Đang like -> User muốn unlike -> Xóa cả 2 nơi
                     transaction.delete(likeRef)     // Xóa ở bài viết
-                    transaction.delete(userLikeRef) // [MỚI] Xóa ở user profile
+                    transaction.delete(userLikeRef) // Xóa ở user profile
                 } else {
                     // Chưa like -> User muốn like -> Thêm cả 2 nơi
                     val data = mapOf("timestamp" to FieldValue.serverTimestamp())
-                    val userLikeData = mapOf("likedAt" to FieldValue.serverTimestamp()) // [MỚI]
+                    val userLikeData = mapOf("likedAt" to FieldValue.serverTimestamp())
 
                     transaction.set(likeRef, data.plus("userId" to userId))
-                    transaction.set(userLikeRef, userLikeData) // [MỚI]
+                    transaction.set(userLikeRef, userLikeData)
                 }
             }.await()
             Result.success(Unit)
@@ -275,7 +275,7 @@ class PostRepository @Inject constructor(
 
             val ids = snapshot.documents.map { it.id }
 
-            // [MỚI] Cập nhật Flow ngay khi lấy từ server về
+            // Cập nhật Flow ngay khi lấy từ server về
             _savedPostIdsFlow.value = ids.toSet()
 
             Result.success(ids)
