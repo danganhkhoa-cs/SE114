@@ -247,8 +247,6 @@ object StringResources {
         "report_user_title" to "Report User",
         "report_reason" to "Reason",
         "select_reason" to "Select a reason",
-        "report_cancel" to "Cancel",
-        "report_submit" to "Submit Report",
 
         // Reasons for POSTS
         "report_fraud" to "Fraud or Scam",
@@ -270,7 +268,7 @@ object StringResources {
         "report_description" to "Description",
         "report_description_hint" to "Provide more details about the issue (Optional)",
         "report_cancel" to "Cancel",
-        "report_submit" to "Submit Report",
+        "report_submit" to "Submit",
         "report_submitted_success" to "Report submitted. Thank you!",
         "report_user" to "Report User",
         "report_duplicate_post" to "You have already reported this post", // Đổi key cũ cho rõ nghĩa
@@ -524,8 +522,6 @@ object StringResources {
         "report_user_title" to "Báo cáo người dùng",
         "report_reason" to "Lý do báo cáo",
         "select_reason" to "Chọn lý do",
-        "report_cancel" to "Hủy",
-        "report_submit" to "Gửi báo cáo",
 
         // Reasons for POSTS
         "report_fraud" to "Lừa đảo hoặc Spam",
@@ -547,7 +543,7 @@ object StringResources {
         "report_description" to "Mô tả thêm",
         "report_description_hint" to "Cung cấp thêm chi tiết về vấn đề (Tùy chọn)",
         "report_cancel" to "Hủy",
-        "report_submit" to "Gửi báo cáo",
+        "report_submit" to "Gửi",
         "report_submitted_success" to "Đã gửi báo cáo. Cảm ơn bạn!",
         "report_user" to "Báo cáo người dùng",
         "report_duplicate_post" to "Bạn đã báo cáo bài viết này rồi",

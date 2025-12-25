@@ -1,5 +1,6 @@
 package com.example.se114.ui.presentation.other_profile
 
+import ReportUserDialog
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -367,106 +368,22 @@ fun OtherProfileScreen(
     }
 
     if (showReportDialog) {
-        ReportUserDialog(
-            preferencesManager = preferencesManager,
+        // Sử dụng component chung ReportDialog nhưng truyền Keys của User
+        com.example.se114.ui.presentation.components.ReportDialog(
             onDismiss = { showReportDialog = false },
-            onSubmit = { reason, description ->
-                viewModel.submitReport(reason, description)
-            }
+            onSubmit = { reasonKey, description ->
+                viewModel.submitReport(reasonKey, description)
+            },
+            preferencesManager = preferencesManager,
+            titleKey = "report_user_title",
+            reasonKeys = listOf(
+                "report_reason_spam",
+                "report_reason_harassment",
+                "report_reason_fake",
+                "report_reason_inappropriate",
+                "report_reason_other"
+            )
         )
-    }
-}
-
-// --- REPORT USER DIALOG ---
-@Composable
-fun ReportUserDialog(
-    preferencesManager: PreferencesManager,
-    onDismiss: () -> Unit,
-    onSubmit: (String, String) -> Unit
-) {
-    val reasons = listOf(
-        "spam" to preferencesManager.getString("report_reason_spam"),
-        "harassment" to preferencesManager.getString("report_reason_harassment"),
-        "fake" to preferencesManager.getString("report_reason_fake"),
-        "inappropriate" to preferencesManager.getString("report_reason_inappropriate"),
-        "other" to preferencesManager.getString("report_reason_other")
-    )
-
-    var selectedReasonKey by remember { mutableStateOf(reasons[0].first) }
-    var description by remember { mutableStateOf("") }
-    val isDescriptionRequired = selectedReasonKey == "other"
-    val isSubmitEnabled = !isDescriptionRequired || (isDescriptionRequired && description.isNotBlank())
-
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surface,
-            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
-        ) {
-            Column(modifier = Modifier.padding(24.dp)) {
-                Text(
-                    text = preferencesManager.getString("report_user_title"),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-
-                reasons.forEach { (key, label) ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .selectable(
-                                selected = (key == selectedReasonKey),
-                                onClick = { selectedReasonKey = key },
-                                role = Role.RadioButton
-                            )
-                            .padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RadioButton(
-                            selected = (key == selectedReasonKey),
-                            onClick = null
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = label,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    label = { Text(preferencesManager.getString("report_description")) },
-                    placeholder = { Text(preferencesManager.getString("report_description_hint")) },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 3,
-                    maxLines = 5,
-                    isError = isDescriptionRequired && description.isBlank()
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = onDismiss) {
-                        Text(preferencesManager.getString("cancel"))
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(
-                        onClick = { onSubmit(selectedReasonKey, description) },
-                        enabled = isSubmitEnabled,
-                        colors = ButtonDefaults.buttonColors(containerColor = AppTealDark)
-                    ) {
-                        Text(preferencesManager.getString("report_submit"))
-                    }
-                }
-            }
-        }
     }
 }
 
