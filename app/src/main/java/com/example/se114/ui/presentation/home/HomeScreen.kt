@@ -152,12 +152,21 @@ fun HomeScreen(
 
         if (reportPostId != null) {
             ReportDialog(
-                onDismiss = { reportPostId = null }, // Reset về null để đóng dialog
-                onSubmit = { reason, description ->
-                    // Gọi ViewModel với ID đã lưu
-                    viewModel.onSubmitReport(reportPostId!!, reason, description)
+                onDismiss = { reportPostId = null },
+                onSubmit = { reasonKey, description ->
+                    // reasonKey lúc này sẽ là: "report_fraud", "report_trading"...
+                    viewModel.onSubmitReport(reportPostId!!, reasonKey, description)
                 },
-                preferencesManager = preferencesManager
+                preferencesManager = preferencesManager,
+                titleKey = "report_title",
+                reasonKeys = listOf(
+                    "report_fraud",
+                    "report_inappropriate",
+                    "report_trading",
+                    "report_offensive",
+                    "report_misinformation",
+                    "report_other"
+                ),
             )
         }
     }
