@@ -10,7 +10,8 @@ data class PostUpdateEvent(
     val postId: String,
     val isLiked: Boolean? = null,
     val likeCount: Int? = null,
-    val commentCount: Int? = null
+    val commentCount: Int? = null,
+    val isSaved: Boolean? = null
 )
 
 @Singleton

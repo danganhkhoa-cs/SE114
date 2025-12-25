@@ -26,27 +26,39 @@ data class SavedUiState(
 class SavedViewModel @Inject constructor(
     private val repository: PostRepository,
     val preferencesManager: PreferencesManager,
-    private val postEventBus: PostEventBus // [MỚI] Inject EventBus
+    private val postEventBus: PostEventBus //Inject EventBus
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SavedUiState())
     val uiState = _uiState.asStateFlow()
 
     init {
-        // [MỚI] Lắng nghe sự kiện từ EventBus ngay khi khởi tạo
+        // Lắng nghe sự kiện từ EventBus ngay khi khởi tạo
         observeBusEvents()
     }
 
-    // [MỚI] Hàm lắng nghe thay đổi từ Home
+    // Hàm lắng nghe thay đổi từ Home
     private fun observeBusEvents() {
         viewModelScope.launch {
             postEventBus.events.collect { event ->
+                // Cập nhật Like/Comment
                 updateLocalPost(event.postId, event.isLiked, event.likeCount, event.commentCount)
+
+                // Logic đồng bộ Hủy Lưu
+                if (event.isSaved == false) {
+                    // Nếu tin nhắn báo là "đã hủy lưu", xóa bài này khỏi danh sách Saved ngay lập tức
+                    _uiState.update { state ->
+                        val newAll = state.allSavedPosts.filter { it.id != event.postId }
+                        state.copy(allSavedPosts = newAll)
+                    }
+                    // Tính toán lại danh sách hiển thị (để nó biến mất khỏi màn hình ngay)
+                    calculateDisplayedPosts()
+                }
             }
         }
     }
 
-    // [MỚI] Cập nhật list local mà không cần gọi API
+    // Cập nhật list local mà không cần gọi API
     private fun updateLocalPost(postId: String, isLiked: Boolean?, likeCount: Int?, commentCount: Int?) {
         val currentAll = _uiState.value.allSavedPosts
         // Nếu bài viết không có trong list đã lưu thì bỏ qua
@@ -99,13 +111,13 @@ class SavedViewModel @Inject constructor(
         }
     }
 
-    // [MỚI] Chuyển Tab
+    // Chuyển Tab
     fun onTabSelected(index: Int) {
         _uiState.update { it.copy(selectedTabIndex = index) }
         calculateDisplayedPosts()
     }
 
-    // [MỚI] Logic lọc bài viết theo Tab
+    // Logic lọc bài viết theo Tab
     private fun calculateDisplayedPosts() {
         val state = _uiState.value
         val targetType = if (state.selectedTabIndex == 0) PostType.SUPPORT.name else PostType.SERVICE.name

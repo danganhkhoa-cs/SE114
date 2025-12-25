@@ -135,12 +135,20 @@ class HomeViewModel @Inject constructor(
         val isSaved = _uiState.value.savedPostIds.contains(postId)
         val userId = preferencesManager.userId
 
+        // Cập nhật UI Home
         _uiState.update { state ->
             val message = if (!isSaved) HomeMessage.SAVED else HomeMessage.UNSAVED
             state.copy(currentMessage = message)
         }
+        val newSavedStatus = !isSaved
 
-        viewModelScope.launch { repository.toggleSavePost(postId, userId, isSaved) }
+        viewModelScope.launch {
+            // 1. Bắn tin cho SavedScreen biết
+            postEventBus.emitEvent(PostUpdateEvent(postId, isSaved = newSavedStatus))
+
+            // 2. Gọi API
+            repository.toggleSavePost(postId, userId, isSaved)
+        }
     }
 
     fun onHidePost(postId: String) {

@@ -55,7 +55,7 @@ fun SavedScreen(
             }
         }
 
-        // [MỚI] Thêm Tabs y chang Home
+        // Thêm Tabs y chang Home
         // Nếu HomeTabs báo lỗi đỏ, hãy copy đoạn code @Composable HomeTabs từ HomeScreen.kt dán xuống cuối file này
         HomeTabs(
             tabs = tabs,
