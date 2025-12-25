@@ -45,7 +45,7 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true) }
 
-            val postsDeferred = async { repository.getPosts() }
+            val postsDeferred = async { repository.getPosts(currentUserId = userId) }
             val savedIdsDeferred = async { repository.getUserSavedPostIds(userId) }
 
             val postsResult = postsDeferred.await()

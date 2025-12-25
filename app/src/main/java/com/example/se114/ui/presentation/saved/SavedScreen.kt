@@ -18,18 +18,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.se114.local.PreferencesManager
-import com.example.se114.ui.presentation.home.PostCard // Import PostCard
+import com.example.se114.ui.presentation.home.PostCard
 import com.example.se114.ui.theme.AppTealDark
 
 @Composable
 fun SavedScreen(
     viewModel: SavedViewModel = hiltViewModel(),
-    onNavigateBack: () -> Unit = {}
+    // callback điều hướng giống HomeScreen
+    onNavigateToOtherProfile: (String) -> Unit = {},
+    onNavigateToProfile: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
-    val preferencesManager = remember { PreferencesManager(context) }
+    val preferencesManager = viewModel.preferencesManager
+    val currentUserId = preferencesManager.userId // Lấy ID hiện tại để so sánh avatar
 
     LaunchedEffect(Unit) {
         viewModel.loadSavedPosts()
@@ -44,7 +45,13 @@ fun SavedScreen(
             shape = RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp)
         ) {
             Box(modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp)) {
-                Text(preferencesManager.getString("saved_posts"), style = MaterialTheme.typography.headlineMedium, color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.Center))
+                Text(
+                    text = preferencesManager.getString("saved_posts"),
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.align(Alignment.Center)
+                )
             }
         }
 
@@ -67,14 +74,22 @@ fun SavedScreen(
                 items(uiState.savedPosts, key = { it.id }) { post ->
                     PostCard(
                         post = post,
-                        isSaved = true,
+                        isSaved = true, // Luôn là true ở màn hình này
                         preferencesManager = preferencesManager,
-                        onLikeClick = { /* Logic like ở saved có thể thêm sau */ },
+                        // [MỚI] Gắn logic toggle like từ ViewModel
+                        onLikeClick = { viewModel.onToggleLike(post.id) },
                         onSaveClick = { viewModel.onUnsave(post.id) },
-                        onHideClick = { },
-                        onReportSubmitted = { },
-                        onCommentClick = { },
-                        onAvatarClick = { }
+                        onHideClick = { /* Logic ẩn */ },
+                        onReportSubmitted = { /* Logic báo cáo */ },
+                        onCommentClick = { /* Logic comment sau này */ },
+                        // [MỚI] Gắn logic điều hướng Avatar giống Home
+                        onAvatarClick = {
+                            if (post.userId == currentUserId) {
+                                onNavigateToProfile()
+                            } else {
+                                onNavigateToOtherProfile(post.userId)
+                            }
+                        }
                     )
                 }
             }
