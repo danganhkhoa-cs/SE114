@@ -8,7 +8,7 @@ enum class PostType {
 }
 
 data class Post(
-    val id: String = "", // Đổi thành String
+    val id: String = "",
     val userId: String = "",
     val userName: String = "",
     val userAvatar: String = "",
@@ -19,20 +19,8 @@ data class Post(
     val imageUrl: String? = null,
     val likeCount: Int = 0,
     val commentCount: Int = 0,
-    val isLiked: Boolean = false, // Chuyển isLiked vào đây để dễ quản lý
+    val isLiked: Boolean = false,
     val type: String = PostType.SUPPORT.name,
+    // Chỉ lưu thời điểm tạo, không lưu chuỗi "x phút trước" cố định
     val createdAt: Timestamp = Timestamp.now()
-) {
-    val timeAgo: String
-        get() {
-            val now = Timestamp.now().seconds
-            val created = createdAt.seconds
-            val diff = now - created
-            return when {
-                diff < 60 -> "Vừa xong"
-                diff < 3600 -> "${diff / 60} phút trước"
-                diff < 86400 -> "${diff / 3600} giờ trước"
-                else -> "${diff / 86400} ngày trước"
-            }
-        }
-}
+)
