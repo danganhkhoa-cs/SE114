@@ -1,6 +1,7 @@
 package com.example.se114.data.repository
 
 import com.example.se114.data.Post
+import com.example.se114.data.Report
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
@@ -279,6 +280,32 @@ class PostRepository @Inject constructor(
             _savedPostIdsFlow.value = ids.toSet()
 
             Result.success(ids)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    // --- REPORT LOGIC ---
+    suspend fun createReport(report: Report): Result<String> { // Trả về String message lỗi hoặc thành công
+        return try {
+            // 1. CHỐNG SPAM: Kiểm tra xem user này đã report bài này chưa
+            val existingReport = firestore.collection("reports")
+                .whereEqualTo("reporterId", report.reporterId)
+                .whereEqualTo("postId", report.postId)
+                .whereEqualTo("status", "PENDING") // Chỉ chặn nếu đơn cũ chưa xử lý
+                .get()
+                .await()
+
+            if (!existingReport.isEmpty) {
+                return Result.failure(Exception("duplicate")) // Trả về lỗi định danh là duplicate
+            }
+
+            // 2. Tạo report mới
+            val docRef = firestore.collection("reports").document()
+            val finalReport = report.copy(id = docRef.id)
+            docRef.set(finalReport).await()
+
+            Result.success("Success")
         } catch (e: Exception) {
             Result.failure(e)
         }

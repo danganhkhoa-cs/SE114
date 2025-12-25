@@ -3,6 +3,7 @@ package com.example.se114.ui.presentation.other_profile
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.se114.data.Report
 import com.example.se114.data.model.ChatStatus
 import com.example.se114.data.model.Conversation
 import com.example.se114.data.model.FriendshipState
@@ -47,6 +48,7 @@ data class OtherProfileUiState(
     val isLoading: Boolean = true,
     val errorMessage: String? = null,
     val isBlocked: Boolean = false,
+    val reportToastMessage: String? = null, // Dùng biến này để bắn Toast (Success hoặc Duplicate)
 
     // --- Rating Fields ---
     val canRate: Boolean = false, // Đủ điều kiện nhắn tin hay chưa
@@ -346,13 +348,11 @@ class OtherProfileViewModel @Inject constructor(
                     val newLastDoc = snapshot.documents.lastOrNull()
 
                     // --- LOGIC MỚI: FETCH AVATAR MỚI NHẤT CỦA CÁC REVIEWER ---
-                    // Lấy danh sách ID của những người review
                     val userIdsToFetch = newReviews.map { it.reviewerId }.distinct()
-                        .filter { !_uiState.value.reviewAuthorAvatars.containsKey(it) } // Chỉ fetch những ai chưa có trong map
+                        .filter { !_uiState.value.reviewAuthorAvatars.containsKey(it) }
 
                     val newAvatarsMap = _uiState.value.reviewAuthorAvatars.toMutableMap()
 
-                    // Firestore giới hạn whereIn tối đa 10 phần tử, chia chunk để an toàn
                     if (userIdsToFetch.isNotEmpty()) {
                         userIdsToFetch.chunked(10).forEach { chunkIds ->
                             try {
@@ -371,7 +371,7 @@ class OtherProfileViewModel @Inject constructor(
                         it.copy(
                             reviewsList = if (reset) newReviews else it.reviewsList + newReviews,
                             lastReviewDoc = newLastDoc,
-                            reviewAuthorAvatars = newAvatarsMap, // Cập nhật Map avatar
+                            reviewAuthorAvatars = newAvatarsMap,
                             isReviewsLoading = false
                         )
                     }
@@ -561,5 +561,59 @@ class OtherProfileViewModel @Inject constructor(
                 _uiState.update { it.copy(friendshipStatus = FriendshipStatus.FRIEND) }
             } catch (e: Exception) { e.printStackTrace() }
         }
+    }
+
+    // --- REPORT USER FUNCTION ---
+    fun submitReport(reason: String, description: String) {
+        val targetId = _uiState.value.userId
+        if (targetId.isBlank() || myId.isBlank()) return
+
+        viewModelScope.launch {
+            try {
+                // 1. CHỐNG SPAM: Kiểm tra trùng
+                val existingReport = firestore.collection("reports")
+                    .whereEqualTo("reporterId", myId)
+                    .whereEqualTo("reportedUserId", targetId)
+                    .whereEqualTo("status", "PENDING")
+                    .get()
+                    .await()
+
+                if (!existingReport.isEmpty) {
+                    // PHÁT HIỆN TRÙNG -> Gán vào reportToastMessage để hiện Toast (không gán vào errorMessage)
+                    _uiState.update {
+                        it.copy(reportToastMessage = preferencesManager.getString("report_duplicate_user"))
+                    }
+                    return@launch
+                }
+
+                // 2. Tạo report mới
+                val newDocRef = firestore.collection("reports").document()
+                val report = Report(
+                    id = newDocRef.id,
+                    reporterId = myId,
+                    reportedUserId = targetId,
+                    postId = null,
+                    reason = reason,
+                    description = description,
+                    status = "PENDING"
+                )
+
+                newDocRef.set(report).await()
+
+                // THÀNH CÔNG -> Cũng gán vào reportToastMessage
+                _uiState.update {
+                    it.copy(reportToastMessage = preferencesManager.getString("report_submitted_success"))
+                }
+            } catch (e: Exception) {
+                // Lỗi hệ thống -> Gán vào errorMessage (để hiện log đỏ hoặc Toast tùy ý, ở đây giữ lỗi đỏ cho dev dễ thấy)
+                _uiState.update {
+                    it.copy(errorMessage = "${preferencesManager.getString("report_error")}${e.message}")
+                }
+            }
+        }
+    }
+
+    fun clearReportToastMessage() {
+        _uiState.update { it.copy(reportToastMessage = null) }
     }
 }

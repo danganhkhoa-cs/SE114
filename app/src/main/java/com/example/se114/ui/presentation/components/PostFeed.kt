@@ -20,7 +20,7 @@ fun PostFeed(
     onLikeClick: (String) -> Unit, // Chỉ truyền ID
     onSaveClick: (String) -> Unit,
     onHideClick: (String) -> Unit,
-    onReportClick: () -> Unit,
+    onReportClick: (String) -> Unit,
     onCommentClick: (Post) -> Unit, // Truyền cả Post để mở bottom sheet
     onNavigateToOtherProfile: (String) -> Unit,
     onNavigateToProfile: () -> Unit,
@@ -44,7 +44,7 @@ fun PostFeed(
                     onLikeClick = { onLikeClick(post.id) },
                     onSaveClick = { onSaveClick(post.id) },
                     onHideClick = { onHideClick(post.id) },
-                    onReportClick = onReportClick,
+                    onReportClick = { onReportClick(post.id) },
                     onCommentClick = { onCommentClick(post) },
                     onAvatarClick = {
                         if (post.userId == currentUserId) {

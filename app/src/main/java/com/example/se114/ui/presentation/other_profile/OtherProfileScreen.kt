@@ -1,10 +1,12 @@
 package com.example.se114.ui.presentation.other_profile
 
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -23,6 +25,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -36,7 +39,6 @@ import com.example.se114.data.model.Review
 import com.example.se114.local.PreferencesManager
 import kotlinx.coroutines.flow.collectLatest
 
-// Định nghĩa màu Teal giống SettingsScreen để đồng bộ giao diện
 val AppTealDark = Color(0xFF00695C)
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -53,6 +55,7 @@ fun OtherProfileScreen(
     var showMenu by remember { mutableStateOf(false) }
     var showBlockConfirmDialog by remember { mutableStateOf(false) }
     var showReviewDialog by remember { mutableStateOf(false) }
+    var showReportDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(key1 = true) {
         viewModel.eventFlow.collectLatest { event ->
@@ -61,6 +64,17 @@ fun OtherProfileScreen(
                     onNavigateToChat(event.conversationId)
                 }
             }
+        }
+    }
+
+    LaunchedEffect(uiState.reportToastMessage) {
+        if (uiState.reportToastMessage != null) {
+            Toast.makeText(context, uiState.reportToastMessage, Toast.LENGTH_SHORT).show()
+
+            // Nếu là success hoặc duplicate thì đều đóng dialog report lại cho gọn
+            showReportDialog = false
+
+            viewModel.clearReportToastMessage()
         }
     }
 
@@ -83,6 +97,7 @@ fun OtherProfileScreen(
                             onDismissRequest = { showMenu = false },
                             modifier = Modifier.background(MaterialTheme.colorScheme.surface)
                         ) {
+                            // BLOCK
                             DropdownMenuItem(
                                 text = { Text(preferencesManager.getString("block_user"), color = Color.Red) },
                                 onClick = {
@@ -90,6 +105,16 @@ fun OtherProfileScreen(
                                     showBlockConfirmDialog = true
                                 },
                                 leadingIcon = { Icon(Icons.Default.Block, null, tint = Color.Red) }
+                            )
+
+                            // REPORT USER
+                            DropdownMenuItem(
+                                text = { Text(preferencesManager.getString("report_user"), color = MaterialTheme.colorScheme.onSurface) },
+                                onClick = {
+                                    showMenu = false
+                                    showReportDialog = true
+                                },
+                                leadingIcon = { Icon(Icons.Default.Report, null, tint = MaterialTheme.colorScheme.onSurface) }
                             )
                         }
                     }
@@ -124,7 +149,7 @@ fun OtherProfileScreen(
             Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
-        } else if (uiState.errorMessage != null) {
+        } else if (uiState.errorMessage != null && !uiState.isBlocked) {
             Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
                 Text(text = uiState.errorMessage ?: preferencesManager.getString("error"), color = Color.Red)
             }
@@ -303,6 +328,8 @@ fun OtherProfileScreen(
         }
     }
 
+    // --- DIALOGS ---
+
     if (showBlockConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showBlockConfirmDialog = false },
@@ -330,13 +357,116 @@ fun OtherProfileScreen(
     if (showReviewDialog) {
         ReviewListDialog(
             reviews = uiState.reviewsList,
-            authorAvatars = uiState.reviewAuthorAvatars, // TRUYỀN MAP AVATAR MỚI VÀO
+            authorAvatars = uiState.reviewAuthorAvatars,
             totalCount = uiState.reviewCount,
             isLoading = uiState.isReviewsLoading,
             onDismiss = { showReviewDialog = false },
             onLoadMore = { viewModel.loadReviews(reset = false) },
             preferencesManager = preferencesManager
         )
+    }
+
+    if (showReportDialog) {
+        ReportUserDialog(
+            preferencesManager = preferencesManager,
+            onDismiss = { showReportDialog = false },
+            onSubmit = { reason, description ->
+                viewModel.submitReport(reason, description)
+            }
+        )
+    }
+}
+
+// --- REPORT USER DIALOG ---
+@Composable
+fun ReportUserDialog(
+    preferencesManager: PreferencesManager,
+    onDismiss: () -> Unit,
+    onSubmit: (String, String) -> Unit
+) {
+    val reasons = listOf(
+        "spam" to preferencesManager.getString("report_reason_spam"),
+        "harassment" to preferencesManager.getString("report_reason_harassment"),
+        "fake" to preferencesManager.getString("report_reason_fake"),
+        "inappropriate" to preferencesManager.getString("report_reason_inappropriate"),
+        "other" to preferencesManager.getString("report_reason_other")
+    )
+
+    var selectedReasonKey by remember { mutableStateOf(reasons[0].first) }
+    var description by remember { mutableStateOf("") }
+    val isDescriptionRequired = selectedReasonKey == "other"
+    val isSubmitEnabled = !isDescriptionRequired || (isDescriptionRequired && description.isNotBlank())
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surface,
+            modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
+        ) {
+            Column(modifier = Modifier.padding(24.dp)) {
+                Text(
+                    text = preferencesManager.getString("report_user_title"),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                reasons.forEach { (key, label) ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .selectable(
+                                selected = (key == selectedReasonKey),
+                                onClick = { selectedReasonKey = key },
+                                role = Role.RadioButton
+                            )
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = (key == selectedReasonKey),
+                            onClick = null
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    label = { Text(preferencesManager.getString("report_description")) },
+                    placeholder = { Text(preferencesManager.getString("report_description_hint")) },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3,
+                    maxLines = 5,
+                    isError = isDescriptionRequired && description.isBlank()
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = onDismiss) {
+                        Text(preferencesManager.getString("cancel"))
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = { onSubmit(selectedReasonKey, description) },
+                        enabled = isSubmitEnabled,
+                        colors = ButtonDefaults.buttonColors(containerColor = AppTealDark)
+                    ) {
+                        Text(preferencesManager.getString("report_submit"))
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -489,7 +619,7 @@ fun RatingInputSection(
 @Composable
 fun ReviewListDialog(
     reviews: List<Review>,
-    authorAvatars: Map<String, String>, // Tham số mới
+    authorAvatars: Map<String, String>,
     totalCount: Int,
     isLoading: Boolean,
     onDismiss: () -> Unit,
@@ -502,7 +632,7 @@ fun ReviewListDialog(
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
-            shape = RoundedCornerShape(24.dp), // Đồng bộ với BlockListDialog
+            shape = RoundedCornerShape(24.dp),
             color = MaterialTheme.colorScheme.surface,
             modifier = Modifier.fillMaxWidth().heightIn(max = 600.dp)
         ) {
@@ -528,7 +658,7 @@ fun ReviewListDialog(
                         items(reviews.size) { index ->
                             ReviewItem(
                                 review = reviews[index],
-                                authorAvatars = authorAvatars, // Truyền Map xuống
+                                authorAvatars = authorAvatars,
                                 currentUserId = currentUserId,
                                 currentUserAvatar = currentUserAvatar,
                                 currentUserName = currentUserName
@@ -562,36 +692,26 @@ fun ReviewListDialog(
     }
 }
 
-// Hàm ReviewItem đã được cập nhật chính xác theo mẫu của Block List và thêm logic đồng bộ avatar cá nhân
 @Composable
 fun ReviewItem(
     review: Review,
-    authorAvatars: Map<String, String>, // Tham số mới
+    authorAvatars: Map<String, String>,
     currentUserId: String = "",
     currentUserAvatar: String = "",
     currentUserName: String = ""
 ) {
-    // Nếu ID người review trùng với ID của mình (đang đăng nhập)
-    // -> Sử dụng avatar và tên mới nhất từ Preferences (local) thay vì từ review cũ (DB)
     val isMe = review.reviewerId == currentUserId && currentUserId.isNotEmpty()
-
-    // LOGIC CHỌN AVATAR:
-    // 1. Nếu là chính mình -> lấy từ Preferences (mới nhất)
-    // 2. Nếu là người khác -> lấy từ Map (vừa fetch mới nhất từ Firestore)
-    // 3. Fallback -> lấy từ object review cũ (nếu không tìm thấy trong map)
     val avatarToShow = if (isMe) {
         currentUserAvatar
     } else {
         authorAvatars[review.reviewerId] ?: review.reviewerAvatar
     }
-
     val nameToShow = if (isMe) currentUserName else review.reviewerName
 
     Row(
         modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.Top // Căn lề trên để đẹp hơn khi có comment dài
+        verticalAlignment = Alignment.Top
     ) {
-        // --- LOGIC HIỂN THỊ AVATAR GIỐNG BLOCK LIST ---
         Surface(
             shape = CircleShape,
             modifier = Modifier.size(40.dp),
@@ -623,7 +743,6 @@ fun ReviewItem(
         Column {
             Text(nameToShow, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
 
-            // Stars
             Row(verticalAlignment = Alignment.CenterVertically) {
                 repeat(5) { i ->
                     Icon(
