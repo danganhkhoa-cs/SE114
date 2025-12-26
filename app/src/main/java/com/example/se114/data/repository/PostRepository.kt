@@ -32,7 +32,6 @@ class PostRepository @Inject constructor(
         return try {
             // Bước A: Lấy danh sách bài viết thô từ collection "posts"
             val snapshot = postsCollection
-                .whereEqualTo("status", "PUBLISHED")
                 .orderBy("createdAt", Query.Direction.DESCENDING)
                 .get()
                 .await()
@@ -118,6 +117,7 @@ class PostRepository @Inject constructor(
                     async {
                         val snapshot = postsCollection
                             .whereIn(FieldPath.documentId(), chunk)
+                            .whereEqualTo("status", "PUBLISHED")
                             .get()
                             .await()
                         snapshot.toObjects(Post::class.java).mapIndexed { index, post ->
