@@ -22,5 +22,7 @@ data class Post(
     val isLiked: Boolean = false,
     val type: String = PostType.SUPPORT.name,
     // Chỉ lưu thời điểm tạo, không lưu chuỗi "x phút trước" cố định
-    val createdAt: Timestamp = Timestamp.now()
+    val createdAt: Timestamp = Timestamp.now(),
+    val status: String = "PUBLISHED"
+
 )

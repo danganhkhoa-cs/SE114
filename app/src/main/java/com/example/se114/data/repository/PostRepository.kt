@@ -32,6 +32,7 @@ class PostRepository @Inject constructor(
         return try {
             // Bước A: Lấy danh sách bài viết thô từ collection "posts"
             val snapshot = postsCollection
+                .whereEqualTo("status", "PUBLISHED")
                 .orderBy("createdAt", Query.Direction.DESCENDING)
                 .get()
                 .await()
