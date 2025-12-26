@@ -1,6 +1,5 @@
 package com.example.se114.ui.presentation.other_profile
 
-import ReportUserDialog
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -309,10 +308,10 @@ fun OtherProfileScreen(
                         preferencesManager = preferencesManager,
                         currentRating = uiState.myRating,
                         currentComment = uiState.myComment,
+                        hasUserReviewed = uiState.hasUserReviewed,
                         onRate = { stars, comment ->
                             viewModel.submitRating(stars, comment)
-                        },
-                        onDelete = { viewModel.deleteRating() }
+                        }
                     )
                     Spacer(modifier = Modifier.height(24.dp))
                 } else if (!uiState.canRate && !uiState.isBlocked) {
@@ -467,8 +466,8 @@ fun RatingInputSection(
     preferencesManager: PreferencesManager,
     currentRating: Int,
     currentComment: String,
-    onRate: (Int, String) -> Unit,
-    onDelete: () -> Unit
+    hasUserReviewed: Boolean,
+    onRate: (Int, String) -> Unit
 ) {
     var selectedRating by remember(currentRating) { mutableIntStateOf(currentRating) }
     var comment by remember(currentComment) { mutableStateOf(currentComment) }
@@ -516,17 +515,13 @@ fun RatingInputSection(
             Spacer(modifier = Modifier.height(12.dp))
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                if (isEditing) {
-                    TextButton(onClick = onDelete) {
-                        Text(preferencesManager.getString("delete_review"), color = MaterialTheme.colorScheme.error)
+                if (!hasUserReviewed) {
+                    Button(
+                        onClick = { onRate(selectedRating, comment) },
+                        enabled = selectedRating > 0
+                    ) {
+                        Text(preferencesManager.getString(if (isEditing) "save" else "submit_review"))
                     }
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Button(
-                    onClick = { onRate(selectedRating, comment) },
-                    enabled = selectedRating > 0
-                ) {
-                    Text(preferencesManager.getString(if (isEditing) "save" else "submit_review"))
                 }
             }
         }
