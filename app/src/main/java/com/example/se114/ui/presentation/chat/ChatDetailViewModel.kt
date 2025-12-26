@@ -28,7 +28,8 @@ data class ChatDetailUiState(
     val isPending: Boolean = false, // Vẫn dùng để check xem có phải spam không
     val partnerProfile: UserSummary? = null,
     val isLoading: Boolean = false,
-    val sendError: String? = null
+    val sendError: String? = null,
+    val isPartnerBanned: Boolean = false // <--- THÊM DÒNG NÀY
 )
 
 @HiltViewModel
@@ -135,7 +136,17 @@ class ChatDetailViewModel @Inject constructor(
 
                 val summary = UserSummary(partnerId, name, avatar, phone, email)
                 _uiState.update { it.copy(partnerProfile = summary) }
-            } catch (e: Exception) { e.printStackTrace() }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                // Nếu không load được profile do Permission Denied -> Đối phương bị Ban
+                if (e.message?.contains("PERMISSION_DENIED") == true) {
+                    _uiState.update {
+                        // Bạn có thể dùng biến sendError để kích hoạt Toast báo lỗi ngay khi vào
+                        it.copy(sendError = preferencesManager.getString("user_unavailable"))
+                        // Hoặc cập nhật 1 biến state mới để ẩn thanh chat (nếu muốn làm kỹ hơn)
+                    }
+                }
+            }
         }
     }
 
@@ -148,6 +159,10 @@ class ChatDetailViewModel @Inject constructor(
     }
 
     fun sendMessage() {
+        if (_uiState.value.isPartnerBanned) {
+            _uiState.update { it.copy(sendError = "Người dùng này đã bị vô hiệu hóa.") }
+            return
+        }
         val content = _uiState.value.messageInput.trim()
         if (content.isBlank()) return
 
@@ -211,7 +226,15 @@ class ChatDetailViewModel @Inject constructor(
                 _uiState.update { it.copy(messageInput = "") }
             } catch (e: Exception) {
                 e.printStackTrace()
-                _uiState.update { it.copy(sendError = "${preferencesManager.getString("error")}: ${e.message}") }
+
+                // --- SỬA ĐOẠN CATCH NÀY ---
+                val errorMsg = if (e.message?.contains("PERMISSION_DENIED") == true) {
+                    preferencesManager.getString("user_inactive") // "Tài khoản này đã bị vô hiệu hóa"
+                } else {
+                    "${preferencesManager.getString("error")}: ${e.message}"
+                }
+
+                _uiState.update { it.copy(sendError = errorMsg) }
             }
         }
     }

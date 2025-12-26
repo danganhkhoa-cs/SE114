@@ -224,7 +224,22 @@ fun ChatListScreen(
             }
         }
     }
-
+    if (uiState.hasWarning) {
+        AlertDialog(
+            onDismissRequest = { viewModel.markWarningAsRead() },
+            icon = { Icon(Icons.Default.Warning, null, tint = Color.Red) },
+            title = { Text("CẢNH BÁO TỪ ADMIN", color = Color.Red, fontWeight = FontWeight.Bold) },
+            text = { Text(uiState.latestWarningMessage ?: "Bạn đã vi phạm tiêu chuẩn cộng đồng.") },
+            confirmButton = {
+                Button(
+                    onClick = { viewModel.markWarningAsRead() },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                ) {
+                    Text("Đã hiểu")
+                }
+            }
+        )
+    }
     // --- DIALOGS ---
     if (uiState.isShowingAddFriendDialog) {
         val allRelatedConvs = remember(uiState) {
