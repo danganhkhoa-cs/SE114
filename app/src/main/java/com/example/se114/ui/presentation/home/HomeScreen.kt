@@ -23,11 +23,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.se114.data.Post
 import com.example.se114.local.PreferencesManager
-import com.example.se114.ui.presentation.components.CommentBottomSheet
+import com.example.se114.ui.presentation.components.PostEventListener
 import com.example.se114.ui.presentation.components.PostFeed
-import com.example.se114.ui.presentation.components.ReportDialog
 import com.example.se114.ui.theme.AppTealDark
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -40,139 +38,67 @@ fun HomeScreen(
     onNavigateToProfile: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    var showSnackbar by remember { mutableStateOf(false) }
-    var snackbarMessageText by remember { mutableStateOf("") }
-    var showCommentSheet by remember { mutableStateOf(false) }
-    var reportPostId by remember { mutableStateOf<String?>(null) }
-    var selectedPostForComment by remember { mutableStateOf<Post?>(null) }
-
     val currentUserId = preferencesManager.userId
-
-    // Logic Snackbar
-    LaunchedEffect(uiState.currentMessage) {
-        if (uiState.currentMessage != HomeMessage.NONE) {
-            val message = when(uiState.currentMessage) {
-                HomeMessage.SAVED -> preferencesManager.getString("post_saved")
-                HomeMessage.UNSAVED -> preferencesManager.getString("unsave_post")
-                HomeMessage.HIDDEN -> preferencesManager.getString("post_hidden")
-                HomeMessage.REPORT_SUCCESS -> preferencesManager.getString("report_success")
-                HomeMessage.REPORT_DUPLICATE -> preferencesManager.getString("report_duplicate_post") // Nên đưa vào StringResources
-                HomeMessage.REPORT_ERROR -> preferencesManager.getString("unknown_error")
-                else -> ""
-            }
-            if (message.isNotEmpty()) {
-                snackbarMessageText = message
-                showSnackbar = true
-            }
-            viewModel.onMessageShown()
-        }
-    }
-
-    LaunchedEffect(showSnackbar) {
-        if (showSnackbar) {
-            kotlinx.coroutines.delay(2000)
-            showSnackbar = false
-        }
-    }
 
     val tabs = listOf(
         preferencesManager.getString("tab_support"),
         preferencesManager.getString("tab_service")
     )
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
+    // WRAPPER: PostEventListener xử lý toàn bộ logic: Report Dialog, Comment Sheet, Snackbar
+    PostEventListener(viewModel = viewModel) { onLike, onSave, onHide, onReport, onComment ->
 
-            HomeHeader(
-                notificationCount = uiState.notificationUnreadCount,
-                onNavigateToNotification = onNavigateToNotification
-            )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
 
-            HomeTabs(
-                tabs = tabs,
-                selectedTabIndex = uiState.selectedTabIndex,
-                onTabSelected = viewModel::onTabSelected
-            )
-
-            PullToRefreshBox(
-                isRefreshing = uiState.isRefreshing,
-                onRefresh = { viewModel.onRefresh() },
-                modifier = Modifier.fillMaxSize()
-            ) {
-                // SỬ DỤNG COMPONENT CHUNG
-                PostFeed(
-                    posts = uiState.displayedPosts,
-                    savedPostIds = uiState.savedPostIds,
-                    preferencesManager = preferencesManager,
-                    onLikeClick = { postId -> viewModel.onToggleLike(postId) },
-                    onSaveClick = { postId -> viewModel.onToggleSave(postId) },
-                    onHideClick = { postId -> viewModel.onHidePost(postId) },
-                    onReportClick = { clickedPostId -> reportPostId = clickedPostId },
-                    onCommentClick = { post ->
-                        selectedPostForComment = post
-                        showCommentSheet = true
-                    },
-                    onNavigateToOtherProfile = onNavigateToOtherProfile,
-                    onNavigateToProfile = onNavigateToProfile,
-                    currentUserId = currentUserId
+                HomeHeader(
+                    notificationCount = uiState.notificationUnreadCount,
+                    onNavigateToNotification = onNavigateToNotification
                 )
-            }
-        }
 
-        if (showSnackbar) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.BottomCenter
-            ) {
-                Snackbar(
-                    modifier = Modifier.padding(16.dp),
-                    containerColor = MaterialTheme.colorScheme.inverseSurface,
-                    contentColor = MaterialTheme.colorScheme.inverseOnSurface,
-                    shape = RoundedCornerShape(12.dp)
+                HomeTabs(
+                    tabs = tabs,
+                    selectedTabIndex = uiState.selectedTabIndex,
+                    onTabSelected = viewModel::onTabSelected
+                )
+
+                PullToRefreshBox(
+                    isRefreshing = uiState.isRefreshing,
+                    onRefresh = { viewModel.onRefresh() },
+                    modifier = Modifier.fillMaxSize()
                 ) {
-                    Text(snackbarMessageText, fontWeight = FontWeight.Medium)
+                    PostFeed(
+                        posts = uiState.displayedPosts,
+                        savedPostIds = uiState.savedPostIds,
+                        preferencesManager = preferencesManager,
+                        currentUserId = currentUserId,
+                        // Mapping các sự kiện từ PostFeed sang PostEventListener
+                        onLikeClick = { postId ->
+                            val post = uiState.allPosts.find { it.id == postId }
+                            if (post != null) onLike(post)
+                        },
+                        onSaveClick = { postId ->
+                            val post = uiState.allPosts.find { it.id == postId }
+                            val isSaved = uiState.savedPostIds.contains(postId)
+                            if (post != null) onSave(post, isSaved)
+                        },
+                        onHideClick = { postId -> onHide(postId) },
+                        onReportClick = { postId -> onReport(postId) },
+                        onCommentClick = { post -> onComment(post) }, // PostFeed trả về object Post luôn
+                        onNavigateToOtherProfile = onNavigateToOtherProfile,
+                        onNavigateToProfile = onNavigateToProfile
+                    )
                 }
             }
-        }
-
-        if (showCommentSheet && selectedPostForComment != null) {
-            CommentBottomSheet(
-                onDismiss = {
-                    showCommentSheet = false
-                    selectedPostForComment = null
-                },
-                postId = selectedPostForComment!!.id,
-                preferencesManager = preferencesManager
-            )
-        }
-
-        if (reportPostId != null) {
-            ReportDialog(
-                onDismiss = { reportPostId = null },
-                onSubmit = { reasonKey, description ->
-                    // reasonKey lúc này sẽ là: "report_fraud", "report_trading"...
-                    viewModel.onSubmitReport(reportPostId!!, reasonKey, description)
-                },
-                preferencesManager = preferencesManager,
-                titleKey = "report_title",
-                reasonKeys = listOf(
-                    "report_fraud",
-                    "report_inappropriate",
-                    "report_trading",
-                    "report_offensive",
-                    "report_misinformation",
-                    "report_other"
-                ),
-            )
         }
     }
 }
 
-// --- SUB COMPONENTS ---
+// --- SUB COMPONENTS (Public để SavedScreen dùng lại HomeTabs) ---
 
 @Composable
 fun HomeHeader(
