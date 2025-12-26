@@ -185,7 +185,18 @@ fun ChatDetailScreen(
         },
         containerColor = backgroundColor,
         bottomBar = {
-            if (uiState.isPending) {
+            if (uiState.isPartnerBanned) {
+                Surface(color = Color.Red.copy(alpha = 0.1f), modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "Tài khoản này đã bị vô hiệu hóa hoặc không tồn tại.",
+                        color = Color.Red,
+                        modifier = Modifier.padding(16.dp),
+                        textAlign = TextAlign.Center,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+            else if (uiState.isPending) {
                 Surface(color = inputAreaColor, tonalElevation = 16.dp, shadowElevation = 16.dp) {
                     Column(
                         modifier = Modifier.fillMaxWidth().padding(16.dp),

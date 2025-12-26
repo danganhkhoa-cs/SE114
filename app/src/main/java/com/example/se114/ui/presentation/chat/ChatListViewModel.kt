@@ -38,7 +38,10 @@ data class ChatListUiState(
     val isShowingFriendsManagerDialog: Boolean = false,
 
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+
+    val hasWarning: Boolean = false,
+    val latestWarningMessage: String? = null
 )
 
 @HiltViewModel
@@ -55,8 +58,30 @@ class ChatListViewModel @Inject constructor(
 
     init {
         listenToConversations()
+        listenToWarnings()
     }
+    private fun listenToWarnings() {
+        if (currentUserId.isBlank()) return
 
+        // Lắng nghe sub-collection notifications của user
+        firestore.collection("users").document(currentUserId)
+            .collection("notifications")
+            .whereEqualTo("type", "WARNING")
+            .whereEqualTo("isRead", false)
+            .limit(1)
+            .addSnapshotListener { snapshot, _ ->
+                if (snapshot != null && !snapshot.isEmpty) {
+                    val doc = snapshot.documents[0]
+                    val content = doc.getString("content")
+                    _uiState.update { it.copy(hasWarning = true, latestWarningMessage = content) }
+                }
+            }
+    }
+    fun markWarningAsRead() {
+        // Logic đánh dấu đã đọc (đơn giản là ẩn đi trên UI hoặc update Firestore)
+        _uiState.update { it.copy(hasWarning = false) }
+        // Nếu muốn kỹ hơn: Update field isRead = true trên Firestore
+    }
     private fun listenToConversations() {
         if (currentUserId.isBlank()) return
 
