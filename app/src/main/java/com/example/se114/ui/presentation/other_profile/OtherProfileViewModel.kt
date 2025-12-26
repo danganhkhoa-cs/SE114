@@ -49,6 +49,7 @@ data class OtherProfileUiState(
     val errorMessage: String? = null,
     val isBlocked: Boolean = false,
     val reportToastMessage: String? = null, // Dùng biến này để bắn Toast (Success hoặc Duplicate)
+    val hasUserReviewed: Boolean = false,
 
     // --- Rating Fields ---
     val canRate: Boolean = false, // Đủ điều kiện nhắn tin hay chưa
@@ -89,6 +90,17 @@ class OtherProfileViewModel @Inject constructor(
             loadUserProfile(userId)
             checkFriendshipStatus(userId)
         }
+    }
+
+    private fun checkIfUserReviewed(targetUserId: String) {
+        val myId = preferencesManager.userId
+        firestore.collection("users").document(targetUserId)
+            .collection("reviews").document(myId)
+            .addSnapshotListener { snapshot, _ ->
+                // Nếu document tồn tại nghĩa là người dùng đã review
+                val exists = snapshot != null && snapshot.exists()
+                _uiState.update { it.copy(hasUserReviewed = exists) }
+            }
     }
 
     private fun loadUserProfile(targetUserId: String) {
@@ -169,6 +181,7 @@ class OtherProfileViewModel @Inject constructor(
                     // Check rating status
                     checkMyReview(targetUserId)
                     checkCanRateCondition(targetUserId)
+                    checkIfUserReviewed(targetUserId)
 
                 } else {
                     _uiState.update { it.copy(isLoading = false, errorMessage = preferencesManager.getString("user_not_found")) }
@@ -289,36 +302,6 @@ class OtherProfileViewModel @Inject constructor(
             } catch (e: Exception) {
                 _uiState.update { it.copy(errorMessage = "Error rating: ${e.message}") }
             }
-        }
-    }
-
-    fun deleteRating() {
-        val targetId = _uiState.value.userId
-        viewModelScope.launch {
-            try {
-                firestore.runTransaction { transaction ->
-                    val userRef = firestore.collection("users").document(targetId)
-                    val reviewRef = userRef.collection("reviews").document(myId)
-                    val reviewDoc = transaction.get(reviewRef)
-
-                    if (reviewDoc.exists()) {
-                        val oldRating = reviewDoc.getLong("rating") ?: 0L
-                        val userDoc = transaction.get(userRef)
-                        var currentSum = userDoc.getLong("ratingSum") ?: 0L
-                        var currentCount = userDoc.getLong("ratingCount") ?: 0L
-
-                        currentSum -= oldRating
-                        currentCount = if (currentCount > 0) currentCount - 1 else 0
-
-                        transaction.delete(reviewRef)
-                        transaction.update(userRef, "ratingSum", currentSum, "ratingCount", currentCount)
-                    }
-                }.await()
-
-                _uiState.update { it.copy(myRating = 0, myComment = "") }
-                loadUserProfile(targetId)
-                loadReviews(reset = true)
-            } catch (e: Exception) { e.printStackTrace() }
         }
     }
 

@@ -228,7 +228,10 @@ class ChatListViewModel @Inject constructor(
             }
         }
     }
-
+    // Hàm helper sắp xếp lại userId để conversationId giữa 2 người luôn là cố định
+    private fun getConversationId(uid1: String, uid2: String): String {
+        return if (uid1 < uid2) "${uid1}_${uid2}" else "${uid2}_${uid1}"
+    }
     fun sendFriendRequest(targetUser: UserSummary) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
@@ -249,7 +252,7 @@ class ChatListViewModel @Inject constructor(
                     return@launch
                 }
 
-                val newConvId = "${currentUserId}_${targetUser.uid}_${System.currentTimeMillis()}"
+                val newConvId = getConversationId(currentUserId, targetUser.uid)
                 val myName = preferencesManager.userName
                 val myAvatar = preferencesManager.userName.take(1).uppercase()
                 val participantData = mapOf(currentUserId to UserSummary(currentUserId, myName, myAvatar), targetUser.uid to targetUser)
@@ -262,7 +265,7 @@ class ChatListViewModel @Inject constructor(
                     friendshipState = FriendshipState.PENDING,
                     friendRequestSenderId = currentUserId,
                     requestSenderId = currentUserId,
-                    participants = listOf(currentUserId, targetUser.uid),
+                    participants = listOf(currentUserId, targetUser.uid).sorted(),
                     participantData = participantData,
                     lastSenderId = currentUserId,
                     readBy = listOf(currentUserId),
