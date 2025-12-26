@@ -61,7 +61,10 @@ data class OtherProfileUiState(
     val isReviewsLoading: Boolean = false,
     val totalReviews: Long = 0,   // Tổng số review của user này
     val averageRating: Float = 0f, // Điểm trung bình
-    val lastReviewDoc: com.google.firebase.firestore.DocumentSnapshot? = null // Để phân trang
+    val lastReviewDoc: com.google.firebase.firestore.DocumentSnapshot? = null, // Để phân trang
+    val isTargetBanned: Boolean = false
+
+
 )
 
 sealed class OtherProfileEvent {
@@ -187,7 +190,26 @@ class OtherProfileViewModel @Inject constructor(
                     _uiState.update { it.copy(isLoading = false, errorMessage = preferencesManager.getString("user_not_found")) }
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, errorMessage = e.message) }
+                // --- SỬA ĐOẠN NÀY ---
+                e.printStackTrace()
+
+                // Kiểm tra nếu lỗi là do không có quyền (người kia bị Ban)
+                val isPermissionDenied = e.message?.contains("PERMISSION_DENIED") == true ||
+                        e.message?.contains("Missing or insufficient permissions") == true
+
+                if (isPermissionDenied) {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            isBlocked = true, // <--- Coi như bị Block để hiện UI icon khóa xám
+                            errorMessage = preferencesManager.getString("user_unavailable") // "Người dùng không khả dụng"
+                        )
+                    }
+                } else {
+                    // Lỗi khác thì hiện như cũ
+                    _uiState.update { it.copy(isLoading = false, errorMessage = e.message) }
+                }
+
             }
         }
     }

@@ -274,6 +274,10 @@ object StringResources {
         "report_duplicate_post" to "You have already reported this post", // Đổi key cũ cho rõ nghĩa
         "report_duplicate_user" to "You have already reported this user", // Thêm key mới
         "report_error" to "Error sending report: ",
+        "user_unavailable" to "User unavailable or blocked",
+        "user_inactive" to "This account is currently inactive",
+        "blocked_msg_error" to "You cannot send messages to this user",
+        "error" to "Error"
     )
 
     val VI = mapOf(
@@ -549,6 +553,9 @@ object StringResources {
         "report_duplicate_post" to "Bạn đã báo cáo bài viết này rồi",
         "report_duplicate_user" to "Bạn đã báo cáo người dùng này rồi",
         "report_submitted_success" to "Đã gửi báo cáo. Cảm ơn bạn!",
-        "report_error" to "Lỗi gửi báo cáo: ",
+        "user_unavailable" to "Người dùng không tồn tại hoặc đã bị khóa",
+        "user_inactive" to "Tài khoản này hiện không hoạt động",
+        "blocked_msg_error" to "Bạn không thể gửi tin nhắn cho người này",
+        "error" to "Lỗi"
     )
 }
