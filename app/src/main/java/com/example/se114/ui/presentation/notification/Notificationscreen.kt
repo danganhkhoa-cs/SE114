@@ -165,24 +165,6 @@ fun NotificationScreen(
                 }
             }
 
-            // Clear All Button
-            val currentList = if (uiState.selectedTab == NotificationTab.SOCIAL) uiState.socialNotifications else uiState.systemNotifications
-            if (currentList.isNotEmpty()) {
-                Surface(
-                    onClick = viewModel::clearAll,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 8.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.3f))
-                ) {
-                    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.DeleteSweep, "Clear all", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(preferencesManager.getString("clear_all"), color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                    }
-                }
-            }
-
             // Notification List
             AnimatedContent(
                 targetState = uiState.selectedTab,

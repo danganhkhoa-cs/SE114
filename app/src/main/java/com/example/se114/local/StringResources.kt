@@ -289,8 +289,8 @@ object StringResources {
         "social_empty_msg" to "Interactions like likes, comments, and friend requests will appear here.",
         "emergency_empty_msg" to "System alerts and emergency updates will be shown here.",
         "friend_reject" to "Reject",
-        "warning" to "Warning",
-        "announcement" to "Announcement",
+        "Warning" to "Warning",
+        "Announcement" to "Announcement",
 
         // Notification Types
         "notif_liked_post" to "liked your post",
@@ -596,8 +596,8 @@ object StringResources {
         "social_empty_msg" to "Các tương tác như thích, bình luận và lời mời kết bạn sẽ xuất hiện ở đây.",
         "emergency_empty_msg" to "Các cảnh báo hệ thống và cập nhật khẩn cấp sẽ được hiển thị ở đây.",
         "friend_reject" to "Từ chối",
-        "warning" to "Cảnh báo",
-        "announcement" to "Thông báo",
+        "Warning" to "Cảnh báo",
+        "Announcement" to "Thông báo",
 
         // Notification Types
         "notif_liked_post" to "đã thích bài viết của bạn",

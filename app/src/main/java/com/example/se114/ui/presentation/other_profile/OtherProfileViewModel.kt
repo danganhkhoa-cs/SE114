@@ -9,6 +9,7 @@ import com.example.se114.data.model.Conversation
 import com.example.se114.data.model.FriendshipState
 import com.example.se114.data.model.Review
 import com.example.se114.data.model.UserSummary
+import com.example.se114.data.repository.PostRepository
 import com.example.se114.local.PreferencesManager
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
@@ -75,7 +76,8 @@ sealed class OtherProfileEvent {
 class OtherProfileViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val firestore: FirebaseFirestore,
-    private val preferencesManager: PreferencesManager
+    private val preferencesManager: PreferencesManager,
+    private val repository: PostRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(OtherProfileUiState())
@@ -472,6 +474,15 @@ class OtherProfileViewModel @Inject constructor(
                     createConversation(targetId, preferencesManager.getString("msg_sent_friend_request"), isFriendRequest = true)
                 }
                 _uiState.update { it.copy(friendshipStatus = FriendshipStatus.SENT_REQUEST) }
+
+                repository.sendNotification(
+                    receiverId = targetId, // Lấy từ state, không cần truyền vào hàm
+                    senderId = myId,
+                    postId = null,
+                    type = "FRIEND_REQUEST",
+                    message = ""
+                )
+
             } catch (e: Exception) {
                 _uiState.update { it.copy(errorMessage = "${preferencesManager.getString("error_friend_request")}${e.message}") }
             }
@@ -538,6 +549,7 @@ class OtherProfileViewModel @Inject constructor(
         if (currentConversationId == null) return
         viewModelScope.launch {
             try {
+                // Logic cũ
                 firestore.collection("conversations").document(currentConversationId!!)
                     .update(
                         mapOf(
@@ -546,6 +558,17 @@ class OtherProfileViewModel @Inject constructor(
                         )
                     ).await()
                 _uiState.update { it.copy(friendshipStatus = FriendshipStatus.NONE) }
+
+                // THÊM: Xóa thông báo bên phía người nhận
+                val targetId = _uiState.value.userId
+                if (targetId.isNotEmpty()) {
+                    repository.removeNotification(
+                        receiverId = targetId,  // Người nhận là họ
+                        senderId = myId,        // Người gửi là mình
+                        postId = null,
+                        type = "FRIEND_REQUEST"
+                    )
+                }
             } catch (e: Exception) {
                 _uiState.update { it.copy(errorMessage = "${preferencesManager.getString("error_cancel_request")}${e.message}") }
             }
@@ -556,6 +579,7 @@ class OtherProfileViewModel @Inject constructor(
         if (currentConversationId == null) return
         viewModelScope.launch {
             try {
+                // Logic cũ
                 firestore.collection("conversations").document(currentConversationId!!)
                     .update(
                         mapOf(
@@ -564,6 +588,18 @@ class OtherProfileViewModel @Inject constructor(
                         )
                     ).await()
                 _uiState.update { it.copy(friendshipStatus = FriendshipStatus.FRIEND) }
+
+                // THÊM: Xóa thông báo kết bạn
+                val targetId = _uiState.value.userId
+                if (targetId.isNotEmpty()) {
+                    repository.removeNotification(
+                        receiverId = myId,      // Mình là người nhận
+                        senderId = targetId,    // Họ là người gửi
+                        postId = null,
+                        type = "FRIEND_REQUEST"
+                    )
+                }
+
             } catch (e: Exception) { e.printStackTrace() }
         }
     }

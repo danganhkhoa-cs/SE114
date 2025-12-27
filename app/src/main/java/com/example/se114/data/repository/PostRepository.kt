@@ -2,6 +2,8 @@ package com.example.se114.data.repository
 
 import com.example.se114.data.Post
 import com.example.se114.data.Report
+import com.example.se114.data.model.ChatStatus
+import com.example.se114.data.model.FriendshipState
 import com.example.se114.ui.presentation.notification.NotificationItem
 import com.example.se114.ui.presentation.notification.NotificationType
 import com.google.firebase.Timestamp
@@ -365,13 +367,73 @@ class PostRepository @Inject constructor(
         }
     }
 
+    // --- FRIEND REQUEST HANDLING ---
+
+    // Hàm helper tạo ID hội thoại (để tìm đúng document cần update)
+    private fun getConversationId(uid1: String, uid2: String): String {
+        return if (uid1 < uid2) "${uid1}_${uid2}" else "${uid2}_${uid1}"
+    }
+
+    /**
+     * Chấp nhận lời mời kết bạn
+     */
+    suspend fun acceptFriendRequestAction(currentUserId: String, targetUserId: String) {
+        val conversationId = getConversationId(currentUserId, targetUserId)
+        try {
+            firestore.collection("conversations").document(conversationId)
+                .update(
+                    mapOf(
+                        "friendshipState" to FriendshipState.FRIENDS,
+                        "status" to ChatStatus.ACCEPTED,
+                        "lastMessageTime" to System.currentTimeMillis()
+                    )
+                ).await()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    /**
+     * Từ chối lời mời kết bạn
+     */
+    suspend fun declineFriendRequestAction(currentUserId: String, targetUserId: String) {
+        val conversationId = getConversationId(currentUserId, targetUserId)
+        try {
+            firestore.collection("conversations").document(conversationId)
+                .update(
+                    mapOf(
+                        "friendshipState" to FriendshipState.NONE,
+                        "friendRequestSenderId" to ""
+                    )
+                ).await()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    /**
+     * XÓA THÔNG BÁO (Delete)
+     * Dùng để xóa tin sau khi đã xử lý xong (Accept/Decline)
+     */
+    suspend fun deleteNotification(userId: String, notificationId: String) {
+        try {
+            usersCollection.document(userId)
+                .collection("notifications")
+                .document(notificationId)
+                .delete()
+                .await()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
     // --- NOTIFICATION LOGIC (GENERIC) ---
 
     /**
      * Hàm dùng chung để gửi thông báo.
      * Sau này có Comment hay Friend Request thì chỉ cần gọi hàm này và đổi tham số 'type'.
      */
-    private suspend fun sendNotification(
+    suspend fun sendNotification(
         receiverId: String,     // Người nhận (Chủ bài viết)
         senderId: String,       // Người gửi (Người đang like/comment)
         postId: String?,        // ID bài viết (Null nếu là Friend Request)
@@ -414,7 +476,7 @@ class PostRepository @Inject constructor(
     /**
      * Hàm dùng chung để xóa thông báo (VD: Unlike, Hủy kết bạn)
      */
-    private suspend fun removeNotification(
+    suspend fun removeNotification(
         receiverId: String,
         senderId: String,
         postId: String?,
