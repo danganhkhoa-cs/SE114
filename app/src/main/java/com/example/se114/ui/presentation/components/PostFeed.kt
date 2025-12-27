@@ -25,7 +25,7 @@ fun PostFeed(
     onNavigateToOtherProfile: (String) -> Unit,
     onNavigateToProfile: () -> Unit,
     currentUserId: String,
-    emptyMessage: String = "No posts found"
+    emptyMessage: String = preferencesManager.getString("empty_posts")
 ) {
     if (posts.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

@@ -6,8 +6,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Notifications
@@ -71,27 +73,45 @@ fun HomeScreen(
                     onRefresh = { viewModel.onRefresh() },
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    PostFeed(
-                        posts = uiState.displayedPosts,
-                        savedPostIds = uiState.savedPostIds,
-                        preferencesManager = preferencesManager,
-                        currentUserId = currentUserId,
-                        // Mapping các sự kiện từ PostFeed sang PostEventListener
-                        onLikeClick = { postId ->
-                            val post = uiState.allPosts.find { it.id == postId }
-                            if (post != null) onLike(post)
-                        },
-                        onSaveClick = { postId ->
-                            val post = uiState.allPosts.find { it.id == postId }
-                            val isSaved = uiState.savedPostIds.contains(postId)
-                            if (post != null) onSave(post, isSaved)
-                        },
-                        onHideClick = { postId -> onHide(postId) },
-                        onReportClick = { postId -> onReport(postId) },
-                        onCommentClick = { post -> onComment(post) }, // PostFeed trả về object Post luôn
-                        onNavigateToOtherProfile = onNavigateToOtherProfile,
-                        onNavigateToProfile = onNavigateToProfile
-                    )
+                    // Kiểm tra nếu list rỗng thì hiển thị giao diện rỗng CÓ THỂ SCROLL
+                    if (uiState.displayedPosts.isEmpty() && !uiState.isRefreshing) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .verticalScroll(rememberScrollState()),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            // Bạn có thể thay Text này bằng component EmptyState đẹp hơn
+                            Text(
+                                text = preferencesManager.getString("empty_posts"),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(16.dp),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+                    } else {
+                        // Nếu có bài viết thì hiển thị PostFeed như bình thường
+                        PostFeed(
+                            posts = uiState.displayedPosts,
+                            savedPostIds = uiState.savedPostIds,
+                            preferencesManager = preferencesManager,
+                            currentUserId = currentUserId,
+                            onLikeClick = { postId ->
+                                val post = uiState.allPosts.find { it.id == postId }
+                                if (post != null) onLike(post)
+                            },
+                            onSaveClick = { postId ->
+                                val post = uiState.allPosts.find { it.id == postId }
+                                val isSaved = uiState.savedPostIds.contains(postId)
+                                if (post != null) onSave(post, isSaved)
+                            },
+                            onHideClick = { postId -> onHide(postId) },
+                            onReportClick = { postId -> onReport(postId) },
+                            onCommentClick = { post -> onComment(post) },
+                            onNavigateToOtherProfile = onNavigateToOtherProfile,
+                            onNavigateToProfile = onNavigateToProfile
+                        )
+                    }
                 }
             }
         }

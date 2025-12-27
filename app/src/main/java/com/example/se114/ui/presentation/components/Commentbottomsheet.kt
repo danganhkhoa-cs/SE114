@@ -1,10 +1,6 @@
 package com.example.se114.ui.presentation.components
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -25,112 +21,65 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import com.example.se114.data.Comment
 import com.example.se114.local.PreferencesManager
-import kotlinx.coroutines.delay
+import com.example.se114.utils.TimeUtils
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
-
-data class Comment(
-    val id: Int,
-    val userName: String,
-    val userAvatar: String = "",
-    val content: String,
-    val timestamp: Long,
-    val likeCount: Int = 0,
-    val isLiked: Boolean = false,
-    val replies: List<Comment> = emptyList()
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CommentBottomSheet(
     onDismiss: () -> Unit,
     postId: String,
-    preferencesManager: PreferencesManager
+    preferencesManager: PreferencesManager,
+    viewModel: CommentViewModel = hiltViewModel() // Inject ViewModel
 ) {
+    // 1. Load data khi mở Sheet
+    LaunchedEffect(postId) {
+        viewModel.loadComments(postId)
+    }
+
+    // 2. Collect State từ ViewModel
+    val comments by viewModel.comments.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+
     var offsetY by remember { mutableStateOf(0f) }
     val maxDragDistance = 300f
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
 
-    // Get keyboard visibility and height
-    val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
-    val imeHeight = WindowInsets.ime.getBottom(LocalDensity.current)
+    // Quản lý Input Reply
+    // Map lưu text reply cho từng comment cha (Key: CommentID string)
+    var replyTextMap by remember { mutableStateOf(mutableMapOf<String, String>()) }
+    // ID của comment đang được reply
+    var replyingToId by remember { mutableStateOf<String?>(null) }
 
-    // Auto scroll when keyboard appears and there's a reply input active
-    var replyingToId by remember { mutableStateOf<Int?>(null) }
-
-    LaunchedEffect(imeVisible, replyingToId) {
-        if (imeVisible && replyingToId != null) {
-            // Keyboard is open and we're replying - scroll to keep reply input visible
-            delay(100) // Small delay for animation
-            // No need to scroll, imePadding handles it
-        }
-    }
-
-    // Sample comments data
-    val comments = remember {
-        mutableStateListOf(
-            Comment(
-                id = 1,
-                userName = "Nguyễn Văn A",
-                content = "Bài viết rất hay và bổ ích!",
-                timestamp = System.currentTimeMillis() - 3600000,
-                likeCount = 12,
-                isLiked = false
-            ),
-            Comment(
-                id = 2,
-                userName = "Trần Thị B",
-                content = "Cảm ơn bạn đã chia sẻ 😊",
-                timestamp = System.currentTimeMillis() - 7200000,
-                likeCount = 5,
-                isLiked = true,
-                replies = listOf(
-                    Comment(
-                        id = 21,
-                        userName = "Admin",
-                        content = "Cảm ơn bạn đã quan tâm!",
-                        timestamp = System.currentTimeMillis() - 3600000,
-                        likeCount = 2
-                    )
-                )
-            ),
-            Comment(
-                id = 3,
-                userName = "Lê Văn C",
-                content = "Mình có thể hỏi thêm về vấn đề này không?",
-                timestamp = System.currentTimeMillis() - 10800000,
-                likeCount = 3
-            )
-
-        )
-    }
-
+    // Quản lý Input chính
     var mainCommentText by remember { mutableStateOf("") }
-    var replyTexts by remember { mutableStateOf(mutableMapOf<Int, String>()) }
+    val context = LocalContext.current
 
-    Box(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        // Dimmed background - clickable to dismiss
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Dimmed background
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black.copy(alpha = 0.5f * (1 - offsetY / maxDragDistance).coerceIn(0f, 1f)))
-                .clickable(
-                    onClick = onDismiss,
-                    indication = null,
-                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-                )
+                .clickable(onClick = onDismiss)
         )
 
-        // Comment sheet
+        // Sheet Content
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
@@ -140,15 +89,10 @@ fun CommentBottomSheet(
                 .pointerInput(Unit) {
                     detectVerticalDragGestures(
                         onDragEnd = {
-                            if (offsetY > maxDragDistance / 2) {
-                                onDismiss()
-                            } else {
-                                offsetY = 0f
-                            }
+                            if (offsetY > maxDragDistance / 2) onDismiss() else offsetY = 0f
                         },
                         onVerticalDrag = { _, dragAmount ->
-                            val newOffset = (offsetY + dragAmount).coerceAtLeast(0f)
-                            offsetY = newOffset
+                            offsetY = (offsetY + dragAmount).coerceAtLeast(0f)
                         }
                     )
                 },
@@ -156,266 +100,251 @@ fun CommentBottomSheet(
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 8.dp
         ) {
-            Column(
-                modifier = Modifier.fillMaxSize()
-            ) {
-                // Drag handle
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Drag Handle
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 12.dp),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .width(40.dp)
-                            .height(4.dp)
-                            .background(
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                                shape = RoundedCornerShape(2.dp)
-                            )
-                    )
+                    Box(modifier = Modifier.width(40.dp).height(4.dp).background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f), RoundedCornerShape(2.dp)))
                 }
 
-                // Header
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = preferencesManager.getString("comments"),
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-
-                HorizontalDivider(
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                    thickness = 1.dp
+                // Title
+                Text(
+                    text = preferencesManager.getString("comments"),
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                    fontSize = 20.sp, fontWeight = FontWeight.Bold
                 )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
-                // Comments list
-                if (comments.isEmpty()) {
-                    // Empty state
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.ChatBubbleOutline,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                modifier = Modifier.size(64.dp)
-                            )
-                            Text(
-                                text = preferencesManager.getString("no_comments"),
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = preferencesManager.getString("be_first_comment"),
-                                fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                // --- LIST COMMENTS ---
+                if (isLoading) {
+                    Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                } else if (comments.isEmpty()) {
+                    Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(Icons.Default.ChatBubbleOutline, null, modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(preferencesManager.getString("no_comments"), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 } else {
                     LazyColumn(
                         state = listState,
                         modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(
-                            top = 12.dp,
-                            bottom = 12.dp
-                        )
+                        contentPadding = PaddingValues(bottom = 80.dp) // Chừa chỗ cho input bar
                     ) {
                         items(comments, key = { it.id }) { comment ->
+                            // 1. Render Root Comment
                             CommentItem(
                                 comment = comment,
-                                onLikeClick = {
-                                    val index = comments.indexOf(comment)
-                                    if (index != -1) {
-                                        comments[index] = comment.copy(
-                                            isLiked = !comment.isLiked,
-                                            likeCount = if (comment.isLiked) comment.likeCount - 1 else comment.likeCount + 1
-                                        )
-                                    }
-                                },
-                                onReplyClick = {
-                                    replyingToId = comment.id
-                                },
-                                onReplyLikeClick = { replyId ->
-                                    // Handle like on reply
-                                    val index = comments.indexOf(comment)
-                                    if (index != -1) {
-                                        val updatedReplies = comment.replies.map { reply ->
-                                            if (reply.id == replyId) {
-                                                reply.copy(
-                                                    isLiked = !reply.isLiked,
-                                                    likeCount = if (reply.isLiked) reply.likeCount - 1 else reply.likeCount + 1
-                                                )
-                                            } else reply
-                                        }
-                                        comments[index] = comment.copy(replies = updatedReplies)
-                                    }
-                                },
-                                preferencesManager = preferencesManager
+                                preferencesManager = preferencesManager,
+                                isReply = false,
+                                onLikeClick = { viewModel.toggleLike(comment) },
+                                onReplyClick = { replyingToId = comment.id }
                             )
 
-                            // Inline reply input (appears below clicked comment)
+                            // 2. Render Inline Reply Input (Nếu đang reply cho comment này)
                             if (replyingToId == comment.id) {
                                 InlineReplyInput(
-                                    replyText = replyTexts[comment.id] ?: "",
-                                    onReplyTextChange = { newText ->
-                                        replyTexts = replyTexts.toMutableMap().apply {
-                                            put(comment.id, newText)
-                                        }
+                                    replyText = replyTextMap[comment.id] ?: "",
+                                    onReplyTextChange = { txt ->
+                                        replyTextMap = replyTextMap.toMutableMap().apply { put(comment.id, txt) }
                                     },
                                     onSendReply = {
-                                        val text = replyTexts[comment.id] ?: ""
-                                        if (text.isNotBlank()) {
-                                            // Create new reply
-                                            val newReply = Comment(
-                                                id = (comments.maxOfOrNull { it.id } ?: 0) + 100,
-                                                userName = "You",
-                                                content = text,
-                                                timestamp = System.currentTimeMillis(),
-                                                likeCount = 0,
-                                                isLiked = false
-                                            )
-
-                                            // Update comment with new reply
-                                            val index = comments.indexOf(comment)
-                                            if (index != -1) {
-                                                val updatedReplies = comment.replies.toMutableList()
-                                                updatedReplies.add(newReply)
-                                                comments[index] = comment.copy(replies = updatedReplies)
-                                            }
-
-                                            replyTexts = replyTexts.toMutableMap().apply { remove(comment.id) }
+                                        val content = replyTextMap[comment.id] ?: ""
+                                        if (content.isNotBlank()) {
+                                            viewModel.sendComment(content, parentId = comment.id)
+                                            // Reset input
+                                            replyTextMap.remove(comment.id)
                                             replyingToId = null
                                         }
                                     },
-                                    onCancel = {
-                                        replyTexts = replyTexts.toMutableMap().apply { remove(comment.id) }
-                                        replyingToId = null
-                                    },
+                                    onCancel = { replyingToId = null },
                                     preferencesManager = preferencesManager
+                                )
+                            }
+
+                            // 3. Render Replies List
+                            comment.replies.forEach { reply ->
+                                CommentItem(
+                                    comment = reply,
+                                    preferencesManager = preferencesManager,
+                                    isReply = true, // UI thụt đầu dòng
+                                    onLikeClick = { viewModel.toggleLike(reply) },
+                                    onReplyClick = {
+                                        // Logic 1 cấp: Reply cho con thì trỏ về cha
+                                        replyingToId = comment.id
+                                    }
                                 )
                             }
                         }
                     }
                 }
 
-                HorizontalDivider(
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                    thickness = 1.dp
-                )
-
-                // Main comment input (at bottom)
+                // --- MAIN INPUT BAR (Bottom) ---
                 Surface(
-                    modifier = Modifier
-                        .fillMaxWidth(),
-
-                    color = MaterialTheme.colorScheme.surface,
                     tonalElevation = 4.dp,
-                    shadowElevation = 8.dp
+                    shadowElevation = 8.dp,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Avatar placeholder
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .background(
-                                    brush = Brush.linearGradient(
-                                        colors = listOf(
-                                            MaterialTheme.colorScheme.primary,
-                                            MaterialTheme.colorScheme.secondary
-                                        )
-                                    ),
-                                    shape = CircleShape
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                Icons.Default.Person,
+                        // User Avatar (Current User)
+                        val myAvatar = preferencesManager.userAvatar
+                        if (myAvatar.isNotEmpty()) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(context).data(myAvatar).crossfade(true).build(),
                                 contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(20.dp)
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.size(36.dp).clip(CircleShape)
                             )
+                        } else {
+                            Box(modifier = Modifier.size(36.dp).background(MaterialTheme.colorScheme.primary, CircleShape))
                         }
 
-                        // Text field
+                        Spacer(modifier = Modifier.width(12.dp))
+
                         OutlinedTextField(
                             value = mainCommentText,
                             onValueChange = { mainCommentText = it },
-                            placeholder = {
-                                Text(
-                                    preferencesManager.getString("write_comment"),
-                                    fontSize = 14.sp
-                                )
-                            },
+                            placeholder = { Text(preferencesManager.getString("write_comment"), fontSize = 14.sp) },
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(20.dp),
+                            maxLines = 4,
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                                focusedContainerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f),
-                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                            ),
-                            maxLines = 4
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                            )
                         )
 
-                        // Send button
                         IconButton(
                             onClick = {
-                                if (mainCommentText.isNotBlank()) {
-                                    // Add main comment to list
-                                    val newComment = Comment(
-                                        id = (comments.maxOfOrNull { it.id } ?: 0) + 1,
-                                        userName = "You", // Current user
-                                        content = mainCommentText,
-                                        timestamp = System.currentTimeMillis(),
-                                        likeCount = 0,
-                                        isLiked = false
-                                    )
-                                    comments.add(0, newComment) // Add to top
-                                    mainCommentText = ""
-
-                                    // Scroll to top to see new comment
-                                    coroutineScope.launch {
-                                        listState.animateScrollToItem(0)
-                                    }
-                                }
+                                viewModel.sendComment(mainCommentText, parentId = null) // Send Root
+                                mainCommentText = ""
+                                // Scroll lên đầu hoặc cuối tùy logic (ở đây realtime sẽ tự update list)
+                                coroutineScope.launch { listState.animateScrollToItem(0) } // Giả sử list mới nhất lên đầu (hoặc bạn đổi logic sort)
                             },
                             enabled = mainCommentText.isNotBlank()
                         ) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.Send,
-                                contentDescription = preferencesManager.getString("send"),
-                                tint = if (mainCommentText.isNotBlank()) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-                                }
-                            )
+                            Icon(Icons.AutoMirrored.Filled.Send, null, tint = if (mainCommentText.isNotBlank()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun CommentItem(
+    comment: Comment,
+    preferencesManager: PreferencesManager,
+    isReply: Boolean,
+    onLikeClick: () -> Unit,
+    onReplyClick: () -> Unit
+) {
+    val context = LocalContext.current
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(
+                start = if (isReply) 56.dp else 16.dp, // Thụt lề nếu là Reply
+                end = 16.dp,
+                top = 8.dp,
+                bottom = 8.dp
+            )
+    ) {
+        // 1. Avatar (Giữ nguyên)
+        Box(modifier = Modifier.size(if (isReply) 32.dp else 40.dp)) {
+            if (comment.userAvatar.isNotEmpty()) {
+                AsyncImage(
+                    model = ImageRequest.Builder(context).data(comment.userAvatar).crossfade(true).build(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize().clip(CircleShape)
+                )
+            } else {
+                Box(
+                    modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.primary, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if(comment.userName.isNotEmpty()) comment.userName.first().toString() else "?",
+                        color = Color.White,
+                        fontSize = if(isReply) 12.sp else 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            // 2. Tên & Nội dung (Giữ nguyên)
+            Column(
+                modifier = Modifier
+                    .background(MaterialTheme.colorScheme.surfaceContainerLow, RoundedCornerShape(12.dp))
+                    .padding(8.dp)
+            ) {
+                Text(comment.userName, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                Text(comment.content, fontSize = 14.sp, lineHeight = 18.sp)
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // 3. Actions (Time - Like - Reply)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(start = 4.dp)
+            ) {
+                // A. Thời gian (Dùng TimeUtils)
+                Text(
+                    text = TimeUtils.getTimeAgo(comment.timestamp, preferencesManager),
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                // B. Nút Like (ICON TRÁI TIM + SỐ LƯỢNG)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp), // Khoảng cách giữa tim và số
+                    modifier = Modifier.clickable(onClick = onLikeClick)
+                ) {
+                    // Icon Trái tim
+                    Icon(
+                        imageVector = if (comment.isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        contentDescription = "Like",
+                        // Nếu đã like -> Màu đỏ (Error), chưa like -> Màu xám
+                        tint = if (comment.isLiked) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp)
+                    )
+
+                    // Số lượng Like
+                    Text(
+                        text = "${comment.likeCount}",
+                        fontSize = 12.sp,
+                        fontWeight = if(comment.isLiked) FontWeight.Bold else FontWeight.Medium,
+                        color = if(comment.isLiked) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                // C. Nút Reply (Giữ nguyên)
+                if (!isReply) {
+                    Text(
+                        text = preferencesManager.getString("reply"),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.clickable(onClick = onReplyClick)
+                    )
                 }
             }
         }
@@ -433,237 +362,41 @@ fun InlineReplyInput(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 52.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
+            .padding(start = 56.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f),
-        border = androidx.compose.foundation.BorderStroke(
-            width = 1.dp,
-            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-        )
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
     ) {
-        Column(
-            modifier = Modifier.padding(12.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    Icons.Default.Reply,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(16.dp)
-                )
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Reply, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = preferencesManager.getString("reply"),
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f)
-                )
-                IconButton(
-                    onClick = onCancel,
-                    modifier = Modifier.size(24.dp)
-                ) {
-                    Icon(
-                        Icons.Default.Close,
-                        contentDescription = "Cancel",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(16.dp)
-                    )
+                Text(preferencesManager.getString("reply"), fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                IconButton(onClick = onCancel, modifier = Modifier.size(20.dp)) {
+                    Icon(Icons.Default.Close, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
                 }
             }
-
             Spacer(modifier = Modifier.height(8.dp))
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(
                     value = replyText,
                     onValueChange = onReplyTextChange,
-                    placeholder = {
-                        Text(
-                            preferencesManager.getString("write_comment"),
-                            fontSize = 13.sp
-                        )
-                    },
+                    placeholder = { Text(preferencesManager.getString("write_comment"), fontSize = 13.sp) },
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(16.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
-                        focusedContainerColor = MaterialTheme.colorScheme.surface,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surface
-                    ),
                     maxLines = 3,
-                    minLines = 1
-                )
-
-                IconButton(
-                    onClick = onSendReply,
-                    enabled = replyText.isNotBlank(),
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.Send,
-                        contentDescription = preferencesManager.getString("send"),
-                        tint = if (replyText.isNotBlank()) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-                        },
-                        modifier = Modifier.size(20.dp)
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
                     )
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                IconButton(onClick = onSendReply, enabled = replyText.isNotBlank(), modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.AutoMirrored.Filled.Send, null, tint = if (replyText.isNotBlank()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
                 }
             }
         }
-    }
-}
-
-@Composable
-fun CommentItem(
-    comment: Comment,
-    onLikeClick: () -> Unit,
-    onReplyClick: () -> Unit,
-    onReplyLikeClick: (Int) -> Unit = {},
-    preferencesManager: PreferencesManager,
-    isReply: Boolean = false
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(
-                start = if (isReply) 48.dp else 16.dp,
-                end = 16.dp,
-                top = 8.dp,
-                bottom = 8.dp
-            )
-    ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // Avatar
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(
-                        brush = Brush.linearGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.primary,
-                                MaterialTheme.colorScheme.secondary
-                            )
-                        ),
-                        shape = CircleShape
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Default.Person,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
-
-            Column(modifier = Modifier.weight(1f)) {
-                // Username
-                Text(
-                    text = comment.userName,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // Comment content
-                Text(
-                    text = comment.content,
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    lineHeight = 20.sp
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Actions
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Like button
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        modifier = Modifier.clickable(onClick = onLikeClick)
-                    ) {
-                        Icon(
-                            imageVector = if (comment.isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            contentDescription = "Like",
-                            tint = if (comment.isLiked) Color(0xFFE91E63) else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        if (comment.likeCount > 0) {
-                            Text(
-                                text = "${comment.likeCount}",
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
-                    // Reply button
-                    if (!isReply) {
-                        Text(
-                            text = preferencesManager.getString("reply"),
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier.clickable(onClick = onReplyClick)
-                        )
-                    }
-
-                    // Time
-                    Text(
-                        text = getTimeAgo(comment.timestamp),
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                    )
-                }
-            }
-        }
-
-        // Replies
-        if (comment.replies.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(8.dp))
-            comment.replies.forEach { reply ->
-                CommentItem(
-                    comment = reply,
-                    onLikeClick = { onReplyLikeClick(reply.id) },
-                    onReplyClick = { /* Replies can't have replies */ },
-                    onReplyLikeClick = {},
-                    preferencesManager = preferencesManager,
-                    isReply = true
-                )
-            }
-        }
-    }
-}
-
-private fun getTimeAgo(timestamp: Long): String {
-    val now = System.currentTimeMillis()
-    val diff = now - timestamp
-    val minutes = diff / 60000
-    val hours = minutes / 60
-    val days = hours / 24
-
-    return when {
-        minutes < 1 -> "Just now"
-        minutes < 60 -> "${minutes}m"
-        hours < 24 -> "${hours}h"
-        else -> "${days}d"
     }
 }

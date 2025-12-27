@@ -19,7 +19,7 @@ import javax.inject.Inject
 // --- DATA CLASSES & ENUMS (Chuyển từ Screen sang đây) ---
 
 enum class NotificationType {
-    LIKE, COMMENT, REPLY, FRIEND_REQUEST,
+    LIKE, LIKE_COMMENT, COMMENT, REPLY, FRIEND_REQUEST,
     SYSTEM
 }
 

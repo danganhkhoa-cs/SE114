@@ -294,6 +294,7 @@ data class NotificationIconData(val icon: ImageVector, val iconColor: Color, val
 fun getNotificationIconData(type: NotificationType): NotificationIconData {
     return when (type) {
         NotificationType.LIKE -> NotificationIconData(Icons.Default.Favorite, Color(0xFFE91E63), Color(0xFFE91E63).copy(alpha = 0.15f))
+        NotificationType.LIKE_COMMENT -> NotificationIconData(Icons.Default.Favorite, Color(0xFFE91E63), Color(0xFFE91E63).copy(alpha = 0.15f))
         NotificationType.COMMENT -> NotificationIconData(Icons.Default.Comment, Color(0xFF2196F3), Color(0xFF2196F3).copy(alpha = 0.15f))
         NotificationType.REPLY -> NotificationIconData(Icons.Default.Reply, Color(0xFF9C27B0), Color(0xFF9C27B0).copy(alpha = 0.15f))
         NotificationType.FRIEND_REQUEST -> NotificationIconData(Icons.Default.PersonAdd, Color(0xFF4CAF50), Color(0xFF4CAF50).copy(alpha = 0.15f))
@@ -304,6 +305,7 @@ fun getNotificationIconData(type: NotificationType): NotificationIconData {
 fun getLocalizedMessage(notification: NotificationItem, preferencesManager: PreferencesManager): String {
     return when (notification.type) {
         NotificationType.LIKE -> preferencesManager.getString("notif_liked_post")
+        NotificationType.LIKE_COMMENT -> preferencesManager.getString("notif_liked_comment")
         NotificationType.COMMENT -> "${preferencesManager.getString("notif_commented")}: '${notification.message.substringAfter(": '").substringBefore("'")}'"
         NotificationType.REPLY -> preferencesManager.getString("notif_replied")
         NotificationType.FRIEND_REQUEST -> preferencesManager.getString("notif_friend_request")
