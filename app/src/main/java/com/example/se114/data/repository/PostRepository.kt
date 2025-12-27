@@ -2,6 +2,9 @@ package com.example.se114.data.repository
 
 import com.example.se114.data.Post
 import com.example.se114.data.Report
+import com.example.se114.ui.presentation.notification.NotificationItem
+import com.example.se114.ui.presentation.notification.NotificationType
+import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
@@ -13,8 +16,13 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 import com.google.firebase.firestore.FieldPath
+import com.google.firebase.firestore.ListenerRegistration
+import com.google.firebase.firestore.snapshots
+import com.google.firebase.messaging.FirebaseMessaging
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 
 @Singleton
@@ -191,17 +199,22 @@ class PostRepository @Inject constructor(
         }
     }
 
-    // 3. Xử lý Like (Transaction: Update Count + Sub-collection)
+    // 3. Xử lý Like (Cập nhật Transaction + Gửi thông báo)
     suspend fun toggleLikePost(postId: String, userId: String, currentLikeStatus: Boolean): Result<Unit> {
         return try {
+            // Biến để lưu ID chủ bài viết (lấy ra từ transaction)
+            var postOwnerId: String? = null
+
             firestore.runTransaction { transaction ->
                 val postRef = postsCollection.document(postId)
                 val likeRef = postRef.collection("likes").document(userId)
-
-                // Tham chiếu đến collection liked_posts của User
                 val userLikeRef = usersCollection.document(userId).collection("liked_posts").document(postId)
 
                 val postSnapshot = transaction.get(postRef)
+
+                // Lấy ID chủ bài viết để tí nữa gửi thông báo
+                postOwnerId = postSnapshot.getString("userId")
+
                 val currentCount = postSnapshot.getLong("likeCount") ?: 0
 
                 val newCount = if (currentLikeStatus) {
@@ -213,11 +226,11 @@ class PostRepository @Inject constructor(
                 transaction.update(postRef, "likeCount", newCount)
 
                 if (currentLikeStatus) {
-                    // Đang like -> User muốn unlike -> Xóa cả 2 nơi
-                    transaction.delete(likeRef)     // Xóa ở bài viết
-                    transaction.delete(userLikeRef) // Xóa ở user profile
+                    // User muốn UNLIKE -> Xóa
+                    transaction.delete(likeRef)
+                    transaction.delete(userLikeRef)
                 } else {
-                    // Chưa like -> User muốn like -> Thêm cả 2 nơi
+                    // User muốn LIKE -> Thêm
                     val data = mapOf("timestamp" to FieldValue.serverTimestamp())
                     val userLikeData = mapOf("likedAt" to FieldValue.serverTimestamp())
 
@@ -225,6 +238,30 @@ class PostRepository @Inject constructor(
                     transaction.set(userLikeRef, userLikeData)
                 }
             }.await()
+
+            // --- XỬ LÝ THÔNG BÁO (Chạy sau khi Transaction thành công) ---
+            if (postOwnerId != null) {
+                if (currentLikeStatus) {
+                    // Nếu lúc nãy là Unlike -> Xóa thông báo cũ
+                    removeNotification(
+                        receiverId = postOwnerId!!,
+                        senderId = userId,
+                        postId = postId,
+                        type = "LIKE"
+                    )
+                } else {
+                    // Nếu lúc nãy là Like -> Gửi thông báo mới
+                    sendNotification(
+                        receiverId = postOwnerId!!,
+                        senderId = userId,
+                        postId = postId,
+                        type = "LIKE",
+                        message = "liked your post" // Message này có thể để app client tự hiển thị theo ngôn ngữ
+                    )
+                }
+            }
+            // -----------------------------------------------------------
+
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -310,5 +347,320 @@ class PostRepository @Inject constructor(
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    // Hàm lấy token từ thiết bị và lưu lên Firestore
+    suspend fun updateFcmToken(userId: String) {
+        try {
+            // 1. Lấy token hiện tại của thiết bị
+            val token = FirebaseMessaging.getInstance().token.await()
+
+            // 2. Update vào document user (dùng field fcm_token vừa tạo ở Bước 1)
+            usersCollection.document(userId)
+                .update("fcm_token", token)
+                .await()
+
+        } catch (e: Exception) {
+            e.printStackTrace() // Log lỗi nếu cần
+        }
+    }
+
+    // --- NOTIFICATION LOGIC (GENERIC) ---
+
+    /**
+     * Hàm dùng chung để gửi thông báo.
+     * Sau này có Comment hay Friend Request thì chỉ cần gọi hàm này và đổi tham số 'type'.
+     */
+    private suspend fun sendNotification(
+        receiverId: String,     // Người nhận (Chủ bài viết)
+        senderId: String,       // Người gửi (Người đang like/comment)
+        postId: String?,        // ID bài viết (Null nếu là Friend Request)
+        type: String,           // "LIKE", "COMMENT", "FRIEND_REQUEST", "REPLY"
+        message: String = ""    // Nội dung phụ (VD: nội dung comment)
+    ) {
+        // 1. Không thông báo nếu tự tương tác với chính mình
+        if (receiverId == senderId) return
+
+        try {
+            // 2. Lấy thông tin người gửi để lưu vào thông báo (Snapshot tên/avatar lúc gửi)
+            // (Giúp hiển thị nhanh mà không cần query lại user, nhưng nếu user đổi avatar thì tin cũ vẫn avatar cũ)
+            val senderDoc = usersCollection.document(senderId).get().await()
+            val senderName = senderDoc.getString("name") ?: "Someone"
+            val senderAvatar = senderDoc.getString("avatar_url") ?: ""
+
+            // 3. Tạo data
+            val notificationData = hashMapOf(
+                "type" to type,
+                "senderId" to senderId,
+                "senderName" to senderName,
+                "senderAvatar" to senderAvatar,
+                "postId" to postId,
+                "message" to message,
+                "isRead" to false,
+                "timestamp" to FieldValue.serverTimestamp() // Quan trọng: Dùng Server Timestamp
+            )
+
+            // 4. Đẩy vào Sub-collection của người nhận
+            usersCollection.document(receiverId)
+                .collection("notifications")
+                .add(notificationData)
+                .await()
+
+        } catch (e: Exception) {
+            e.printStackTrace() // Log lỗi nhưng không crash app vì thông báo chỉ là phụ
+        }
+    }
+
+    /**
+     * Hàm dùng chung để xóa thông báo (VD: Unlike, Hủy kết bạn)
+     */
+    private suspend fun removeNotification(
+        receiverId: String,
+        senderId: String,
+        postId: String?,
+        type: String
+    ) {
+        try {
+            // Tìm thông báo khớp với sender, type và post để xóa
+            var query = usersCollection.document(receiverId)
+                .collection("notifications")
+                .whereEqualTo("senderId", senderId)
+                .whereEqualTo("type", type)
+
+            if (postId != null) {
+                query = query.whereEqualTo("postId", postId)
+            }
+
+            val snapshot = query.get().await()
+            for (doc in snapshot.documents) {
+                doc.reference.delete()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    // --- REALTIME NOTIFICATION LISTENER ---
+
+    // Flow chứa số lượng tin chưa đọc để ViewModel lắng nghe
+    private val _unreadCountFlow = MutableStateFlow(0)
+    val unreadCountFlow = _unreadCountFlow.asStateFlow()
+
+    private var notificationListener: ListenerRegistration? = null
+
+    /**
+     * Hàm lắng nghe số lượng thông báo chưa đọc.
+     * Tự động chạy ngay khi user mở App/Login.
+     * Hỗ trợ mọi loại thông báo (Like, Comment, System...) miễn là isRead = false.
+     */
+    fun startListeningToUnreadNotifications(userId: String) {
+        // Nếu đã lắng nghe đúng user này rồi thì thôi, tránh trùng lặp
+        if (notificationListener != null) return
+
+        try {
+            notificationListener = usersCollection.document(userId)
+                .collection("notifications")
+                .whereEqualTo("isRead", false)
+                .limit(10) // Tối ưu: Chỉ lấy tối đa 10 tin để hiện "9+"
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null) {
+                        return@addSnapshotListener
+                    }
+                    if (snapshot != null) {
+                        _unreadCountFlow.value = snapshot.size()
+                    }
+                }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    /**
+     * Lấy danh sách thông báo Social (Real-time)
+     * Sắp xếp: Mới nhất lên đầu
+     */
+    fun getSocialNotificationsFlow(userId: String): Flow<List<NotificationItem>> {
+        return usersCollection.document(userId)
+            .collection("notifications")
+            .orderBy("timestamp", Query.Direction.DESCENDING)
+            .limit(50)
+            .snapshots()
+            .map { snapshot ->
+                snapshot.toObjects(NotificationItem::class.java).mapIndexed { index, item ->
+                    item.copy(
+                        id = snapshot.documents[index].id,
+                        isFromBroadcast = false // Đây là tin cá nhân
+                    )
+                }
+            }
+    }
+
+    /**
+     * Đánh dấu 1 thông báo là đã đọc
+     */
+    suspend fun markNotificationAsRead(userId: String, notificationId: String) {
+        try {
+            usersCollection.document(userId)
+                .collection("notifications")
+                .document(notificationId)
+                .update("isRead", true)
+                .await()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    // --- MARK ALL LOGIC ---
+
+    /**
+     * 1. SOCIAL: Đánh dấu tất cả là đã đọc
+     * Logic: Tìm tất cả tin chưa đọc -> Batch Update
+     */
+    suspend fun markAllSocialNotificationsAsRead(userId: String) {
+        try {
+            val snapshot = usersCollection.document(userId)
+                .collection("notifications")
+                .whereEqualTo("isRead", false)
+                .get()
+                .await()
+
+            if (snapshot.isEmpty) return
+
+            val batch = firestore.batch()
+            for (doc in snapshot.documents) {
+                batch.update(doc.reference, "isRead", true)
+            }
+            batch.commit().await()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    /**
+     * 2. SYSTEM: Đánh dấu tất cả là đã đọc
+     * Logic: Nhận vào danh sách ID các tin chưa đọc -> Batch Write tạo doc rỗng vào read_system_notifications
+     */
+    suspend fun markAllSystemNotificationsAsRead(userId: String, unreadIds: List<String>) {
+        if (unreadIds.isEmpty()) return
+        try {
+            val batch = firestore.batch()
+            val collectionRef = usersCollection.document(userId).collection("read_system_notifications")
+
+            // Duyệt qua từng ID chưa đọc và thêm lệnh ghi vào batch
+            for (id in unreadIds) {
+                val docRef = collectionRef.document(id)
+                batch.set(docRef, mapOf("readAt" to FieldValue.serverTimestamp()))
+            }
+
+            batch.commit().await()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    /**
+     * Đánh dấu 1 danh sách ID cụ thể là đã đọc (Batch Update)
+     * Dùng cho: Social List và Private System List
+     */
+    suspend fun markBatchNotificationsAsRead(userId: String, notificationIds: List<String>) {
+        if (notificationIds.isEmpty()) return
+        try {
+            val batch = firestore.batch()
+            val collectionRef = usersCollection.document(userId).collection("notifications")
+
+            for (id in notificationIds) {
+                val docRef = collectionRef.document(id)
+                batch.update(docRef, "isRead", true)
+            }
+            batch.commit().await()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    // --- SYSTEM NOTIFICATION LOGIC ---
+
+    /**
+     * 1. Đăng ký nhận thông báo từ Topic (Gọi 1 lần khi mở App)
+     */
+    fun subscribeToSystemTopic() {
+        FirebaseMessaging.getInstance().subscribeToTopic("global_alerts")
+            .addOnCompleteListener { task ->
+                if (!task.isSuccessful) {
+                    // Log lỗi nếu cần
+                }
+            }
+    }
+
+    /**
+     * 2. Lấy danh sách thông báo hệ thống (Chung cho tất cả user)
+     */
+    fun getSystemNotificationsFlow(): Flow<List<NotificationItem>> {
+        return firestore.collection("system_notifications")
+            .orderBy("timestamp", Query.Direction.DESCENDING)
+            .limit(20)
+            .snapshots()
+            .map { snapshot ->
+                snapshot.documents.map { doc ->
+                    NotificationItem(
+                        id = doc.id,
+                        type = NotificationType.SYSTEM,
+                        senderName = doc.getString("title") ?: "System Admin",
+                        message = doc.getString("message") ?: "",
+                        timestamp = doc.getTimestamp("timestamp") ?: Timestamp.now(),
+                        isRead = false,
+                        isFromBroadcast = true // <--- ĐÁNH DẤU LÀ BROADCAST
+                    )
+                }
+            }
+    }
+
+    /**
+     * 1. Đánh dấu thông báo hệ thống là đã đọc
+     * Logic: Tạo một document rỗng trong sub-collection "read_system_notifications" của user
+     */
+    suspend fun markSystemNotificationAsRead(userId: String, notificationId: String) {
+        try {
+            usersCollection.document(userId)
+                .collection("read_system_notifications")
+                .document(notificationId)
+                .set(mapOf("readAt" to FieldValue.serverTimestamp()))
+                .await()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    /**
+     * 2. Lấy danh sách ID các thông báo hệ thống mà user ĐÃ ĐỌC
+     * Dùng để so khớp (map) với danh sách thông báo lấy từ server
+     */
+    fun getReadSystemIdsFlow(userId: String): kotlinx.coroutines.flow.Flow<Set<String>> {
+        return usersCollection.document(userId)
+            .collection("read_system_notifications")
+            .snapshots()
+            .map { snapshot ->
+                snapshot.documents.map { it.id }.toSet()
+            }
+    }
+
+    /**
+     * 3. Helper tính toán Badge tổng (Social + System)
+     * Lưu ý: Logic tính toán thực tế nên để ở ViewModel, nhưng ta cần Flow system unread count ở đây
+     */
+    // Flow đếm tổng số thông báo hệ thống (Raw)
+    fun getSystemTotalCountFlow(): kotlinx.coroutines.flow.Flow<Int> {
+        return firestore.collection("system_notifications")
+            .snapshots() // Lưu ý: Cách này sẽ tốn read nếu list dài, nhưng tạm chấp nhận cho admin notifs (số lượng ít)
+            .map { it.size() }
+    }
+
+    /**
+     * Hủy lắng nghe (Gọi khi Logout)
+     */
+    fun stopListeningToNotifications() {
+        notificationListener?.remove()
+        notificationListener = null
+        _unreadCountFlow.value = 0
     }
 }

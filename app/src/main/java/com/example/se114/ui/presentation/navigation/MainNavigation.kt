@@ -99,6 +99,9 @@ fun MainNavGraph(
 
         composable(Screen.Notification.route) {
             NotificationScreen(
+                onNavigateToOtherProfile = { userId ->
+                    navController.navigate(Screen.OtherProfile.createRoute(userId))
+                },
                 onBackClick = {
                     navController.navigateUp()
                 },

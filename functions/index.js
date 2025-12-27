@@ -2,6 +2,7 @@
  * Import SDKs
  */
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { defineSecret } = require("firebase-functions/params");
 const admin = require("firebase-admin");
 const nodemailer = require("nodemailer");
@@ -155,7 +156,6 @@ exports.verifyOtp = onCall(
 			throw new HttpsError("invalid-argument", "Thiếu thông tin.");
 		}
 
-		// 1. Lấy dữ liệu
 		const docRef = admin.firestore().collection("password_resets").doc(email);
 		const docSnap = await docRef.get();
 
@@ -168,17 +168,134 @@ exports.verifyOtp = onCall(
 
 		const data = docSnap.data();
 
-		// 2. So sánh OTP
 		if (data.otp !== otp) {
 			throw new HttpsError("permission-denied", "Mã OTP không chính xác.");
 		}
 
-		// 3. Kiểm tra hạn sử dụng
 		if (Date.now() > data.expiresAt) {
 			throw new HttpsError("deadline-exceeded", "Mã OTP đã hết hạn.");
 		}
 
-		// Nếu mọi thứ ok -> Trả về thành công
 		return { success: true, message: "OTP hợp lệ." };
+	}
+);
+
+/**
+ * FUNCTION 4: Gửi thông báo (Sửa lại cấu hình trigger)
+ */
+exports.sendNotification = onDocumentCreated(
+	{
+		document: "users/{userId}/notifications/{notificationId}",
+		region: "asia-southeast1",
+	},
+	async (event) => {
+		// ... Code xử lý giữ nguyên ...
+
+		const userId = event.params.userId;
+		const snapshot = event.data;
+
+		if (!snapshot) {
+			console.log("No data associated with the event");
+			return;
+		}
+
+		const notificationData = snapshot.data();
+
+		// 1. Lấy thông tin người nhận để tìm FCM Token
+		const userDoc = await admin
+			.firestore()
+			.collection("users")
+			.doc(userId)
+			.get();
+
+		if (!userDoc.exists) return null;
+
+		const fcmToken = userDoc.data().fcm_token;
+		if (!fcmToken) {
+			console.log("No FCM token for user: ", userId);
+			return null;
+		}
+
+		// 2. Chuẩn bị nội dung
+		const title = "LocaSOS";
+		// Thêm check để tránh crash nếu message bị null
+		const body = `${notificationData.senderName || "Someone"} ${
+			notificationData.message || "sent a notification"
+		}`;
+
+		// 3. Tạo Message
+		const message = {
+			token: fcmToken,
+			notification: {
+				title: title,
+				body: body,
+			},
+			data: {
+				postId: notificationData.postId || "",
+				click_action: "FLUTTER_NOTIFICATION_CLICK",
+			},
+			android: {
+				priority: "high",
+				notification: {
+					sound: "default",
+					channelId: "locasos_channel_id",
+				},
+			},
+		};
+
+		// 4. Gửi thông báo
+		try {
+			await admin.messaging().send(message);
+			console.log("Notification sent successfully to: ", userId);
+		} catch (error) {
+			console.error("Error sending notification: ", error);
+		}
+		return null;
+	}
+);
+
+/**
+ * FUNCTION 5: Gửi thông báo hệ thống (Broadcast qua Topic)
+ * Trigger: Khi có document mới trong collection "system_notifications"
+ */
+exports.sendSystemNotification = onDocumentCreated(
+	{
+		document: "system_notifications/{notificationId}",
+		region: "asia-southeast1",
+	},
+	async (event) => {
+		const snapshot = event.data;
+		if (!snapshot) return;
+
+		const data = snapshot.data();
+		const title = data.title || "LocaSOS System";
+		const body = data.message || "New announcement";
+
+		// Tạo Message gửi cho Topic "global_alerts"
+		const message = {
+			topic: "global_alerts", // Gửi cho tất cả ai đăng ký topic này
+			notification: {
+				title: title,
+				body: body,
+			},
+			data: {
+				click_action: "FLUTTER_NOTIFICATION_CLICK",
+				type: "SYSTEM", // Để App nhận biết đây là tin hệ thống
+				notificationId: event.params.notificationId,
+			},
+			android: {
+				priority: "high",
+				notification: {
+					channelId: "locasos_channel_id",
+				},
+			},
+		};
+
+		try {
+			const response = await admin.messaging().send(message);
+			console.log("Successfully sent system message:", response);
+		} catch (error) {
+			console.error("Error sending system message:", error);
+		}
 	}
 );

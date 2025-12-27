@@ -98,7 +98,7 @@ fun PostCard(
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Icon(Icons.Default.Schedule, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Text(
-                                    text = TimeUtils.getTimeAgo(post.createdAt),
+                                    text = TimeUtils.getTimeAgo(post.createdAt, preferencesManager),
                                     fontSize = 12.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
