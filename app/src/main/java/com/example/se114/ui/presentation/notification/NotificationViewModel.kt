@@ -120,16 +120,6 @@ class NotificationViewModel @Inject constructor(
         _uiState.update { it.copy(selectedTab = tab) }
     }
 
-    fun clearAll() {
-        _uiState.update { state ->
-            if (state.selectedTab == NotificationTab.SOCIAL) {
-                state.copy(socialNotifications = emptyList())
-            } else {
-                state.copy(systemNotifications = emptyList())
-            }
-        }
-    }
-
     fun markItemAsRead(item: NotificationItem) {
         if (item.isRead) return
 
@@ -208,12 +198,50 @@ class NotificationViewModel @Inject constructor(
     }
 
     fun acceptFriendRequest(item: NotificationItem) {
-        // Xử lý logic accept, sau đó đánh dấu đã đọc hoặc xóa
-        markItemAsRead(item)
+        val userId = preferencesManager.userId
+        val targetId = item.senderId
+
+        if (userId.isEmpty() || targetId.isNullOrEmpty()) return
+
+        // 1. Optimistic Update (Xóa ngay trên UI cho mượt)
+        _uiState.update { state ->
+            state.copy(
+                socialNotifications = state.socialNotifications.filter { it.id != item.id },
+                systemNotifications = state.systemNotifications.filter { it.id != item.id }
+            )
+        }
+
+        // 2. Gọi API (Background)
+        viewModelScope.launch {
+            // A. Thực hiện logic kết bạn trên Firestore
+            repository.acceptFriendRequestAction(userId, targetId)
+
+            // B. Xóa vĩnh viễn thông báo trong Database
+            repository.deleteNotification(userId, item.id)
+        }
     }
 
     fun rejectFriendRequest(item: NotificationItem) {
-        // Xử lý logic reject
-        markItemAsRead(item)
+        val userId = preferencesManager.userId
+        val targetId = item.senderId
+
+        if (userId.isEmpty() || targetId.isNullOrEmpty()) return
+
+        // 1. Optimistic Update
+        _uiState.update { state ->
+            state.copy(
+                socialNotifications = state.socialNotifications.filter { it.id != item.id },
+                systemNotifications = state.systemNotifications.filter { it.id != item.id }
+            )
+        }
+
+        // 2. Gọi API
+        viewModelScope.launch {
+            // A. Thực hiện logic từ chối
+            repository.declineFriendRequestAction(userId, targetId)
+
+            // B. Xóa thông báo
+            repository.deleteNotification(userId, item.id)
+        }
     }
 }

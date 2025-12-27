@@ -6,6 +6,7 @@ import com.example.se114.data.model.ChatStatus
 import com.example.se114.data.model.Conversation
 import com.example.se114.data.model.FriendshipState
 import com.example.se114.data.model.UserSummary
+import com.example.se114.data.repository.PostRepository
 import com.example.se114.local.PreferencesManager
 import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FieldValue
@@ -47,7 +48,8 @@ data class ChatListUiState(
 @HiltViewModel
 class ChatListViewModel @Inject constructor(
     private val firestore: FirebaseFirestore,
-    private val preferencesManager: PreferencesManager
+    private val preferencesManager: PreferencesManager,
+    private val repository: PostRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ChatListUiState())
@@ -297,6 +299,15 @@ class ChatListViewModel @Inject constructor(
                     deletedBy = emptyList()
                 )
                 firestore.collection("conversations").document(newConvId).set(newConversation).await()
+
+                repository.sendNotification(
+                    receiverId = targetUser.uid,
+                    senderId = currentUserId,
+                    postId = null, // Kết bạn không cần postId
+                    type = "FRIEND_REQUEST", // Khớp với Enum NotificationType
+                    message = "" // Message rỗng vì UI tự map string "đã gửi lời mời..."
+                )
+
                 _uiState.update { it.copy(isLoading = false) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, error = e.message) }
@@ -306,6 +317,7 @@ class ChatListViewModel @Inject constructor(
 
     fun acceptRequest(conversationId: String) {
         viewModelScope.launch {
+            // 1. Logic Update Firestore cũ (Giữ nguyên)
             firestore.collection("conversations").document(conversationId)
                 .update(
                     mapOf(
@@ -314,11 +326,26 @@ class ChatListViewModel @Inject constructor(
                         "lastMessageTime" to System.currentTimeMillis()
                     )
                 ).await()
+
+            // 2. THÊM: Xóa thông báo kết bạn tương ứng
+            // Cần tìm ra senderId (người kia) từ conversationId
+            val conv = allConversations.find { it.id == conversationId }
+            val partnerId = conv?.participants?.find { it != currentUserId }
+
+            if (partnerId != null) {
+                repository.removeNotification(
+                    receiverId = currentUserId,
+                    senderId = partnerId,
+                    postId = null,
+                    type = "FRIEND_REQUEST"
+                )
+            }
         }
     }
 
     fun declineRequest(conversationId: String) {
         viewModelScope.launch {
+            // 1. Logic Update Firestore cũ
             firestore.collection("conversations").document(conversationId)
                 .update(
                     mapOf(
@@ -326,6 +353,19 @@ class ChatListViewModel @Inject constructor(
                         "friendRequestSenderId" to ""
                     )
                 ).await()
+
+            // 2. THÊM: Xóa thông báo
+            val conv = allConversations.find { it.id == conversationId }
+            val partnerId = conv?.participants?.find { it != currentUserId }
+
+            if (partnerId != null) {
+                repository.removeNotification(
+                    receiverId = currentUserId,
+                    senderId = partnerId,
+                    postId = null,
+                    type = "FRIEND_REQUEST"
+                )
+            }
         }
     }
 
