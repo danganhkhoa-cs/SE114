@@ -9,6 +9,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -28,6 +29,7 @@ fun AppNavigation(
 ) {
     val navController = rememberNavController()
     var isDarkTheme by remember { mutableStateOf(preferencesManager.isDarkMode) }
+    val appViewModel: AppViewModel = hiltViewModel()
 
     // --- LOGIC MỚI: KIỂM TRA ĐĂNG NHẬP ---
     // Kiểm tra xem đã có User ID lưu trong máy chưa VÀ Firebase còn phiên đăng nhập không
@@ -153,6 +155,9 @@ fun AppNavigation(
                         onLogout = {
                             // 1. Đăng xuất Firebase
                             FirebaseAuth.getInstance().signOut()
+
+                            // Hủy listener thông báo
+                            appViewModel.logout()
 
                             // 2. Xóa dữ liệu local
                             preferencesManager.clearUserData()

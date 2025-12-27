@@ -78,7 +78,7 @@ fun ProfileNavGraph(
                 },
                 isDarkTheme = isDarkTheme,
                 onThemeChange = onThemeChange,
-                onLogout = onLogout // <--- ĐÃ TRUYỀN CALLBACK VÀO ĐÂY
+                onLogout = onLogout
             )
         }
     }

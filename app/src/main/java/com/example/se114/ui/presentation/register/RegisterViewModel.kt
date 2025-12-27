@@ -106,7 +106,8 @@ class RegisterViewModel @Inject constructor(
                         "review_count" to 0,
                         "is_deleted" to false,
                         "created_at" to Date(),
-                        "last_active_at" to Date()
+                        "last_active_at" to Date(),
+                        "fcm_token" to ""
                     )
 
                     // 3. Lưu vào Firestore (Không lưu password)

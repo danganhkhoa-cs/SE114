@@ -12,6 +12,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -38,13 +39,40 @@ class HomeViewModel @Inject constructor(
 
     init {
         loadPosts()
+        // 1. Kích hoạt lắng nghe thông báo ngay khi vào màn hình Home
+        val userId = preferencesManager.userId
+        if (userId.isNotEmpty()) {
+            repository.startListeningToUnreadNotifications(userId)
+        }
+
+        // 2. Observe Saved Posts
         observeSavedPosts()
+
+        // 3. Observe Notification Count
+        observeTotalBadge(userId)
     }
 
     private fun observeSavedPosts() {
         viewModelScope.launch {
             repository.savedPostIdsFlow.collect { savedIds ->
                 _uiState.update { it.copy(savedPostIds = savedIds) }
+            }
+        }
+    }
+
+    private fun observeTotalBadge(userId: String) {
+        viewModelScope.launch {
+            combine(
+                repository.unreadCountFlow,           // 1. Social Unread (Flow cũ)
+                repository.getSystemTotalCountFlow(), // 2. Tổng tin hệ thống
+                repository.getReadSystemIdsFlow(userId) // 3. Tin hệ thống đã đọc
+            ) { socialUnread, systemTotal, readIds ->
+
+                val systemUnread = (systemTotal - readIds.size).coerceAtLeast(0)
+                socialUnread + systemUnread
+
+            }.collect { totalUnread ->
+                _uiState.update { it.copy(notificationUnreadCount = totalUnread) }
             }
         }
     }

@@ -277,7 +277,35 @@ object StringResources {
         "user_unavailable" to "User unavailable or blocked",
         "user_inactive" to "This account is currently inactive",
         "blocked_msg_error" to "You cannot send messages to this user",
-        "error" to "Error"
+        "error" to "Error",
+
+        // Notifications Screen
+        "notifications" to "Notifications",
+        "mark_all_read" to "Mark all as read",
+        "social" to "Social",
+        "system" to "System",
+        "clear_all" to "Clear all",
+        "no_notifications" to "No notifications yet",
+        "social_empty_msg" to "Interactions like likes, comments, and friend requests will appear here.",
+        "emergency_empty_msg" to "System alerts and emergency updates will be shown here.",
+        "friend_reject" to "Reject",
+        "warning" to "Warning",
+        "announcement" to "Announcement",
+
+        // Notification Types
+        "notif_liked_post" to "liked your post",
+        "notif_commented" to "commented on your post",
+        "notif_replied" to "replied to your comment",
+        "notif_friend_request" to "sent you a friend request",
+        "notif_sos_accepted" to "accepted your support request",
+        "notif_emergency_approved" to "Your emergency request has been approved",
+        "notif_emergency_rejected" to "Your emergency request has been rejected",
+
+        // Time ago labels
+        "time_just_now" to "Just now",
+        "time_minutes_ago" to "minutes ago",
+        "time_hours_ago" to "hours ago",
+        "time_days_ago" to "days ago",
     )
 
     val VI = mapOf(
@@ -556,6 +584,34 @@ object StringResources {
         "user_unavailable" to "Người dùng không tồn tại hoặc đã bị khóa",
         "user_inactive" to "Tài khoản này hiện không hoạt động",
         "blocked_msg_error" to "Bạn không thể gửi tin nhắn cho người này",
-        "error" to "Lỗi"
+        "error" to "Lỗi",
+
+        // Notifications Screen
+        "notifications" to "Thông báo",
+        "mark_all_read" to "Đọc tất cả",
+        "social" to "Xã hội",
+        "system" to "Hệ thống",
+        "clear_all" to "Xóa tất cả",
+        "no_notifications" to "Chưa có thông báo nào",
+        "social_empty_msg" to "Các tương tác như thích, bình luận và lời mời kết bạn sẽ xuất hiện ở đây.",
+        "emergency_empty_msg" to "Các cảnh báo hệ thống và cập nhật khẩn cấp sẽ được hiển thị ở đây.",
+        "friend_reject" to "Từ chối",
+        "warning" to "Cảnh báo",
+        "announcement" to "Thông báo",
+
+        // Notification Types
+        "notif_liked_post" to "đã thích bài viết của bạn",
+        "notif_commented" to "đã bình luận",
+        "notif_replied" to "đã trả lời bình luận của bạn",
+        "notif_friend_request" to "đã gửi cho bạn lời mời kết bạn",
+        "notif_sos_accepted" to "đã chấp nhận yêu cầu hỗ trợ của bạn",
+        "notif_emergency_approved" to "Yêu cầu khẩn cấp của bạn đã được phê duyệt",
+        "notif_emergency_rejected" to "Yêu cầu khẩn cấp của bạn đã bị từ chối",
+
+        // Time ago labels
+        "time_just_now" to "Vừa xong",
+        "time_minutes_ago" to "phút trước",
+        "time_hours_ago" to "giờ trước",
+        "time_days_ago" to "ngày trước",
     )
 }

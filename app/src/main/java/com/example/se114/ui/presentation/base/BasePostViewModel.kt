@@ -33,6 +33,16 @@ abstract class BasePostViewModel(
 
     init {
         observeBusEvents()
+        val userId = preferencesManager.userId
+        if (userId.isNotEmpty()) {
+            viewModelScope.launch {
+                repository.updateFcmToken(userId)
+            }
+        }
+        // Đăng ký nhận tin hệ thống
+        viewModelScope.launch {
+            repository.subscribeToSystemTopic()
+        }
     }
 
     // --- LOGIC EVENT BUS (Lắng nghe thay đổi) ---

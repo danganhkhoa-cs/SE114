@@ -27,10 +27,13 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.se114.local.PreferencesManager
+import com.example.se114.utils.TimeUtils
+import com.example.se114.utils.TimeUtils.getTimeAgo
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationScreen(
+    onNavigateToOtherProfile: (String) -> Unit,
     onBackClick: () -> Unit,
     preferencesManager: PreferencesManager,
     viewModel: NotificationViewModel = hiltViewModel()
@@ -38,7 +41,7 @@ fun NotificationScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     val socialUnreadCount = uiState.socialNotifications.count { !it.isRead }
-    val emergencyUnreadCount = uiState.emergencyNotifications.count { !it.isRead }
+    val emergencyUnreadCount = uiState.systemNotifications.count { !it.isRead }
 
     Scaffold(
         topBar = {
@@ -116,7 +119,7 @@ fun NotificationScreen(
             ) {
                 listOf(
                     Triple(NotificationTab.SOCIAL, preferencesManager.getString("social"), Icons.Default.People),
-                    Triple(NotificationTab.EMERGENCY, preferencesManager.getString("emergency"), Icons.Default.Warning)
+                    Triple(NotificationTab.SYSTEM, preferencesManager.getString("system"), Icons.Default.Warning)
                 ).forEach { (tab, title, icon) ->
                     val isSelected = uiState.selectedTab == tab
                     val unreadCount = if (tab == NotificationTab.SOCIAL) socialUnreadCount else emergencyUnreadCount
@@ -163,7 +166,7 @@ fun NotificationScreen(
             }
 
             // Clear All Button
-            val currentList = if (uiState.selectedTab == NotificationTab.SOCIAL) uiState.socialNotifications else uiState.emergencyNotifications
+            val currentList = if (uiState.selectedTab == NotificationTab.SOCIAL) uiState.socialNotifications else uiState.systemNotifications
             if (currentList.isNotEmpty()) {
                 Surface(
                     onClick = viewModel::clearAll,
@@ -187,7 +190,7 @@ fun NotificationScreen(
                 label = "tab_transition",
                 modifier = Modifier.fillMaxSize()
             ) { tab ->
-                val notifications = if (tab == NotificationTab.SOCIAL) uiState.socialNotifications else uiState.emergencyNotifications
+                val notifications = if (tab == NotificationTab.SOCIAL) uiState.socialNotifications else uiState.systemNotifications
 
                 if (notifications.isEmpty()) {
                     EmptyNotificationState(tab = tab, preferencesManager = preferencesManager)
@@ -210,7 +213,13 @@ fun NotificationScreen(
                                     NotificationCard(
                                         notification = notification,
                                         preferencesManager = preferencesManager,
-                                        onClick = { viewModel.markItemAsRead(notification) },
+                                        onClick = {
+                                            viewModel.markItemAsRead(notification)
+
+                                            notification.senderId?.let { id ->
+                                                onNavigateToOtherProfile(id)
+                                            }
+                                        },
                                         onAccept = { viewModel.acceptFriendRequest(notification) },
                                         onReject = { viewModel.rejectFriendRequest(notification) }
                                     )
@@ -234,7 +243,7 @@ fun NotificationCard(
     onReject: () -> Unit = {}
 ) {
     val iconData = getNotificationIconData(notification.type)
-    val timeAgo = getTimeAgo(notification.timestamp, preferencesManager)
+    val timeAgo = TimeUtils.getTimeAgo(notification.timestamp, preferencesManager)
 
     Surface(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
@@ -246,7 +255,7 @@ fun NotificationCard(
             }
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(notification.userName, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+                    Text(preferencesManager.getString(notification.senderName), fontWeight = FontWeight.Bold, fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
                     if (!notification.isRead) {
                         Box(modifier = Modifier.size(8.dp).background(MaterialTheme.colorScheme.primary, CircleShape))
                     }
@@ -306,9 +315,7 @@ fun getNotificationIconData(type: NotificationType): NotificationIconData {
         NotificationType.COMMENT -> NotificationIconData(Icons.Default.Comment, Color(0xFF2196F3), Color(0xFF2196F3).copy(alpha = 0.15f))
         NotificationType.REPLY -> NotificationIconData(Icons.Default.Reply, Color(0xFF9C27B0), Color(0xFF9C27B0).copy(alpha = 0.15f))
         NotificationType.FRIEND_REQUEST -> NotificationIconData(Icons.Default.PersonAdd, Color(0xFF4CAF50), Color(0xFF4CAF50).copy(alpha = 0.15f))
-        NotificationType.SOS_SUPPORT_ACCEPTED -> NotificationIconData(Icons.Default.CheckCircle, Color(0xFF4CAF50), Color(0xFF4CAF50).copy(alpha = 0.15f))
-        NotificationType.EMERGENCY_APPROVED -> NotificationIconData(Icons.Default.Verified, Color(0xFF00BCD4), Color(0xFF00BCD4).copy(alpha = 0.15f))
-        NotificationType.EMERGENCY_REJECTED -> NotificationIconData(Icons.Default.Cancel, Color(0xFFFF5722), Color(0xFFFF5722).copy(alpha = 0.15f))
+        NotificationType.SYSTEM -> NotificationIconData(Icons.Default.Warning, Color(red = 255, 0, 0), Color(red = 255, 0, 0).copy(alpha = 0.15f))
     }
 }
 
@@ -318,28 +325,6 @@ fun getLocalizedMessage(notification: NotificationItem, preferencesManager: Pref
         NotificationType.COMMENT -> "${preferencesManager.getString("notif_commented")}: '${notification.message.substringAfter(": '").substringBefore("'")}'"
         NotificationType.REPLY -> preferencesManager.getString("notif_replied")
         NotificationType.FRIEND_REQUEST -> preferencesManager.getString("notif_friend_request")
-        NotificationType.SOS_SUPPORT_ACCEPTED -> preferencesManager.getString("notif_sos_accepted")
-        NotificationType.EMERGENCY_APPROVED -> preferencesManager.getString("notif_emergency_approved")
-        NotificationType.EMERGENCY_REJECTED -> preferencesManager.getString("notif_emergency_rejected")
-    }
-}
-
-fun getTimeAgo(timestamp: Long, preferencesManager: PreferencesManager): String {
-    val now = System.currentTimeMillis()
-    val diff = now - timestamp
-    val seconds = diff / 1000
-    val minutes = seconds / 60
-    val hours = minutes / 60
-    val days = hours / 24
-    val weeks = days / 7
-    val months = days / 30
-
-    return when {
-        seconds < 60 -> preferencesManager.getString("time_just_now")
-        minutes < 60 -> "$minutes ${preferencesManager.getString("time_minutes_ago")}"
-        hours < 24 -> "$hours ${preferencesManager.getString("time_hours_ago")}"
-        days < 7 -> "$days ${preferencesManager.getString("time_days_ago")}"
-        weeks < 4 -> "$weeks ${preferencesManager.getString("time_weeks_ago")}"
-        else -> "$months ${preferencesManager.getString("time_months_ago")}"
+        NotificationType.SYSTEM -> notification.message
     }
 }
