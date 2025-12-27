@@ -1,5 +1,6 @@
 package com.example.se114.data.repository
 
+import com.example.se114.data.Comment
 import com.example.se114.data.Post
 import com.example.se114.data.Report
 import com.example.se114.data.model.ChatStatus
@@ -244,21 +245,23 @@ class PostRepository @Inject constructor(
             // --- XỬ LÝ THÔNG BÁO (Chạy sau khi Transaction thành công) ---
             if (postOwnerId != null) {
                 if (currentLikeStatus) {
-                    // Nếu lúc nãy là Unlike -> Xóa thông báo cũ
+                    // UNLIKE POST -> Gọi hàm xóa (commentId = null)
                     removeNotification(
                         receiverId = postOwnerId!!,
                         senderId = userId,
                         postId = postId,
-                        type = "LIKE"
+                        type = "LIKE",
+                        commentId = null // Quan trọng: null để chỉ xóa like bài viết
                     )
                 } else {
-                    // Nếu lúc nãy là Like -> Gửi thông báo mới
+                    // LIKE POST
                     sendNotification(
                         receiverId = postOwnerId!!,
                         senderId = userId,
                         postId = postId,
                         type = "LIKE",
-                        message = "liked your post" // Message này có thể để app client tự hiển thị theo ngôn ngữ
+                        message = "liked your post",
+                        commentId = null
                     )
                 }
             }
@@ -411,6 +414,214 @@ class PostRepository @Inject constructor(
         }
     }
 
+    // --- COMMENT LOGIC ---
+
+    // 1. Lấy danh sách Comment (Realtime + Phân cấp 1 tầng)
+    fun getCommentsFlow(postId: String, currentUserId: String): Flow<List<Comment>> {
+        return postsCollection.document(postId)
+            .collection("comments")
+            .orderBy("timestamp", Query.Direction.ASCENDING) // Lấy cũ nhất trước (để xếp thứ tự chat)
+            .snapshots()
+            .map { snapshot ->
+                // A. Parse dữ liệu thô
+                val allComments = snapshot.documents.map { doc ->
+                    doc.toObject(Comment::class.java)!!.copy(id = doc.id)
+                }
+
+                allComments
+            }.map { rawComments ->
+                // C. Kiểm tra Like (Map với list liked_comments của user nếu cần, hoặc query con)
+                // Để hiệu năng tốt nhất, ta chỉ map Parent - Child.
+                // Trạng thái Like của comment: Cần query `users/{id}/liked_comments` hoặc `comments/{id}/likes/{uid}`.
+                // Giải pháp: Tạm thời để isLiked = false, ViewModel sẽ update sau hoặc load list like riêng.
+
+                // D. Phân cấp Parent - Child
+                val rootComments = rawComments.filter { it.parentId == null }.toMutableList()
+                val replyComments = rawComments.filter { it.parentId != null }
+
+                rootComments.map { root ->
+                    val myReplies = replyComments.filter { it.parentId == root.id }
+                    root.copy(replies = myReplies)
+                }
+            }
+    }
+
+    // Hàm hỗ trợ lấy trạng thái like cho danh sách comment (Gọi 1 lần khi load)
+    suspend fun getLikedCommentIds(userId: String, postId: String): List<String> {
+        return try {
+            // Cách tối ưu: User lưu danh sách comment đã like trong subcollection của mình
+            // users/{userId}/liked_comments (docs id là commentId)
+            usersCollection.document(userId)
+                .collection("liked_comments")
+                .whereEqualTo("postId", postId)
+                .get()
+                .await()
+                .documents.map { it.id }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    // 2. Gửi Comment
+    // Trong PostRepository.kt
+
+    suspend fun addComment(
+        postId: String,
+        content: String,
+        parentId: String?,
+        userId: String,
+        userName: String,
+        userAvatar: String
+    ): Result<Unit> {
+        return try {
+            val docRef = postsCollection.document(postId).collection("comments").document()
+
+            val comment = Comment(
+                id = docRef.id,
+                postId = postId,
+                userId = userId,
+                userName = userName,
+                userAvatar = userAvatar,
+                content = content,
+                parentId = parentId,
+                timestamp = Timestamp.now()
+            )
+
+            // 1. Transaction: Lưu comment và tăng biến đếm
+            firestore.runTransaction { transaction ->
+                val postRef = postsCollection.document(postId)
+                val snapshot = transaction.get(postRef)
+                val newCommentCount = (snapshot.getLong("commentCount") ?: 0) + 1
+
+                transaction.set(docRef, comment)
+                transaction.update(postRef, "commentCount", newCommentCount)
+            }.await()
+
+            // --- NOTIFICATION LOGIC (LOGIC MỚI) ---
+
+            // A. Lấy thông tin cần thiết
+            val postSnapshot = postsCollection.document(postId).get().await()
+            val postOwnerId = postSnapshot.getString("userId") ?: ""
+
+            var parentAuthorId: String? = null
+            if (parentId != null) {
+                // Nếu là Reply, lấy thông tin người viết comment cha
+                val parentCommentSnap = postsCollection.document(postId)
+                    .collection("comments").document(parentId).get().await()
+                parentAuthorId = parentCommentSnap.getString("userId")
+            }
+
+            // B. Gửi thông báo cho CHỦ BÀI VIẾT (postOwnerId)
+            if (postOwnerId != userId) { // Không gửi nếu tự comment bài mình
+                // Case 1: Người khác TRẢ LỜI comment của CHỦ BÀI VIẾT
+                // -> Gửi REPLY ("Đã trả lời bình luận của bạn")
+                if (parentId != null && parentAuthorId == postOwnerId) {
+                    sendNotification(
+                        receiverId = postOwnerId,
+                        senderId = userId,
+                        postId = postId,
+                        type = "REPLY",
+                        message = content,
+                        commentId = parentId // Lưu ID để định danh
+                    )
+                }
+                // Case 2: Comment mới HOẶC Trả lời comment của người thứ 3
+                // -> Gửi COMMENT ("Đã bình luận vào bài viết")
+                else {
+                    sendNotification(
+                        receiverId = postOwnerId,
+                        senderId = userId,
+                        postId = postId,
+                        type = "COMMENT",
+                        message = content
+                    )
+                }
+            }
+
+            // C. Gửi thông báo cho NGƯỜI ĐƯỢC REP (parentAuthorId)
+            // Chỉ gửi nếu người này tồn tại VÀ không phải là các đối tượng đã xử lý ở trên
+            if (parentId != null && parentAuthorId != null) {
+                val isNotSelf = parentAuthorId != userId
+                val isNotPostOwner = parentAuthorId != postOwnerId // Vì chủ bài viết đã được xử lý ở bước B rồi
+
+                if (isNotSelf && isNotPostOwner) {
+                    sendNotification(
+                        receiverId = parentAuthorId,
+                        senderId = userId,
+                        postId = postId,
+                        type = "REPLY",
+                        message = content,
+                        commentId = parentId
+                    )
+                }
+            }
+            // --------------------------
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    // 3. Like Comment
+    suspend fun toggleLikeComment(postId: String, commentId: String, userId: String, isLiked: Boolean): Result<Unit> {
+        return try {
+            val commentRef = postsCollection.document(postId).collection("comments").document(commentId)
+            val userLikeRef = usersCollection.document(userId).collection("liked_comments").document(commentId)
+
+            // Biến để hứng ID tác giả comment từ trong Transaction
+            var commentOwnerId: String? = null
+
+            firestore.runTransaction { transaction ->
+                val snapshot = transaction.get(commentRef)
+
+                // Lấy ID tác giả comment
+                commentOwnerId = snapshot.getString("userId")
+
+                val currentCount = snapshot.getLong("likeCount") ?: 0
+
+                if (isLiked) {
+                    // Unlike
+                    transaction.update(commentRef, "likeCount", (currentCount - 1).coerceAtLeast(0))
+                    transaction.delete(userLikeRef)
+                } else {
+                    // Like
+                    transaction.update(commentRef, "likeCount", currentCount + 1)
+                    transaction.set(userLikeRef, mapOf("postId" to postId, "timestamp" to FieldValue.serverTimestamp()))
+                }
+            }.await()
+
+            // --- NOTIFICATION LOGIC [MỚI] ---
+            if (commentOwnerId != null && commentOwnerId != userId) {
+                if (isLiked) {
+                    // UNLIKE COMMENT -> Xóa với ID cụ thể
+                    removeNotification(
+                        receiverId = commentOwnerId!!,
+                        senderId = userId,
+                        postId = postId,
+                        type = "LIKE_COMMENT",
+                        commentId = commentId
+                    )
+                } else {
+                    // LIKE COMMENT
+                    sendNotification(
+                        receiverId = commentOwnerId!!,
+                        senderId = userId,
+                        postId = postId,
+                        type = "LIKE_COMMENT",
+                        message = "liked your comment",
+                        commentId = commentId
+                    )
+                }
+            }
+            // --------------------------------
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     /**
      * XÓA THÔNG BÁO (Delete)
      * Dùng để xóa tin sau khi đã xử lý xong (Accept/Decline)
@@ -434,23 +645,20 @@ class PostRepository @Inject constructor(
      * Sau này có Comment hay Friend Request thì chỉ cần gọi hàm này và đổi tham số 'type'.
      */
     suspend fun sendNotification(
-        receiverId: String,     // Người nhận (Chủ bài viết)
-        senderId: String,       // Người gửi (Người đang like/comment)
-        postId: String?,        // ID bài viết (Null nếu là Friend Request)
-        type: String,           // "LIKE", "COMMENT", "FRIEND_REQUEST", "REPLY"
-        message: String = ""    // Nội dung phụ (VD: nội dung comment)
+        receiverId: String,
+        senderId: String,
+        postId: String?,
+        type: String,
+        message: String = "",
+        commentId: String? = null
     ) {
-        // 1. Không thông báo nếu tự tương tác với chính mình
         if (receiverId == senderId) return
 
         try {
-            // 2. Lấy thông tin người gửi để lưu vào thông báo (Snapshot tên/avatar lúc gửi)
-            // (Giúp hiển thị nhanh mà không cần query lại user, nhưng nếu user đổi avatar thì tin cũ vẫn avatar cũ)
             val senderDoc = usersCollection.document(senderId).get().await()
             val senderName = senderDoc.getString("name") ?: "Someone"
             val senderAvatar = senderDoc.getString("avatar_url") ?: ""
 
-            // 3. Tạo data
             val notificationData = hashMapOf(
                 "type" to type,
                 "senderId" to senderId,
@@ -459,17 +667,21 @@ class PostRepository @Inject constructor(
                 "postId" to postId,
                 "message" to message,
                 "isRead" to false,
-                "timestamp" to FieldValue.serverTimestamp() // Quan trọng: Dùng Server Timestamp
+                "timestamp" to FieldValue.serverTimestamp()
             )
 
-            // 4. Đẩy vào Sub-collection của người nhận
+            // Lưu commentId nếu có
+            if (commentId != null) {
+                notificationData["commentId"] = commentId
+            }
+
             usersCollection.document(receiverId)
                 .collection("notifications")
                 .add(notificationData)
                 .await()
 
         } catch (e: Exception) {
-            e.printStackTrace() // Log lỗi nhưng không crash app vì thông báo chỉ là phụ
+            e.printStackTrace()
         }
     }
 
@@ -480,10 +692,11 @@ class PostRepository @Inject constructor(
         receiverId: String,
         senderId: String,
         postId: String?,
-        type: String
+        type: String,
+        commentId: String? = null // <--- THÊM THAM SỐ NÀY
     ) {
         try {
-            // Tìm thông báo khớp với sender, type và post để xóa
+            // 1. Tạo query cơ bản
             var query = usersCollection.document(receiverId)
                 .collection("notifications")
                 .whereEqualTo("senderId", senderId)
@@ -493,9 +706,30 @@ class PostRepository @Inject constructor(
                 query = query.whereEqualTo("postId", postId)
             }
 
+            // 2. Nếu có commentId, query chính xác luôn
+            if (commentId != null) {
+                query = query.whereEqualTo("commentId", commentId)
+            }
+
+            // 3. Thực hiện lấy dữ liệu và xóa
             val snapshot = query.get().await()
+
             for (doc in snapshot.documents) {
-                doc.reference.delete()
+                // LOGIC LỌC KỸ HƠN (Client-side filtering):
+                // Nếu ta đang muốn xóa Like Bài Viết (commentId == null),
+                // ta phải chắc chắn document này KHÔNG chứa commentId.
+                // (Vì Firestore query cơ bản không hỗ trợ "whereFieldDoesNotExist")
+                val docCommentId = doc.getString("commentId")
+
+                if (commentId == null) {
+                    // Trường hợp xóa Like Post: Chỉ xóa nếu doc không có commentId
+                    if (docCommentId == null) {
+                        doc.reference.delete()
+                    }
+                } else {
+                    // Trường hợp xóa Like Comment: Đã filter ở query rồi, cứ thế xóa
+                    doc.reference.delete()
+                }
             }
         } catch (e: Exception) {
             e.printStackTrace()

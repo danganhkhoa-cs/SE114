@@ -44,6 +44,7 @@ object StringResources {
         "profile" to "Profile",
 
         // Home & Posts
+        "empty_posts" to "No post found",
         "empty_saved_posts" to "No saved posts yet",
         "create_post_title" to "Create Post",
         "post_button" to "Post",
@@ -294,6 +295,7 @@ object StringResources {
 
         // Notification Types
         "notif_liked_post" to "liked your post",
+        "notif_liked_comment" to "liked your comment",
         "notif_commented" to "commented on your post",
         "notif_replied" to "replied to your comment",
         "notif_friend_request" to "sent you a friend request",
@@ -351,6 +353,7 @@ object StringResources {
         "profile" to "Cá nhân",
 
         // Home & Posts
+        "empty_posts" to "Chưa có bài viết nào",
         "empty_saved_posts" to "Chưa có bài viết đã lưu",
         "create_post_title" to "Tạo bài viết",
         "post_button" to "Đăng",
@@ -601,6 +604,7 @@ object StringResources {
 
         // Notification Types
         "notif_liked_post" to "đã thích bài viết của bạn",
+        "notif_liked_comment" to "đã thích bình luận của bạn",
         "notif_commented" to "đã bình luận",
         "notif_replied" to "đã trả lời bình luận của bạn",
         "notif_friend_request" to "đã gửi cho bạn lời mời kết bạn",
