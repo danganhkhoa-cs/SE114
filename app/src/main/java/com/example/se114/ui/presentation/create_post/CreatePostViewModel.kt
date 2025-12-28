@@ -33,16 +33,15 @@ class CreatePostViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(CreatePostUiState())
     val uiState = _uiState.asStateFlow()
 
-    // Lấy danh sách KEY thành phố (city_hcm, city_bd...)
-    val cities = SelectionData.locations.keys.toList().sorted()
+    // Dữ liệu dropdown lấy từ SelectionData
+    val cities = SelectionData.locations.keys.toList()
 
     fun getDistricts(city: String): List<String> {
         return SelectionData.locations[city] ?: emptyList()
     }
 
-    // Lấy danh sách KEY danh mục (cat_repair, cat_emergency...)
     fun getCategories(type: PostType): List<String> {
-        return SelectionData.getCategories(type)
+        return SelectionData.getCategoryKeys(type)
     }
 
     fun onContentChanged(newContent: String) {
