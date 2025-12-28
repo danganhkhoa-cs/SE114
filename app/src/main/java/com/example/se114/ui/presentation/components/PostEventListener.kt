@@ -19,7 +19,6 @@ fun PostEventListener(
     content: @Composable (
         onLike: (Post) -> Unit,
         onSave: (Post, Boolean) -> Unit, // Boolean là trạng thái isSaved hiện tại
-        onHide: (String) -> Unit,
         onReport: (String) -> Unit,
         onComment: (Post) -> Unit
     ) -> Unit
@@ -48,7 +47,6 @@ fun PostEventListener(
         content(
             { post -> viewModel.onToggleLike(post) },
             { post, isSaved -> viewModel.onToggleSave(post, isSaved) },
-            { postId -> viewModel.onHidePost(postId) },
             { postId -> reportPostId = postId },
             { post ->
                 selectedPostForComment = post

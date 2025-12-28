@@ -1,5 +1,6 @@
 package com.example.se114.ui.presentation.components
 
+import android.content.Intent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -39,23 +40,25 @@ fun PostCard(
     preferencesManager: PreferencesManager,
     onLikeClick: () -> Unit,
     onSaveClick: () -> Unit,
-    onHideClick: () -> Unit,
     onReportClick: () -> Unit, // Đổi tên cho rõ ràng
     onCommentClick: () -> Unit,
-    onAvatarClick: () -> Unit
+    onAvatarClick: () -> Unit,
+    onNavigateToPostDetail: (String) -> Unit = {}
 ) {
     var showMenu by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
     Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), // Thêm vertical padding
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .clickable { onNavigateToPostDetail(post.id) },
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            // ... (Giữ nguyên phần Header: Avatar, Name, Menu như code cũ) ...
             Box(
                 modifier = Modifier.fillMaxWidth()
                     .background(brush = Brush.verticalGradient(colors = listOf(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), Color.Transparent)))
@@ -122,11 +125,6 @@ fun PostCard(
                                 leadingIcon = { Icon(if (isSaved) Icons.Default.Bookmark else Icons.Outlined.BookmarkBorder, null, tint = MaterialTheme.colorScheme.primary) }
                             )
                             DropdownMenuItem(
-                                text = { Text(preferencesManager.getString("hide_post")) },
-                                onClick = { showMenu = false; onHideClick() },
-                                leadingIcon = { Icon(Icons.Default.VisibilityOff, null) }
-                            )
-                            DropdownMenuItem(
                                 text = { Text(preferencesManager.getString("report_post"), color = MaterialTheme.colorScheme.error) },
                                 onClick = { showMenu = false; onReportClick() },
                                 leadingIcon = { Icon(Icons.Default.Flag, null, tint = MaterialTheme.colorScheme.error) }
@@ -184,7 +182,18 @@ fun PostCard(
                 }
 
                 // Share Button
-                IconButton(onClick = { /* Share logic */ }) {
+                IconButton(onClick = {
+                    // 1. Tạo link (giống format đã khai báo trong Manifest & Navigation)
+                    val deepLinkUrl = "https://locasos.com/post/${post.id}"
+
+                    // 2. Tạo Intent chia sẻ hệ thống
+                    val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                        putExtra(Intent.EXTRA_TEXT, deepLinkUrl)
+                        type = "text/plain"
+                    }
+                    val shareIntent = Intent.createChooser(sendIntent, "")
+                    context.startActivity(shareIntent)
+                }) {
                     Icon(Icons.Default.Share, contentDescription = "Share", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }

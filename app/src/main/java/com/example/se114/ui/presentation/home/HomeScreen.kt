@@ -37,7 +37,8 @@ fun HomeScreen(
     preferencesManager: PreferencesManager,
     onNavigateToNotification: () -> Unit = {},
     onNavigateToOtherProfile: (String) -> Unit = {},
-    onNavigateToProfile: () -> Unit = {}
+    onNavigateToProfile: () -> Unit = {},
+    onNavigateToPostDetail: (String) -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val currentUserId = preferencesManager.userId
@@ -48,7 +49,7 @@ fun HomeScreen(
     )
 
     // WRAPPER: PostEventListener xử lý toàn bộ logic: Report Dialog, Comment Sheet, Snackbar
-    PostEventListener(viewModel = viewModel) { onLike, onSave, onHide, onReport, onComment ->
+    PostEventListener(viewModel = viewModel) { onLike, onSave, onReport, onComment ->
 
         Box(
             modifier = Modifier
@@ -105,11 +106,11 @@ fun HomeScreen(
                                 val isSaved = uiState.savedPostIds.contains(postId)
                                 if (post != null) onSave(post, isSaved)
                             },
-                            onHideClick = { postId -> onHide(postId) },
                             onReportClick = { postId -> onReport(postId) },
                             onCommentClick = { post -> onComment(post) },
                             onNavigateToOtherProfile = onNavigateToOtherProfile,
-                            onNavigateToProfile = onNavigateToProfile
+                            onNavigateToProfile = onNavigateToProfile,
+                            onNavigateToPostDetail = onNavigateToPostDetail
                         )
                     }
                 }
