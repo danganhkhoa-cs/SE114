@@ -4,20 +4,70 @@ object SelectionData {
     val locations = mapOf(
         // --- 5 Thành phố trực thuộc trung ương ---
         "city_hcm" to listOf(
-            "dist_1", "dist_3", "dist_4", "dist_5", "dist_6", "dist_7", "dist_8",
-            "dist_10", "dist_11", "dist_12", "dist_binh_thanh", "dist_go_vap",
-            "dist_phu_nhuan", "dist_tan_binh", "dist_tan_phu", "dist_binh_tan",
-            "dist_thu_duc", "dist_cu_chi", "dist_hoc_mon", "dist_binh_chanh", "dist_nha_be"
+            "dist_1",
+            "dist_3",
+            "dist_4",
+            "dist_5",
+            "dist_6",
+            "dist_7",
+            "dist_8",
+            "dist_10",
+            "dist_11",
+            "dist_12",
+            "dist_binh_thanh",
+            "dist_go_vap",
+            "dist_phu_nhuan",
+            "dist_tan_binh",
+            "dist_tan_phu",
+            "dist_binh_tan",
+            "dist_thu_duc",
+            "dist_cu_chi",
+            "dist_hoc_mon",
+            "dist_binh_chanh",
+            "dist_nha_be"
         ),
         "city_hn" to listOf(
-            "dist_ba_dinh", "dist_hoan_kiem", "dist_tay_ho", "dist_cau_giay",
-            "dist_dong_da", "dist_hai_ba_trung", "dist_hoang_mai", "dist_thanh_xuan",
-            "dist_long_bien", "dist_nam_tu_liem", "dist_bac_tu_liem", "dist_ha_dong",
-            "dist_son_tay", "dist_gia_lam", "dist_dong_anh", "dist_soc_son"
+            "dist_ba_dinh",
+            "dist_hoan_kiem",
+            "dist_tay_ho",
+            "dist_cau_giay",
+            "dist_dong_da",
+            "dist_hai_ba_trung",
+            "dist_hoang_mai",
+            "dist_thanh_xuan",
+            "dist_long_bien",
+            "dist_nam_tu_liem",
+            "dist_bac_tu_liem",
+            "dist_ha_dong",
+            "dist_son_tay",
+            "dist_gia_lam",
+            "dist_dong_anh",
+            "dist_soc_son"
         ),
-        "city_dn" to listOf("dist_hai_chau", "dist_thanh_khe", "dist_son_tra", "dist_ngu_hanh_son", "dist_lien_chieu", "dist_cam_le", "dist_hoa_vang"),
-        "city_hp" to listOf("dist_hong_bang", "dist_ngo_quyen", "dist_le_chan", "dist_hai_an", "dist_kien_an", "dist_do_son", "dist_thuy_nguyen"),
-        "city_ct" to listOf("dist_ninh_kieu", "dist_binh_thuy", "dist_cai_rang", "dist_o_mon", "dist_thot_not"),
+        "city_dn" to listOf(
+            "dist_hai_chau",
+            "dist_thanh_khe",
+            "dist_son_tra",
+            "dist_ngu_hanh_son",
+            "dist_lien_chieu",
+            "dist_cam_le",
+            "dist_hoa_vang"),
+        "city_hp" to listOf(
+            "dist_hong_bang",
+            "dist_ngo_quyen",
+            "dist_le_chan",
+            "dist_hai_an",
+            "dist_kien_an",
+            "dist_do_son",
+            "dist_thuy_nguyen"
+        ),
+        "city_ct" to listOf(
+            "dist_ninh_kieu",
+            "dist_binh_thuy",
+            "dist_cai_rang",
+            "dist_o_mon",
+            "dist_thot_not"
+        ),
 
         // --- Các tỉnh còn lại (Xếp theo ABC cho dễ quản lý) ---
         "city_ag" to listOf("dist_long_xuyen", "dist_chau_doc", "dist_tan_chau"),
@@ -80,14 +130,17 @@ object SelectionData {
         "city_yb" to listOf("dist_yen_bai_tp")
     )
 
-    fun getCategories(type: PostType): List<String> {
+    fun getCategoryKeys(type: PostType): List<String> {
         return when (type) {
             PostType.SUPPORT -> listOf(
-                "cat_emergency", "cat_medical", "cat_lost_found", "cat_donation", "cat_transport_help", "report_other"
+                "cat_emergency", "cat_medical", "cat_lost_found", "cat_donation",
+                "cat_transport_help", "cat_food_water", "cat_volunteer", "report_other"
             )
             PostType.SERVICE -> listOf(
-                "cat_repair", "cat_cleaning", "cat_tutor", "cat_delivery", "cat_pet_care", "report_other"
+                "cat_repair", "cat_cleaning", "cat_tutor", "cat_delivery",
+                "cat_pet_care", "cat_beauty", "cat_it_support", "cat_driver", "report_other"
             )
         }
     }
 }
+
