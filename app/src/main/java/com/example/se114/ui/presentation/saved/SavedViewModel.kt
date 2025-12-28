@@ -19,7 +19,12 @@ data class SavedUiState(
     val allSavedPosts: List<Post> = emptyList(),
     val displayedPosts: List<Post> = emptyList(),
     val selectedTabIndex: Int = 0,
-    val isLoading: Boolean = false
+    val isLoading: Boolean = false,
+
+    // Filter States
+    val filterCity: String = "",
+    val filterDistrict: String = "",
+    val filterCategory: String = ""
 )
 
 @HiltViewModel
@@ -43,11 +48,16 @@ class SavedViewModel @Inject constructor(
             val savedIdsResult = repository.getUserSavedPostIds(userId)
 
             if (savedIdsResult.isSuccess) {
-                val savedIds = savedIdsResult.getOrThrow()
+                // SỬA LỖI QUAN TRỌNG:
+                // Dùng 'getOrNull() ?: emptySet()' để đảm bảo trả về Set<String>, tránh lỗi Type Mismatch với List.
+                val savedIds = savedIdsResult.getOrNull() ?: emptySet()
+
                 if (savedIds.isNotEmpty()) {
-                    val postsResult = repository.getPostsByIds(savedIds, currentUserId = userId)
+                    val postsResult = repository.getPostsByIds(postIds = savedIds.toList(), currentUserId = userId)
                     if (postsResult.isSuccess) {
-                        _uiState.update { it.copy(allSavedPosts = postsResult.getOrThrow(), isLoading = false) }
+                        // SỬA LỖI: Dùng 'getOrNull() ?: emptyList()' cho danh sách Post
+                        val posts = postsResult.getOrNull() ?: emptyList()
+                        _uiState.update { it.copy(allSavedPosts = posts, isLoading = false) }
                         calculateDisplayedPosts()
                     }
                 } else {
@@ -60,13 +70,23 @@ class SavedViewModel @Inject constructor(
     }
 
     fun onTabSelected(index: Int) {
-        _uiState.update { it.copy(selectedTabIndex = index) }
+        _uiState.update { it.copy(selectedTabIndex = index, filterCategory = "") }
         calculateDisplayedPosts()
     }
 
-    // Xử lý sự kiện Bus (Quan trọng: Xử lý Unsave tại đây)
+    // Hàm Apply Filter
+    fun applyFilter(city: String, district: String, category: String) {
+        _uiState.update {
+            it.copy(
+                filterCity = city,
+                filterDistrict = district,
+                filterCategory = category
+            )
+        }
+        calculateDisplayedPosts()
+    }
+
     override fun handlePostUpdate(event: PostUpdateEvent) {
-        // Nếu sự kiện là Unsave -> Xóa khỏi danh sách Saved ngay lập tức
         if (event.isSaved == false) {
             _uiState.update { state ->
                 state.copy(allSavedPosts = state.allSavedPosts.filter { it.id != event.postId })
@@ -75,7 +95,6 @@ class SavedViewModel @Inject constructor(
             return
         }
 
-        // Nếu là Like/Comment -> Cập nhật thông tin
         _uiState.update { state ->
             val updatedPosts = state.allSavedPosts.map { post ->
                 if (post.id == event.postId) {
@@ -94,7 +113,19 @@ class SavedViewModel @Inject constructor(
     private fun calculateDisplayedPosts() {
         val state = _uiState.value
         val targetType = if (state.selectedTabIndex == 0) PostType.SUPPORT.name else PostType.SERVICE.name
-        val filtered = state.allSavedPosts.filter { it.type == targetType }
+
+        // --- LOGIC LỌC ---
+        val filtered = state.allSavedPosts.filter { post ->
+            val matchType = post.type == targetType
+
+            // Safe call (?.)
+            val matchCity = state.filterCity.isEmpty() || (post.cityKey ?: "") == state.filterCity
+            val matchDistrict = state.filterDistrict.isEmpty() || (post.districtKey ?: "") == state.filterDistrict
+            val matchCategory = state.filterCategory.isEmpty() || (post.categoryKey ?: "") == state.filterCategory
+
+            matchType && matchCity && matchDistrict && matchCategory
+        }
+
         _uiState.update { it.copy(displayedPosts = filtered) }
     }
 }
