@@ -7,8 +7,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -38,14 +36,16 @@ fun CreatePostScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-
     val isDark = preferencesManager.isDarkMode
+
+    // Theme Colors
     val backgroundColor = MaterialTheme.colorScheme.background
     val textColor = MaterialTheme.colorScheme.onBackground
     val hintColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
     val postButtonColor = if (isDark) AppTealNeon else AppTealDark
     val postButtonContentColor = if (isDark) Color(0xFF00363D) else Color.White
 
+    // Text Resources
     val errorMessage = preferencesManager.getString("fill_all_fields")
 
     LaunchedEffect(uiState.isSuccess) {
@@ -103,7 +103,7 @@ fun CreatePostScreen(
                 .padding(paddingValues)
                 .padding(16.dp)
         ) {
-            // 1. User Info & Avatar
+            // 1. User Info (Avatar + Name)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Surface(
                     modifier = Modifier.size(48.dp),
@@ -120,19 +120,17 @@ fun CreatePostScreen(
                     }
                 }
                 Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Text(
-                        text = preferencesManager.userName,
-                        fontWeight = FontWeight.Bold,
-                        color = textColor,
-                        fontSize = 16.sp
-                    )
-                }
+                Text(
+                    text = preferencesManager.userName,
+                    fontWeight = FontWeight.Bold,
+                    color = textColor,
+                    fontSize = 16.sp
+                )
             }
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // 2. POST TYPE SELECTOR (Support vs Service)
+            // 2. Post Type Selector
             val selectedColor = if(isDark) AppTealNeon else AppTealDark
             val unselectedColor = Color.Transparent
             val selectedTextColor = if(isDark) Color(0xFF00363D) else Color.White
@@ -146,15 +144,13 @@ fun CreatePostScreen(
                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
                     .padding(4.dp),
             ) {
-                // Tab Support
+                // Button Support
                 Box(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
                         .clip(RoundedCornerShape(8.dp))
-                        .background(
-                            if (uiState.selectedPostType == PostType.SUPPORT) selectedColor else unselectedColor
-                        )
+                        .background(if (uiState.selectedPostType == PostType.SUPPORT) selectedColor else unselectedColor)
                         .clickable { viewModel.onPostTypeChanged(PostType.SUPPORT) },
                     contentAlignment = Alignment.Center
                 ) {
@@ -164,16 +160,13 @@ fun CreatePostScreen(
                         color = if (uiState.selectedPostType == PostType.SUPPORT) selectedTextColor else unselectedTextColor
                     )
                 }
-
-                // Tab Service
+                // Button Service
                 Box(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
                         .clip(RoundedCornerShape(8.dp))
-                        .background(
-                            if (uiState.selectedPostType == PostType.SERVICE) selectedColor else unselectedColor
-                        )
+                        .background(if (uiState.selectedPostType == PostType.SERVICE) selectedColor else unselectedColor)
                         .clickable { viewModel.onPostTypeChanged(PostType.SERVICE) },
                     contentAlignment = Alignment.Center
                 ) {
@@ -189,18 +182,21 @@ fun CreatePostScreen(
 
             // 3. DROPDOWNS (City, District, Category)
 
-            // City Dropdown
+            // --- CITY DROPDOWN ---
+            // "Liên kết" xảy ra ở đây: displayTransform gọi preferencesManager.getString()
             SimpleDropdown(
                 label = preferencesManager.getString("label_city"),
                 placeholder = preferencesManager.getString("select_city"),
-                options = viewModel.cities, // List thành phố vẫn là biến public
+                options = viewModel.cities, // List Key: city_hcm, city_hn...
                 selectedOption = uiState.selectedCity,
                 onOptionSelected = viewModel::onCitySelected,
-                isDark = isDark
+                isDark = isDark,
+                displayTransform = { key -> preferencesManager.getString(key) } // Chuyển Key -> Tên hiển thị
             )
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            // --- DISTRICT DROPDOWN ---
             val availableDistricts = viewModel.getDistricts(uiState.selectedCity)
             SimpleDropdown(
                 label = preferencesManager.getString("label_district"),
@@ -209,11 +205,13 @@ fun CreatePostScreen(
                 selectedOption = uiState.selectedDistrict,
                 onOptionSelected = viewModel::onDistrictSelected,
                 enabled = uiState.selectedCity.isNotEmpty(),
-                isDark = isDark
+                isDark = isDark,
+                displayTransform = { key -> preferencesManager.getString(key) }
             )
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            // --- CATEGORY DROPDOWN ---
             val availableCategories = viewModel.getCategories(uiState.selectedPostType)
             SimpleDropdown(
                 label = preferencesManager.getString("label_category"),
@@ -221,16 +219,15 @@ fun CreatePostScreen(
                 options = availableCategories,
                 selectedOption = uiState.selectedCategory,
                 onOptionSelected = viewModel::onCategorySelected,
-                isDark = isDark
+                isDark = isDark,
+                displayTransform = { key -> preferencesManager.getString(key) }
             )
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // 4. Input Content Area
+            // 4. Content Input
             Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
+                modifier = Modifier.weight(1f).fillMaxWidth()
             ) {
                 if (uiState.content.isEmpty()) {
                     Text(
@@ -242,11 +239,7 @@ fun CreatePostScreen(
                 BasicTextField(
                     value = uiState.content,
                     onValueChange = viewModel::onContentChanged,
-                    textStyle = TextStyle(
-                        fontSize = 18.sp,
-                        color = textColor,
-                        lineHeight = 26.sp
-                    ),
+                    textStyle = TextStyle(fontSize = 18.sp, color = textColor, lineHeight = 26.sp),
                     cursorBrush = SolidColor(postButtonColor),
                     modifier = Modifier.fillMaxSize()
                 )
@@ -255,7 +248,7 @@ fun CreatePostScreen(
     }
 }
 
-// --- Helper Component for Dropdown ---
+// Helper: Custom Dropdown hỗ trợ hiển thị tên thay thế (displayTransform)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SimpleDropdown(
@@ -265,7 +258,8 @@ fun SimpleDropdown(
     selectedOption: String,
     onOptionSelected: (String) -> Unit,
     enabled: Boolean = true,
-    isDark: Boolean
+    isDark: Boolean,
+    displayTransform: (String) -> String = { it } // Quan trọng: Hàm biến đổi Key -> Tên
 ) {
     var expanded by remember { mutableStateOf(false) }
 
@@ -274,7 +268,8 @@ fun SimpleDropdown(
         onExpandedChange = { if(enabled) expanded = !expanded }
     ) {
         OutlinedTextField(
-            value = selectedOption,
+            // Hiển thị tên đã dịch (value), nhưng giữ Key trong state
+            value = if (selectedOption.isNotEmpty()) displayTransform(selectedOption) else "",
             onValueChange = {},
             readOnly = true,
             label = { Text(label) },
@@ -284,6 +279,8 @@ fun SimpleDropdown(
                 focusedBorderColor = if(isDark) AppTealNeon else AppTealDark,
                 focusedLabelColor = if(isDark) AppTealNeon else AppTealDark,
                 unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+                disabledTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
             ),
             modifier = Modifier.fillMaxWidth().menuAnchor(),
             enabled = enabled
@@ -295,9 +292,10 @@ fun SimpleDropdown(
         ) {
             options.forEach { option ->
                 DropdownMenuItem(
-                    text = { Text(option) },
+                    // Hiển thị tên đã dịch trong danh sách
+                    text = { Text(displayTransform(option)) },
                     onClick = {
-                        onOptionSelected(option)
+                        onOptionSelected(option) // Trả về Key gốc cho ViewModel
                         expanded = false
                     }
                 )
