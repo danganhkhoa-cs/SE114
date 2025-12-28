@@ -24,7 +24,12 @@ data class HomeUiState(
     val displayedPosts: List<Post> = emptyList(),
     val selectedTabIndex: Int = 0,
     val notificationUnreadCount: Int = 5,
-    val isRefreshing: Boolean = false
+    val isRefreshing: Boolean = false,
+
+    // Filter States
+    val filterCity: String = "",
+    val filterDistrict: String = "",
+    val filterCategory: String = ""
 )
 
 @HiltViewModel
@@ -39,16 +44,11 @@ class HomeViewModel @Inject constructor(
 
     init {
         loadPosts()
-        // 1. Kích hoạt lắng nghe thông báo ngay khi vào màn hình Home
         val userId = preferencesManager.userId
         if (userId.isNotEmpty()) {
             repository.startListeningToUnreadNotifications(userId)
         }
-
-        // 2. Observe Saved Posts
         observeSavedPosts()
-
-        // 3. Observe Notification Count
         observeTotalBadge(userId)
     }
 
@@ -63,14 +63,12 @@ class HomeViewModel @Inject constructor(
     private fun observeTotalBadge(userId: String) {
         viewModelScope.launch {
             combine(
-                repository.unreadCountFlow,           // 1. Social Unread (Flow cũ)
-                repository.getSystemTotalCountFlow(), // 2. Tổng tin hệ thống
-                repository.getReadSystemIdsFlow(userId) // 3. Tin hệ thống đã đọc
+                repository.unreadCountFlow,
+                repository.getSystemTotalCountFlow(),
+                repository.getReadSystemIdsFlow(userId)
             ) { socialUnread, systemTotal, readIds ->
-
                 val systemUnread = (systemTotal - readIds.size).coerceAtLeast(0)
                 socialUnread + systemUnread
-
             }.collect { totalUnread ->
                 _uiState.update { it.copy(notificationUnreadCount = totalUnread) }
             }
@@ -81,13 +79,13 @@ class HomeViewModel @Inject constructor(
         val userId = preferencesManager.userId
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true) }
-            // Gọi song song
             async { repository.getUserSavedPostIds(userId) }
             val postsDeferred = async { repository.getPosts(currentUserId = userId) }
 
             val postsResult = postsDeferred.await()
             if (postsResult.isSuccess) {
-                val posts = postsResult.getOrDefault(emptyList())
+                // Sửa lỗi getOrDefault: Dùng getOrNull() ?: emptyList() an toàn hơn
+                val posts = postsResult.getOrNull() ?: emptyList()
                 _uiState.update { it.copy(allPosts = posts, isRefreshing = false) }
                 calculateDisplayedPosts()
             } else {
@@ -99,11 +97,22 @@ class HomeViewModel @Inject constructor(
     fun onRefresh() { loadPosts() }
 
     fun onTabSelected(index: Int) {
-        _uiState.update { it.copy(selectedTabIndex = index) }
+        _uiState.update { it.copy(selectedTabIndex = index, filterCategory = "") }
         calculateDisplayedPosts()
     }
 
-    // Override từ Base: Xử lý khi có sự kiện từ Bus (Like/Save/Comment)
+    // Hàm Apply Filter
+    fun applyFilter(city: String, district: String, category: String) {
+        _uiState.update {
+            it.copy(
+                filterCity = city,
+                filterDistrict = district,
+                filterCategory = category
+            )
+        }
+        calculateDisplayedPosts()
+    }
+
     override fun handlePostUpdate(event: PostUpdateEvent) {
         val currentAll = _uiState.value.allPosts
         if (currentAll.none { it.id == event.postId }) return
@@ -126,7 +135,22 @@ class HomeViewModel @Inject constructor(
     private fun calculateDisplayedPosts() {
         val state = _uiState.value
         val targetType = if (state.selectedTabIndex == 0) PostType.SUPPORT.name else PostType.SERVICE.name
-        val filtered = state.allPosts.filter { it.type == targetType && it.id !in state.hiddenPostIds }
+
+        // --- LOGIC LỌC ---
+        // Lưu ý: Nếu file Post.kt chưa có field cityKey, districtKey, categoryKey thì sẽ báo đỏ.
+        // Bạn cần thêm các trường này vào data class Post.
+        val filtered = state.allPosts.filter { post ->
+            val matchType = post.type == targetType
+            val matchHidden = post.id !in state.hiddenPostIds
+
+            // Dùng safe call (?.) và elvis (?: "") để tránh lỗi null pointer
+            val matchCity = state.filterCity.isEmpty() || (post.cityKey ?: "") == state.filterCity
+            val matchDistrict = state.filterDistrict.isEmpty() || (post.districtKey ?: "") == state.filterDistrict
+            val matchCategory = state.filterCategory.isEmpty() || (post.categoryKey ?: "") == state.filterCategory
+
+            matchType && matchHidden && matchCity && matchDistrict && matchCategory
+        }
+
         _uiState.update { it.copy(displayedPosts = filtered) }
     }
 }
