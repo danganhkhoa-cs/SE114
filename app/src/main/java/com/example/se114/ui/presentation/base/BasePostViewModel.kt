@@ -93,12 +93,6 @@ abstract class BasePostViewModel(
         }
     }
 
-    open fun onHidePost(postId: String) {
-        // Show message
-        _messageState.update { BaseMessageState(preferencesManager.getString("post_hidden"), MessageType.INFO) }
-        // Các lớp con cần override để filter bài viết khỏi list hiển thị
-    }
-
     fun onSubmitReport(postId: String, reason: String, description: String) {
         val userId = preferencesManager.userId
         if (userId.isEmpty()) return

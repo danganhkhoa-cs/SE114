@@ -19,11 +19,11 @@ fun PostFeed(
     preferencesManager: PreferencesManager,
     onLikeClick: (String) -> Unit, // Chỉ truyền ID
     onSaveClick: (String) -> Unit,
-    onHideClick: (String) -> Unit,
     onReportClick: (String) -> Unit,
     onCommentClick: (Post) -> Unit, // Truyền cả Post để mở bottom sheet
     onNavigateToOtherProfile: (String) -> Unit,
     onNavigateToProfile: () -> Unit,
+    onNavigateToPostDetail: (String) -> Unit,
     currentUserId: String,
     emptyMessage: String = preferencesManager.getString("empty_posts")
 ) {
@@ -43,7 +43,6 @@ fun PostFeed(
                     preferencesManager = preferencesManager,
                     onLikeClick = { onLikeClick(post.id) },
                     onSaveClick = { onSaveClick(post.id) },
-                    onHideClick = { onHideClick(post.id) },
                     onReportClick = { onReportClick(post.id) },
                     onCommentClick = { onCommentClick(post) },
                     onAvatarClick = {
@@ -52,7 +51,8 @@ fun PostFeed(
                         } else {
                             onNavigateToOtherProfile(post.userId)
                         }
-                    }
+                    },
+                    onNavigateToPostDetail = onNavigateToPostDetail
                 )
             }
         }

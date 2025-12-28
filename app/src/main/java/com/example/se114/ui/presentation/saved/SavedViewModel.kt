@@ -64,15 +64,6 @@ class SavedViewModel @Inject constructor(
         calculateDisplayedPosts()
     }
 
-    override fun onHidePost(postId: String) {
-        super.onHidePost(postId)
-        // Saved Screen: Khi ẩn thì xóa khỏi list hiển thị luôn
-        _uiState.update { state ->
-            state.copy(allSavedPosts = state.allSavedPosts.filter { it.id != postId })
-        }
-        calculateDisplayedPosts()
-    }
-
     // Xử lý sự kiện Bus (Quan trọng: Xử lý Unsave tại đây)
     override fun handlePostUpdate(event: PostUpdateEvent) {
         // Nếu sự kiện là Unsave -> Xóa khỏi danh sách Saved ngay lập tức

@@ -18,7 +18,11 @@ sealed class Screen(val route: String) {
     object OtherProfile : Screen("other_profile/{userId}") {
         fun createRoute(userId: String) = "other_profile/$userId"
     }
-
     // Màn hình thông báo
     object Notification : Screen("notification")
+
+    // Màn hình chi tiết bài viết
+    object PostDetail : Screen("post_detail/{postId}") {
+        fun createRoute(postId: String) = "post_detail/$postId"
+    }
 }

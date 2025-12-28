@@ -103,15 +103,6 @@ class HomeViewModel @Inject constructor(
         calculateDisplayedPosts()
     }
 
-    // Override từ Base: Xử lý ẩn bài viết
-    override fun onHidePost(postId: String) {
-        super.onHidePost(postId) // Gọi cha để hiện thông báo
-        _uiState.update { state ->
-            state.copy(hiddenPostIds = state.hiddenPostIds + postId)
-        }
-        calculateDisplayedPosts()
-    }
-
     // Override từ Base: Xử lý khi có sự kiện từ Bus (Like/Save/Comment)
     override fun handlePostUpdate(event: PostUpdateEvent) {
         val currentAll = _uiState.value.allPosts

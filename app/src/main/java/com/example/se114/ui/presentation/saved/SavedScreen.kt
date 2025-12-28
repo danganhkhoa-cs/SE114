@@ -21,7 +21,8 @@ import com.example.se114.ui.theme.AppTealDark
 fun SavedScreen(
     viewModel: SavedViewModel = hiltViewModel(),
     onNavigateToOtherProfile: (String) -> Unit = {},
-    onNavigateToProfile: () -> Unit = {}
+    onNavigateToProfile: () -> Unit = {},
+    onNavigateToPostDetail: (String) -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val preferencesManager = viewModel.preferencesManager
@@ -37,7 +38,7 @@ fun SavedScreen(
     }
 
     // WRAPPER: Tự động thêm tính năng Report, Comment, Hide, Snackbar cho SavedScreen
-    PostEventListener(viewModel = viewModel) { onLike, onSave, onHide, onReport, onComment ->
+    PostEventListener(viewModel = viewModel) { onLike, onSave, onReport, onComment ->
 
         Column(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
             // Header riêng của SavedScreen
@@ -87,11 +88,11 @@ fun SavedScreen(
                         val post = uiState.allSavedPosts.find { it.id == postId }
                         if (post != null) onSave(post, true)
                     },
-                    onHideClick = { postId -> onHide(postId) },
                     onReportClick = { postId -> onReport(postId) },
                     onCommentClick = { post -> onComment(post) },
                     onNavigateToOtherProfile = onNavigateToOtherProfile,
                     onNavigateToProfile = onNavigateToProfile,
+                    onNavigateToPostDetail = onNavigateToPostDetail,
                     emptyMessage = preferencesManager.getString("empty_saved_posts")
                 )
             }
