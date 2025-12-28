@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -25,7 +26,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.se114.data.PostType
 import com.example.se114.local.PreferencesManager
+import com.example.se114.ui.presentation.components.FilterDialog
 import com.example.se114.ui.presentation.components.PostEventListener
 import com.example.se114.ui.presentation.components.PostFeed
 import com.example.se114.ui.theme.AppTealDark
@@ -43,12 +46,29 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val currentUserId = preferencesManager.userId
 
+    // State để hiển thị dialog lọc
+    var showFilterDialog by remember { mutableStateOf(false) }
+
     val tabs = listOf(
         preferencesManager.getString("tab_support"),
         preferencesManager.getString("tab_service")
     )
 
-    // WRAPPER: PostEventListener xử lý toàn bộ logic: Report Dialog, Comment Sheet, Snackbar
+    // Hiển thị Dialog Lọc
+    if (showFilterDialog) {
+        FilterDialog(
+            currentCity = uiState.filterCity,
+            currentDistrict = uiState.filterDistrict,
+            currentCategory = uiState.filterCategory,
+            currentTabPostType = if (uiState.selectedTabIndex == 0) PostType.SUPPORT else PostType.SERVICE,
+            preferencesManager = preferencesManager,
+            onDismiss = { showFilterDialog = false },
+            onApply = { city, district, category ->
+                viewModel.applyFilter(city, district, category)
+            }
+        )
+    }
+
     PostEventListener(viewModel = viewModel) { onLike, onSave, onReport, onComment ->
 
         Box(
@@ -60,7 +80,9 @@ fun HomeScreen(
 
                 HomeHeader(
                     notificationCount = uiState.notificationUnreadCount,
-                    onNavigateToNotification = onNavigateToNotification
+                    isFilterActive = uiState.filterCity.isNotEmpty() || uiState.filterCategory.isNotEmpty(),
+                    onNavigateToNotification = onNavigateToNotification,
+                    onOpenFilter = { showFilterDialog = true }
                 )
 
                 HomeTabs(
@@ -74,7 +96,6 @@ fun HomeScreen(
                     onRefresh = { viewModel.onRefresh() },
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    // Kiểm tra nếu list rỗng thì hiển thị giao diện rỗng CÓ THỂ SCROLL
                     if (uiState.displayedPosts.isEmpty() && !uiState.isRefreshing) {
                         Box(
                             modifier = Modifier
@@ -82,7 +103,6 @@ fun HomeScreen(
                                 .verticalScroll(rememberScrollState()),
                             contentAlignment = Alignment.Center
                         ) {
-                            // Bạn có thể thay Text này bằng component EmptyState đẹp hơn
                             Text(
                                 text = preferencesManager.getString("empty_posts"),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -91,7 +111,6 @@ fun HomeScreen(
                             )
                         }
                     } else {
-                        // Nếu có bài viết thì hiển thị PostFeed như bình thường
                         PostFeed(
                             posts = uiState.displayedPosts,
                             savedPostIds = uiState.savedPostIds,
@@ -119,12 +138,14 @@ fun HomeScreen(
     }
 }
 
-// --- SUB COMPONENTS (Public để SavedScreen dùng lại HomeTabs) ---
+// --- SUB COMPONENTS ---
 
 @Composable
 fun HomeHeader(
     notificationCount: Int,
-    onNavigateToNotification: () -> Unit
+    isFilterActive: Boolean = false,
+    onNavigateToNotification: () -> Unit,
+    onOpenFilter: () -> Unit
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -147,6 +168,7 @@ fun HomeHeader(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // Logo & Title
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Surface(
                         modifier = Modifier.size(44.dp),
@@ -161,20 +183,45 @@ fun HomeHeader(
                     Text("LocaSOS", fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = Color.White, letterSpacing = 1.2.sp, style = MaterialTheme.typography.headlineMedium)
                 }
 
-                Box {
-                    IconButton(
-                        onClick = onNavigateToNotification,
-                        modifier = Modifier.size(48.dp).background(color = Color.White.copy(alpha = 0.15f), shape = CircleShape)
-                    ) {
-                        Icon(Icons.Outlined.Notifications, "Notifications", tint = Color.White, modifier = Modifier.size(26.dp))
-                    }
-                    if (notificationCount > 0) {
-                        Badge(
-                            containerColor = Color(0xFFFF1744),
-                            contentColor = Color.White,
-                            modifier = Modifier.align(Alignment.TopEnd).offset(x = (-2).dp, y = 2.dp)
+                // Actions: Filter & Notification
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+
+                    // 1. Nút Filter
+                    Box {
+                        IconButton(
+                            onClick = onOpenFilter,
+                            modifier = Modifier.size(48.dp).background(color = Color.White.copy(alpha = 0.15f), shape = CircleShape)
                         ) {
-                            Text(if (notificationCount > 9) "9+" else notificationCount.toString(), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Icon(Icons.Outlined.FilterList, "Filter", tint = Color.White, modifier = Modifier.size(26.dp))
+                        }
+                        // Dấu chấm đỏ nếu đang có filter
+                        if (isFilterActive) {
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .background(Color(0xFFFF1744), CircleShape)
+                                    .align(Alignment.TopEnd)
+                                    .offset(x = (-4).dp, y = 4.dp)
+                            )
+                        }
+                    }
+
+                    // 2. Nút Notification
+                    Box {
+                        IconButton(
+                            onClick = onNavigateToNotification,
+                            modifier = Modifier.size(48.dp).background(color = Color.White.copy(alpha = 0.15f), shape = CircleShape)
+                        ) {
+                            Icon(Icons.Outlined.Notifications, "Notifications", tint = Color.White, modifier = Modifier.size(26.dp))
+                        }
+                        if (notificationCount > 0) {
+                            Badge(
+                                containerColor = Color(0xFFFF1744),
+                                contentColor = Color.White,
+                                modifier = Modifier.align(Alignment.TopEnd).offset(x = (-2).dp, y = 2.dp)
+                            ) {
+                                Text(if (notificationCount > 9) "9+" else notificationCount.toString(), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }
