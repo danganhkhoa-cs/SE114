@@ -56,7 +56,7 @@ class PostRepository @Inject constructor(
             val userIds = posts.map { it.userId }.distinct().filter { it.isNotEmpty() }
 
             if (userIds.isNotEmpty()) {
-                val avatarMap = mutableMapOf<String, String>()
+                val userInfoMap = mutableMapOf<String, Pair<String, String>>()
 
                 // Firestore giới hạn 'whereIn' tối đa 10 phần tử -> chia chunk
                 val chunks = userIds.chunked(10)
@@ -73,9 +73,8 @@ class PostRepository @Inject constructor(
 
                                 usersSnap.documents.forEach { doc ->
                                     val url = doc.getString("avatar_url") ?: ""
-                                    if (url.isNotEmpty()) {
-                                        avatarMap[doc.id] = url
-                                    }
+                                    val name = doc.getString("name") ?: ""
+                                    userInfoMap[doc.id] = Pair(url, name)
                                 }
                             } catch (e: Exception) {
                                 e.printStackTrace()
@@ -86,9 +85,12 @@ class PostRepository @Inject constructor(
 
                 // Cập nhật avatar mới vào danh sách bài viết
                 posts = posts.map { post ->
-                    val freshAvatar = avatarMap[post.userId]
-                    if (!freshAvatar.isNullOrEmpty()) {
-                        post.copy(userAvatar = freshAvatar)
+                    val userInfo = userInfoMap[post.userId]
+                    if (userInfo != null) {
+                        post.copy(
+                            userAvatar = userInfo.first.ifEmpty { post.userAvatar },
+                            userName = userInfo.second.ifEmpty { post.userName }
+                        )
                     } else {
                         post
                     }
