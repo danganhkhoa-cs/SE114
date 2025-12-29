@@ -1,28 +1,75 @@
 package com.example.se114
 
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import android.media.RingtoneManager
+import android.os.Build
+import androidx.core.app.NotificationCompat
+import com.example.se114.MainActivity
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import kotlin.random.Random
 
 class MyFirebaseMessagingService : FirebaseMessagingService() {
 
-    // Hàm này tự động chạy khi token của thiết bị thay đổi (cài lại app, xóa data...)
-    override fun onNewToken(token: String) {
-        super.onNewToken(token)
-        val currentUser = FirebaseAuth.getInstance().currentUser
-        if (currentUser != null) {
-            // Lưu token mới ngay lập tức
-            FirebaseFirestore.getInstance()
-                .collection("users")
-                .document(currentUser.uid)
-                .update("fcm_token", token)
-        }
+    override fun onMessageReceived(remoteMessage: RemoteMessage) {
+        // Xử lý khi nhận tin nhắn (Kể cả khi App đang mở)
+
+        // 1. Lấy dữ liệu từ gói tin FCM
+        val title = remoteMessage.notification?.title ?: remoteMessage.data["title"] ?: "LocaSOS"
+        val message = remoteMessage.notification?.body ?: remoteMessage.data["message"] ?: "Bạn có thông báo mới"
+
+        // 2. Hiện thông báo
+        sendNotification(title, message)
     }
 
-    // Hàm nhận tin nhắn khi app đang mở (Foreground)
-    override fun onMessageReceived(remoteMessage: RemoteMessage) {
-        super.onMessageReceived(remoteMessage)
-        // Hiện tại để trống, Giai đoạn 3 chúng ta sẽ xử lý hiển thị sau
+    private fun sendNotification(title: String, messageBody: String) {
+        val intent = Intent(this, MainActivity::class.java)
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+
+        // Tạo PendingIntent để mở App khi bấm vào thông báo
+        val pendingIntent = PendingIntent.getActivity(
+            this, 0, intent,
+            PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val channelId = "locasos_channel_id" // Phải trùng với Manifest
+        val defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+
+        // Cấu hình giao diện thông báo
+        val notificationBuilder = NotificationCompat.Builder(this, channelId)
+            .setSmallIcon(R.drawable.ic_launcher_foreground) // Đổi thành icon app của bạn
+            .setContentTitle(title)
+            .setContentText(messageBody)
+            .setAutoCancel(true)
+            .setSound(defaultSoundUri)
+            .setContentIntent(pendingIntent)
+            .setPriority(NotificationCompat.PRIORITY_HIGH) // QUAN TRỌNG: Để popup trên Android cũ
+            .setDefaults(NotificationCompat.DEFAULT_ALL) // Rung + Chuông
+
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        val channel = NotificationChannel(
+            channelId,
+            "LocaSOS Notifications",
+            NotificationManager.IMPORTANCE_HIGH // QUAN TRỌNG NHẤT: Bắt buộc HIGH để có Popup
+        )
+        channel.description = "Thông báo từ ứng dụng LocaSOS"
+        channel.enableVibration(true)
+        channel.enableLights(true)
+
+        notificationManager.createNotificationChannel(channel)
+
+        // Hiển thị thông báo
+        val notificationId = Random.nextInt()
+        notificationManager.notify(notificationId, notificationBuilder.build())
+    }
+
+    override fun onNewToken(token: String) {
+        // Xử lý khi có token mới (Gửi lên server nếu cần)
+        super.onNewToken(token)
     }
 }
