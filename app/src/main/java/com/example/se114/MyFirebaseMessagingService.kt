@@ -8,7 +8,8 @@ import android.content.Intent
 import android.media.RingtoneManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
-import com.example.se114.MainActivity
+import com.example.se114.local.PreferencesManager
+import com.example.se114.utils.CurrentChatManager
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import kotlin.random.Random
@@ -16,13 +17,23 @@ import kotlin.random.Random
 class MyFirebaseMessagingService : FirebaseMessagingService() {
 
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
-        // Xử lý khi nhận tin nhắn (Kể cả khi App đang mở)
+        // Nếu đang ở màn hình Notification -> Chặn TẤT CẢ thông báo
+        if (CurrentChatManager.isNotificationScreenVisible) {
+            return
+        }
 
-        // 1. Lấy dữ liệu từ gói tin FCM
+        val preferencesManager = PreferencesManager(this)
+        // Lấy dữ liệu từ gói tin FCM
         val title = remoteMessage.notification?.title ?: remoteMessage.data["title"] ?: "LocaSOS"
         val message = remoteMessage.notification?.body ?: remoteMessage.data["message"] ?: "Bạn có thông báo mới"
 
-        // 2. Hiện thông báo
+        val senderId = remoteMessage.data["senderId"]
+        // Nếu người gửi tin nhắn chính là người mình đang chat trên màn hình -> BỎ QUA
+        if (senderId != null && senderId == CurrentChatManager.currentPartnerId) {
+            return
+        }
+
+        // Hiện thông báo
         sendNotification(title, message)
     }
 

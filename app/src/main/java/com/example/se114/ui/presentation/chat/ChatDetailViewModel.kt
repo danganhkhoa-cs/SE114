@@ -278,11 +278,6 @@ class ChatDetailViewModel @Inject constructor(
                     "deletedBy" to emptyList<String>() // Un-hide chat for everyone
                 )
 
-                if (conversation.status == ChatStatus.REJECTED) {
-                    updates["status"] = ChatStatus.PENDING
-                    updates["requestSenderId"] = currentUserId
-                }
-
                 firestore.collection("conversations").document(currentConversationId)
                     .update(updates)
                     .await()
