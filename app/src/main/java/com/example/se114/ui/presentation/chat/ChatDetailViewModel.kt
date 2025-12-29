@@ -8,6 +8,7 @@ import com.example.se114.data.model.ChatStatus
 import com.example.se114.data.model.Conversation
 import com.example.se114.data.model.FriendshipState
 import com.example.se114.data.model.UserSummary
+import com.example.se114.data.repository.PostRepository
 import com.example.se114.local.PreferencesManager
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
@@ -36,7 +37,8 @@ data class ChatDetailUiState(
 class ChatDetailViewModel @Inject constructor(
     private val firestore: FirebaseFirestore,
     savedStateHandle: SavedStateHandle,
-    private val preferencesManager: PreferencesManager
+    private val preferencesManager: PreferencesManager,
+    private val repository: PostRepository
 ) : ViewModel() {
 
     private val currentConversationId: String = checkNotNull(savedStateHandle["conversationId"])
@@ -224,6 +226,14 @@ class ChatDetailViewModel @Inject constructor(
                     .await()
 
                 _uiState.update { it.copy(messageInput = "") }
+
+                // Gửi thông báo
+                repository.sendNotification(
+                    receiverId = partnerId,
+                    senderId = currentUserId,
+                    postId = null,
+                    type = "MESSAGE",
+                )
             } catch (e: Exception) {
                 e.printStackTrace()
 

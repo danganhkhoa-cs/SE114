@@ -20,6 +20,8 @@ import javax.inject.Inject
 
 enum class NotificationType {
     LIKE, LIKE_COMMENT, COMMENT, REPLY, FRIEND_REQUEST,
+
+    MESSAGE,
     SYSTEM
 }
 
