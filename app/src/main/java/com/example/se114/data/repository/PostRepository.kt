@@ -751,8 +751,9 @@ class PostRepository @Inject constructor(
      * Tự động chạy ngay khi user mở App/Login.
      * Hỗ trợ mọi loại thông báo (Like, Comment, System...) miễn là isRead = false.
      */
+    // PostRepository.kt
+
     fun startListeningToUnreadNotifications(userId: String) {
-        // Nếu đã lắng nghe đúng user này rồi thì thôi, tránh trùng lặp
         if (notificationListener != null) return
 
         try {
@@ -766,7 +767,15 @@ class PostRepository @Inject constructor(
                         return@addSnapshotListener
                     }
                     if (snapshot != null) {
-                        _unreadCountFlow.value = snapshot.size()
+                        // Lọc thủ công ở đây (Client-side filtering)
+                        val validCount = snapshot.documents.count { doc ->
+                            val type = doc.getString("type")
+                            type != "MESSAGE"
+                        }
+
+                        // Nếu bạn muốn hiển thị 9+ thì logic có thể phức tạp hơn xíu,
+                        // nhưng cơ bản là gán vào flow
+                        _unreadCountFlow.value = validCount
                     }
                 }
         } catch (e: Exception) {
