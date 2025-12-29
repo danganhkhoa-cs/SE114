@@ -760,6 +760,7 @@ class PostRepository @Inject constructor(
                 .collection("notifications")
                 .whereEqualTo("isRead", false)
                 .limit(10) // Tối ưu: Chỉ lấy tối đa 10 tin để hiện "9+"
+                .whereNotEqualTo("type", "MESSAGE")
                 .addSnapshotListener { snapshot, error ->
                     if (error != null) {
                         return@addSnapshotListener
@@ -784,11 +785,19 @@ class PostRepository @Inject constructor(
             .limit(50)
             .snapshots()
             .map { snapshot ->
-                snapshot.toObjects(NotificationItem::class.java).mapIndexed { index, item ->
-                    item.copy(
-                        id = snapshot.documents[index].id,
-                        isFromBroadcast = false // Đây là tin cá nhân
-                    )
+                // Thay đổi từ toObjects().mapIndexed sang documents.mapNotNull
+                snapshot.documents.mapNotNull { doc ->
+                    val item = doc.toObject(NotificationItem::class.java)
+
+                    // Điều kiện lọc: item không null VÀ type khác "MESSAGE"
+                    if (item != null && item.type != NotificationType.MESSAGE) {
+                        item.copy(
+                            id = doc.id,
+                            isFromBroadcast = false
+                        )
+                    } else {
+                        null // Bỏ qua phần tử này
+                    }
                 }
             }
     }

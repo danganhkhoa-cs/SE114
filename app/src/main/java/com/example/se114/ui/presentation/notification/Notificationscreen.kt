@@ -299,6 +299,7 @@ fun getNotificationIconData(type: NotificationType): NotificationIconData {
         NotificationType.REPLY -> NotificationIconData(Icons.Default.Reply, Color(0xFF9C27B0), Color(0xFF9C27B0).copy(alpha = 0.15f))
         NotificationType.FRIEND_REQUEST -> NotificationIconData(Icons.Default.PersonAdd, Color(0xFF4CAF50), Color(0xFF4CAF50).copy(alpha = 0.15f))
         NotificationType.SYSTEM -> NotificationIconData(Icons.Default.Warning, Color(red = 255, 165, 0), Color(red = 255, 165, 0).copy(alpha = 0.15f))
+        NotificationType.MESSAGE -> NotificationIconData(Icons.Default.Message, Color(0xFF2196F3), Color(0xFF2196F3).copy(alpha = 0.15f))
     }
 }
 
@@ -310,5 +311,6 @@ fun getLocalizedMessage(notification: NotificationItem, preferencesManager: Pref
         NotificationType.REPLY -> preferencesManager.getString("notif_replied")
         NotificationType.FRIEND_REQUEST -> preferencesManager.getString("notif_friend_request")
         NotificationType.SYSTEM -> notification.message
+        NotificationType.MESSAGE -> preferencesManager.getString("notif_message")
     }
 }
