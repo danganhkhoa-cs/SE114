@@ -385,6 +385,16 @@ class ChatListViewModel @Inject constructor(
                         ).await()
                 }
             }
+            // Xóa thông báo
+            val partnerId = conv?.participants?.find { it != currentUserId }
+            if (partnerId != null) {
+                repository.removeNotification(
+                    receiverId = partnerId,
+                    senderId = currentUserId,
+                    postId = null,
+                    type = "FRIEND_REQUEST"
+                )
+            }
         }
     }
 
