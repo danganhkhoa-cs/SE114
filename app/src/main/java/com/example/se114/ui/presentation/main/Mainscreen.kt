@@ -61,6 +61,8 @@ fun MainScreen(
     val isFullScreen = currentDestination?.route == "notification"
             || currentDestination?.route?.contains("chat_detail") == true
             || currentDestination?.route?.contains("other_profile") == true
+            || currentDestination?.route?.contains("post_detail") == true
+
 
     // Cấu hình màu cho Bottom Bar "Bóng bẩy"
     val bottomBarBaseColor = if (isDarkTheme) {

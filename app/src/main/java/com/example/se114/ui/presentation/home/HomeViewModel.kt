@@ -144,9 +144,9 @@ class HomeViewModel @Inject constructor(
             val matchHidden = post.id !in state.hiddenPostIds
 
             // Dùng safe call (?.) và elvis (?: "") để tránh lỗi null pointer
-            val matchCity = state.filterCity.isEmpty() || (post.cityKey ?: "") == state.filterCity
-            val matchDistrict = state.filterDistrict.isEmpty() || (post.districtKey ?: "") == state.filterDistrict
-            val matchCategory = state.filterCategory.isEmpty() || (post.categoryKey ?: "") == state.filterCategory
+            val matchCity = state.filterCity.isEmpty() || post.city == state.filterCity
+            val matchDistrict = state.filterDistrict.isEmpty() || post.district == state.filterDistrict
+            val matchCategory = state.filterCategory.isEmpty() || post.category == state.filterCategory
 
             matchType && matchHidden && matchCity && matchDistrict && matchCategory
         }

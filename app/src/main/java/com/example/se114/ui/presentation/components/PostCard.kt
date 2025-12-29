@@ -145,7 +145,7 @@ fun PostCard(
                         modifier = Modifier.background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f), RoundedCornerShape(10.dp)).padding(8.dp)
                     ) {
                         Icon(Icons.Default.LocationOn, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer)
-                        Text("${post.district}, ${post.city}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.padding(start = 4.dp))
+                        Text("${preferencesManager.getString(post.district)}, ${preferencesManager.getString(post.city)}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.padding(start = 4.dp))
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Row(
@@ -153,7 +153,7 @@ fun PostCard(
                         modifier = Modifier.background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f), RoundedCornerShape(10.dp)).padding(8.dp)
                     ) {
                         Icon(Icons.AutoMirrored.Filled.Label, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer)
-                        Text(post.category, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.padding(start = 4.dp))
+                        Text(preferencesManager.getString(post.category), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.padding(start = 4.dp))
                     }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
