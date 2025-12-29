@@ -10,6 +10,7 @@ import com.example.se114.data.model.FriendshipState
 import com.example.se114.data.model.UserSummary
 import com.example.se114.data.repository.PostRepository
 import com.example.se114.local.PreferencesManager
+import com.example.se114.utils.CurrentChatManager
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
@@ -74,6 +75,12 @@ class ChatDetailViewModel @Inject constructor(
 
                         // CẬP NHẬT LẠI DANH SÁCH TIN NHẮN HIỂN THỊ DỰA TRÊN hiddenTimestamps
                         updateDisplayedMessages()
+
+                        // Logic: Nếu tôi đang mở màn hình chat với user nào mà tên tôi không có trong đó thì lập tức thêm vào
+                        if (conversation != null && conversation.readBy.contains(CurrentChatManager.currentPartnerId)) {
+                            firestore.collection("conversations").document(conversationId)
+                                .update("readBy", FieldValue.arrayUnion(currentUserId))
+                        }
 
                         // Load Partner Profile (Optional if needed explicitly)
                         val partnerId = conversation?.participants?.find { it != currentUserId }
@@ -290,6 +297,7 @@ class ChatDetailViewModel @Inject constructor(
                     senderId = currentUserId,
                     postId = null,
                     type = "MESSAGE",
+                    message = content
                 )
             } catch (e: Exception) {
                 e.printStackTrace()

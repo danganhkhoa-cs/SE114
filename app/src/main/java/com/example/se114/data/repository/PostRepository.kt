@@ -262,7 +262,7 @@ class PostRepository @Inject constructor(
                         senderId = userId,
                         postId = postId,
                         type = "LIKE",
-                        message = "liked your post",
+                        message = "liked_your_post",
                         commentId = null
                     )
                 }
@@ -523,7 +523,7 @@ class PostRepository @Inject constructor(
                         senderId = userId,
                         postId = postId,
                         type = "REPLY",
-                        message = content,
+                        message = "replied_your_comment",
                         commentId = parentId // Lưu ID để định danh
                     )
                 }
@@ -535,7 +535,7 @@ class PostRepository @Inject constructor(
                         senderId = userId,
                         postId = postId,
                         type = "COMMENT",
-                        message = content
+                        message = "commented_your_post"
                     )
                 }
             }
@@ -611,7 +611,7 @@ class PostRepository @Inject constructor(
                         senderId = userId,
                         postId = postId,
                         type = "LIKE_COMMENT",
-                        message = "liked your comment",
+                        message = "liked_your_comment",
                         commentId = commentId
                     )
                 }

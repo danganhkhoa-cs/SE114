@@ -334,14 +334,11 @@ object StringResources {
         "Announcement" to "Announcement",
 
         // Notification Types
-        "notif_liked_post" to "liked your post",
-        "notif_liked_comment" to "liked your comment",
-        "notif_commented" to "commented on your post",
-        "notif_replied" to "replied to your comment",
-        "notif_friend_request" to "sent you a friend request",
-        "notif_sos_accepted" to "accepted your support request",
-        "notif_emergency_approved" to "Your emergency request has been approved",
-        "notif_emergency_rejected" to "Your emergency request has been rejected",
+        "liked_your_post" to "liked your post",
+        "liked_your_comment" to "liked your comment",
+        "commented_your_post" to "commented on your post",
+        "replied_your_comment" to "replied to your comment",
+        "sent_friend_request" to "sent you a friend request",
 
         // Time ago labels
         "time_just_now" to "Just now",
@@ -1749,8 +1746,8 @@ object StringResources {
         "social_empty_msg" to "Các tương tác như thích, bình luận và lời mời kết bạn sẽ xuất hiện ở đây.",
         "emergency_empty_msg" to "Các cảnh báo hệ thống và cập nhật khẩn cấp sẽ được hiển thị ở đây.",
         "friend_reject" to "Từ chối",
-        "Warning" to "Cảnh báo",
-        "Announcement" to "Thông báo",
+        "warning" to "Cảnh báo",
+        "announcement" to "Thông báo",
 
         // Notification Types
         "notif_liked_post" to "đã thích bài viết của bạn",
@@ -1817,18 +1814,15 @@ object StringResources {
         "social_empty_msg" to "Các tương tác như thích, bình luận và lời mời kết bạn sẽ xuất hiện ở đây.",
         "emergency_empty_msg" to "Các cảnh báo hệ thống và cập nhật khẩn cấp sẽ được hiển thị ở đây.",
         "friend_reject" to "Từ chối",
-        "Warning" to "Cảnh báo",
-        "Announcement" to "Thông báo",
+        "warning" to "Cảnh báo",
+        "announcement" to "Thông báo",
 
         // Notification Types (Dịch tiếng Việt)
-        "notif_liked_post" to "đã thích bài viết của bạn",
-        "notif_liked_comment" to "đã thích bình luận của bạn",
-        "notif_commented" to "đã bình luận vào bài viết",
-        "notif_replied" to "đã trả lời bình luận của bạn",
-        "notif_friend_request" to "đã gửi lời mời kết bạn",
-        "notif_sos_accepted" to "đã chấp nhận yêu cầu hỗ trợ",
-        "notif_emergency_approved" to "Yêu cầu khẩn cấp của bạn đã được duyệt",
-        "notif_emergency_rejected" to "Yêu cầu khẩn cấp của bạn bị từ chối",
+        "liked_your_post" to "đã thích bài viết của bạn",
+        "liked_your_comment" to "đã thích bình luận của bạn",
+        "commented_your_post" to "đã bình luận vào bài viết",
+        "replied_your_comment" to "đã trả lời bình luận của bạn",
+        "sent_friend_request" to "đã gửi lời mời kết bạn",
 
         //===
         "cat_repair" to "Sửa chữa",

@@ -480,7 +480,7 @@ class OtherProfileViewModel @Inject constructor(
                     senderId = myId,
                     postId = null,
                     type = "FRIEND_REQUEST",
-                    message = ""
+                    message = "sent_friend_request"
                 )
 
             } catch (e: Exception) {
