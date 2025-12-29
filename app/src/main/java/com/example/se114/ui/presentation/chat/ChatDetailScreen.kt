@@ -42,6 +42,14 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.platform.LocalUriHandler
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.app.ActivityCompat
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
+import androidx.compose.material.icons.filled.LocationOn // Icon vị trí
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatDetailScreen(
@@ -55,7 +63,19 @@ fun ChatDetailScreen(
     val isDarkMode = preferencesManager.isDarkMode
     val myId = preferencesManager.userId
     val context = LocalContext.current
-
+    val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val isGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+                permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        if (isGranted) {
+            // Nếu quyền được cấp, gọi hàm lấy vị trí (định nghĩa bên dưới)
+            getCurrentLocationAndSend(context, fusedLocationClient, viewModel)
+        } else {
+            Toast.makeText(context, "Cần quyền vị trí để sử dụng tính năng này", Toast.LENGTH_SHORT).show()
+        }
+    }
     // Colors
     val headerColor = if (isDarkMode) Color.Black else AppTealDark
     val backgroundColor = if (isDarkMode) DarkSurface else Color(0xFFF5F7F8)
@@ -237,6 +257,36 @@ fun ChatDetailScreen(
                         modifier = Modifier.fillMaxWidth().padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        // --- NÚT GỬI VỊ TRÍ (THÊM MỚI) ---
+                        IconButton(
+                            onClick = {
+                                // Kiểm tra quyền trước khi bấm
+                                if (ActivityCompat.checkSelfPermission(
+                                        context,
+                                        Manifest.permission.ACCESS_FINE_LOCATION
+                                    ) != PackageManager.PERMISSION_GRANTED
+                                ) {
+                                    // Chưa có quyền thì xin
+                                    locationPermissionLauncher.launch(
+                                        arrayOf(
+                                            Manifest.permission.ACCESS_FINE_LOCATION,
+                                            Manifest.permission.ACCESS_COARSE_LOCATION
+                                        )
+                                    )
+                                } else {
+                                    // Đã có quyền thì lấy vị trí luôn
+                                    getCurrentLocationAndSend(context, fusedLocationClient, viewModel)
+                                }
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.LocationOn,
+                                contentDescription = "Location",
+                                tint = AppTealDark
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(4.dp))
                         OutlinedTextField(
                             value = uiState.messageInput,
                             onValueChange = viewModel::onMessageInputChange,
@@ -402,5 +452,38 @@ fun MessageBubble(
                 }
             )
         }
+    }
+}
+private fun getCurrentLocationAndSend(
+    context: android.content.Context,
+    fusedLocationClient: com.google.android.gms.location.FusedLocationProviderClient,
+    viewModel: ChatDetailViewModel
+) {
+    try {
+        // Kiểm tra lại quyền lần cuối cho chắc (yêu cầu của Android Lint)
+        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+
+            Toast.makeText(context, "Đang lấy vị trí...", Toast.LENGTH_SHORT).show()
+
+            // Lấy vị trí ưu tiên độ chính xác cao
+            fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
+                .addOnSuccessListener { location ->
+                    if (location != null) {
+                        // Tạo đường link Google Maps chuẩn
+                        // Format: https://www.google.com/maps/search/?api=1&query=LAT,LNG
+                        val mapLink = "https://www.google.com/maps/search/?api=1&query=${location.latitude},${location.longitude}"
+
+                        // Gọi ViewModel gửi đi
+                        viewModel.sendLocationMessage(mapLink)
+                    } else {
+                        Toast.makeText(context, "Không thể xác định vị trí. Hãy bật GPS.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                .addOnFailureListener {
+                    Toast.makeText(context, "Lỗi lấy vị trí: ${it.message}", Toast.LENGTH_SHORT).show()
+                }
+        }
+    } catch (e: Exception) {
+        e.printStackTrace()
     }
 }
