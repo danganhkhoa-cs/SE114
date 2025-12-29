@@ -35,7 +35,13 @@ import com.example.se114.data.model.ChatMessage
 import com.example.se114.local.PreferencesManager
 import com.example.se114.ui.theme.AppTealDark
 import com.example.se114.ui.theme.DarkSurface
-
+import android.util.Patterns
+import androidx.compose.foundation.text.ClickableText
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.platform.LocalUriHandler
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatDetailScreen(
@@ -319,6 +325,42 @@ fun MessageBubble(
     val bubbleColor = if (isMe) AppTealDark else (if(isDarkMode) Color(0xFF333333) else Color(0xFFE4E6EB))
     val textColor = if (isMe) Color.White else (if(isDarkMode) Color.White else Color.Black)
 
+    // Màu cho đường link: Nếu là mình (nền xanh) thì link màu vàng nhạt/trắng, nếu là bạn (nền xám) thì link màu xanh dương
+    val linkColor = if (isMe) Color(0xFFFFEB3B) else Color(0xFF2196F3)
+
+    val uriHandler = LocalUriHandler.current
+
+    // Xử lý chuỗi tin nhắn để tìm và format link
+    val annotatedString = buildAnnotatedString {
+        val text = message.content
+        append(text)
+
+        // Sử dụng Regex của Android để tìm URL
+        val matcher = Patterns.WEB_URL.matcher(text)
+        while (matcher.find()) {
+            val start = matcher.start()
+            val end = matcher.end()
+
+            // 1. Thêm style (gạch chân + đổi màu)
+            addStyle(
+                style = SpanStyle(
+                    color = linkColor,
+                    textDecoration = TextDecoration.Underline
+                ),
+                start = start,
+                end = end
+            )
+
+            // 2. Gắn tag URL để lát nữa bắt sự kiện click
+            addStringAnnotation(
+                tag = "URL",
+                annotation = matcher.group(),
+                start = start,
+                end = end
+            )
+        }
+    }
+
     Box(
         modifier = Modifier.fillMaxWidth(),
         contentAlignment = if (isMe) Alignment.CenterEnd else Alignment.CenterStart
@@ -333,12 +375,31 @@ fun MessageBubble(
             ),
             modifier = Modifier.widthIn(max = 280.dp)
         ) {
-            Text(
-                text = message.content,
+            // Thay thế Text bằng ClickableText
+            ClickableText(
+                text = annotatedString,
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                color = textColor,
-                fontSize = 15.sp,
-                lineHeight = 20.sp
+                style = TextStyle(
+                    color = textColor,
+                    fontSize = 15.sp,
+                    lineHeight = 20.sp
+                ),
+                onClick = { offset ->
+                    // Kiểm tra xem vị trí click có phải là URL không
+                    annotatedString.getStringAnnotations(tag = "URL", start = offset, end = offset)
+                        .firstOrNull()?.let { annotation ->
+                            var url = annotation.item
+                            // Đảm bảo URL có http/https để tránh crash
+                            if (!url.startsWith("http://") && !url.startsWith("https://")) {
+                                url = "https://$url"
+                            }
+                            try {
+                                uriHandler.openUri(url)
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                        }
+                }
             )
         }
     }
