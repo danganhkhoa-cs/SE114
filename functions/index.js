@@ -189,8 +189,6 @@ exports.sendNotification = onDocumentCreated(
 		region: "asia-southeast1",
 	},
 	async (event) => {
-		// ... Code xử lý giữ nguyên ...
-
 		const userId = event.params.userId;
 		const snapshot = event.data;
 
@@ -201,13 +199,12 @@ exports.sendNotification = onDocumentCreated(
 
 		const notificationData = snapshot.data();
 
-		// 1. Lấy thông tin người nhận để tìm FCM Token
+		// 1. Lấy FCM Token
 		const userDoc = await admin
 			.firestore()
 			.collection("users")
 			.doc(userId)
 			.get();
-
 		if (!userDoc.exists) return null;
 
 		const fcmToken = userDoc.data().fcm_token;
@@ -218,28 +215,22 @@ exports.sendNotification = onDocumentCreated(
 
 		// 2. Chuẩn bị nội dung
 		const title = "LocaSOS";
-		// Thêm check để tránh crash nếu message bị null
 		const body = `${notificationData.senderName || "Someone"} ${
 			notificationData.message || "sent a notification"
 		}`;
 
-		// 3. Tạo Message
+		// 3. Tạo Message (QUAN TRỌNG: CHỈ DÙNG DATA)
 		const message = {
 			token: fcmToken,
-			notification: {
-				title: title,
-				body: body,
-			},
 			data: {
+				title: title,
+				message: body,
 				postId: notificationData.postId || "",
 				click_action: "FLUTTER_NOTIFICATION_CLICK",
+				type: "alert",
 			},
 			android: {
-				priority: "high",
-				notification: {
-					sound: "default",
-					channelId: "locasos_channel_id",
-				},
+				priority: "high", // Đảm bảo độ ưu tiên cao nhất khi truyền tải
 			},
 		};
 
@@ -273,21 +264,19 @@ exports.sendSystemNotification = onDocumentCreated(
 
 		// Tạo Message gửi cho Topic "global_alerts"
 		const message = {
-			topic: "global_alerts", // Gửi cho tất cả ai đăng ký topic này
-			notification: {
-				title: title,
-				body: body,
-			},
+			topic: "global_alerts",
+			// 2. Đưa nội dung vào data
 			data: {
+				title: title,
+				message: body, // Key phải là 'message' để khớp với code Kotlin: data["message"]
 				click_action: "FLUTTER_NOTIFICATION_CLICK",
-				type: "SYSTEM", // Để App nhận biết đây là tin hệ thống
+				type: "SYSTEM",
 				notificationId: event.params.notificationId,
 			},
+
+			// 3. Cấu hình Android để đảm bảo ưu tiên cao nhất
 			android: {
 				priority: "high",
-				notification: {
-					channelId: "locasos_channel_id",
-				},
 			},
 		};
 
