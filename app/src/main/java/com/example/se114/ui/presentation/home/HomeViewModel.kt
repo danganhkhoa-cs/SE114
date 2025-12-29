@@ -23,7 +23,7 @@ data class HomeUiState(
     val hiddenPostIds: Set<String> = emptySet(),
     val displayedPosts: List<Post> = emptyList(),
     val selectedTabIndex: Int = 0,
-    val notificationUnreadCount: Int = 5,
+    val notificationUnreadCount: Int = 0,
     val isRefreshing: Boolean = false,
 
     // Filter States

@@ -213,29 +213,23 @@ exports.sendNotification = onDocumentCreated(
 			return null;
 		}
 
-		// 2. Chuẩn bị nội dung
-		const title = "LocaSOS";
-		const body = `${notificationData.senderName || "Someone"} ${
-			notificationData.message || "sent a notification"
-		}`;
-
-		// 3. Tạo Message (QUAN TRỌNG: CHỈ DÙNG DATA)
+		// 2. Tạo Message (QUAN TRỌNG: CHỈ DÙNG DATA)
 		const message = {
 			token: fcmToken,
 			data: {
-				title: title,
-				message: body,
+				message: notificationData.message || "",
 				postId: notificationData.postId || "",
+				senderName: notificationData.senderName || "",
 				senderId: notificationData.senderId || "",
 				click_action: "FLUTTER_NOTIFICATION_CLICK",
-				type: "alert",
+				type: notificationData.type || "",
 			},
 			android: {
 				priority: "high", // Đảm bảo độ ưu tiên cao nhất khi truyền tải
 			},
 		};
 
-		// 4. Gửi thông báo
+		// 3. Gửi thông báo
 		try {
 			await admin.messaging().send(message);
 			console.log("Notification sent successfully to: ", userId);
@@ -268,8 +262,8 @@ exports.sendSystemNotification = onDocumentCreated(
 			topic: "global_alerts",
 			// 2. Đưa nội dung vào data
 			data: {
-				title: title,
-				message: body, // Key phải là 'message' để khớp với code Kotlin: data["message"]
+				senderName: title,
+				message: body,
 				click_action: "FLUTTER_NOTIFICATION_CLICK",
 				type: "SYSTEM",
 				notificationId: event.params.notificationId,

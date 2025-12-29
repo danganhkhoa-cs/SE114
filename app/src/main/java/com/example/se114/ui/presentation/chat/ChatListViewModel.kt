@@ -303,9 +303,9 @@ class ChatListViewModel @Inject constructor(
                 repository.sendNotification(
                     receiverId = targetUser.uid,
                     senderId = currentUserId,
-                    postId = null, // Kết bạn không cần postId
-                    type = "FRIEND_REQUEST", // Khớp với Enum NotificationType
-                    message = "" // Message rỗng vì UI tự map string "đã gửi lời mời..."
+                    postId = null,
+                    type = "FRIEND_REQUEST",
+                    message = "sent_friend_request"
                 )
 
                 _uiState.update { it.copy(isLoading = false) }

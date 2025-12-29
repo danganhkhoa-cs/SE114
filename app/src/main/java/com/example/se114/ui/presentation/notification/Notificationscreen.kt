@@ -315,12 +315,12 @@ fun getNotificationIconData(type: NotificationType): NotificationIconData {
 
 fun getLocalizedMessage(notification: NotificationItem, preferencesManager: PreferencesManager): String {
     return when (notification.type) {
-        NotificationType.LIKE -> preferencesManager.getString("notif_liked_post")
-        NotificationType.LIKE_COMMENT -> preferencesManager.getString("notif_liked_comment")
-        NotificationType.COMMENT -> "${preferencesManager.getString("notif_commented")}: '${notification.message.substringAfter(": '").substringBefore("'")}'"
-        NotificationType.REPLY -> preferencesManager.getString("notif_replied")
-        NotificationType.FRIEND_REQUEST -> preferencesManager.getString("notif_friend_request")
+        NotificationType.LIKE -> preferencesManager.getString("liked_your_post")
+        NotificationType.LIKE_COMMENT -> preferencesManager.getString("liked_your_comment")
+        NotificationType.COMMENT -> "${preferencesManager.getString("commented_your_post")}: '${notification.message.substringAfter(": '").substringBefore("'")}'"
+        NotificationType.REPLY -> preferencesManager.getString("replied_your_comment")
+        NotificationType.FRIEND_REQUEST -> preferencesManager.getString("sent_friend_request")
         NotificationType.SYSTEM -> notification.message
-        NotificationType.MESSAGE -> preferencesManager.getString("notif_message")
+        NotificationType.MESSAGE -> preferencesManager.getString("message")
     }
 }
