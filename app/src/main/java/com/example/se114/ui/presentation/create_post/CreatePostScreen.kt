@@ -193,10 +193,11 @@ fun CreatePostScreen(
             SimpleDropdown(
                 label = preferencesManager.getString("label_city"),
                 placeholder = preferencesManager.getString("select_city"),
-                options = viewModel.cities, // List thành phố vẫn là biến public
+                options = viewModel.cities,
                 selectedOption = uiState.selectedCity,
                 onOptionSelected = viewModel::onCitySelected,
-                isDark = isDark
+                isDark = isDark,
+                preferenceManager = preferencesManager
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -209,7 +210,8 @@ fun CreatePostScreen(
                 selectedOption = uiState.selectedDistrict,
                 onOptionSelected = viewModel::onDistrictSelected,
                 enabled = uiState.selectedCity.isNotEmpty(),
-                isDark = isDark
+                isDark = isDark,
+                preferenceManager = preferencesManager
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -221,7 +223,8 @@ fun CreatePostScreen(
                 options = availableCategories,
                 selectedOption = uiState.selectedCategory,
                 onOptionSelected = viewModel::onCategorySelected,
-                isDark = isDark
+                isDark = isDark,
+                preferenceManager = preferencesManager
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -265,7 +268,8 @@ fun SimpleDropdown(
     selectedOption: String,
     onOptionSelected: (String) -> Unit,
     enabled: Boolean = true,
-    isDark: Boolean
+    isDark: Boolean,
+    preferenceManager: PreferencesManager
 ) {
     var expanded by remember { mutableStateOf(false) }
 
@@ -274,7 +278,7 @@ fun SimpleDropdown(
         onExpandedChange = { if(enabled) expanded = !expanded }
     ) {
         OutlinedTextField(
-            value = selectedOption,
+            value = preferenceManager.getString(selectedOption),
             onValueChange = {},
             readOnly = true,
             label = { Text(label) },
@@ -295,7 +299,7 @@ fun SimpleDropdown(
         ) {
             options.forEach { option ->
                 DropdownMenuItem(
-                    text = { Text(option) },
+                    text = { Text(preferenceManager.getString(option)) },
                     onClick = {
                         onOptionSelected(option)
                         expanded = false

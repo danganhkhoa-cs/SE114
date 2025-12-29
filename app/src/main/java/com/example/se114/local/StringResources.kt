@@ -70,6 +70,8 @@ object StringResources {
         "report_post" to "Report post",
         "report_success" to "Report submitted successfully",
         "about_user" to "About",
+        "post_details" to "Post Details",
+        "write_comment" to "Write a comment...",
 
         // Chat List & Detail
         "chat_title" to "Chats",
@@ -214,7 +216,7 @@ object StringResources {
         "enter_password_continue" to "Enter password to continue",
         "type_delete" to "Type 'DELETE' to confirm",
         "delete_forever" to "Delete Forever",
-        "saved_posts" to "Saved_posts",
+        "saved_posts" to "Saved posts",
         // --- NEW KEYS FOR BLOCKING & ERRORS ---
         "block_user" to "Block User",
         "block_user_title" to "Block this user?",
@@ -340,6 +342,12 @@ object StringResources {
         "notif_sos_accepted" to "accepted your support request",
         "notif_emergency_approved" to "Your emergency request has been approved",
         "notif_emergency_rejected" to "Your emergency request has been rejected",
+
+        // Time ago labels
+        "time_just_now" to "Just now",
+        "time_minutes_ago" to "minutes ago",
+        "time_hours_ago" to "hours ago",
+        "time_days_ago" to "days ago",
 ////===========
 
         "cat_repair" to "Repair",
@@ -792,23 +800,6 @@ object StringResources {
         "dist_dau_tieng" to "Dau Tieng",
         "dist_phu_giao" to "Phu Giao",
 
-
-        // Time ago labels
-        "cat_repair" to "Repair",
-        "cat_cleaning" to "Cleaning",
-        "cat_tutor" to "Tutor",
-        "cat_delivery" to "Delivery",
-        "cat_pet_care" to "Pet Care",
-        "cat_beauty" to "Beauty/Spa",
-        "cat_it_support" to "IT Support",
-        "cat_driver" to "Driver",
-        "cat_emergency" to "Emergency Rescue",
-        "cat_medical" to "Medical Help",
-        "cat_lost_found" to "Lost & Found",
-        "cat_donation" to "Donation",
-        "cat_transport_help" to "Transport Help",
-        "cat_volunteer" to "Volunteer",
-        "cat_food_water" to "Food & Water",
         "city_hcm" to "Ho Chi Minh City",
         "city_hn" to "Ha Noi",
         "city_dn" to "Da Nang",
@@ -1536,6 +1527,8 @@ object StringResources {
         "report_post" to "Báo cáo bài viết",
         "report_success" to "Gửi báo cáo thành công",
         "about_user" to "Về",
+        "post_details" to "Chi tiết bài viết",
+        "write_comment" to "Viết bình luận...",
 
         // Chat List & Detail
         "chat_title" to "Tin nhắn",
@@ -1852,6 +1845,7 @@ object StringResources {
         "cat_donation" to "Quyên góp/Từ thiện",
         "cat_transport_help" to "Hỗ trợ di chuyển",
         "cat_volunteer" to "Tình nguyện viên",
+        "cat_food_water" to "Đồ ăn và thức uống",
         // --- CITIES (VIETNAMESE - WITH ACCENT) ---
         "city_hcm" to "TP. Hồ Chí Minh",
         "city_hn" to "Hà Nội",

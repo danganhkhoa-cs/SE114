@@ -119,9 +119,9 @@ class SavedViewModel @Inject constructor(
             val matchType = post.type == targetType
 
             // Safe call (?.)
-            val matchCity = state.filterCity.isEmpty() || (post.cityKey ?: "") == state.filterCity
-            val matchDistrict = state.filterDistrict.isEmpty() || (post.districtKey ?: "") == state.filterDistrict
-            val matchCategory = state.filterCategory.isEmpty() || (post.categoryKey ?: "") == state.filterCategory
+            val matchCity = state.filterCity.isEmpty() || post.city == state.filterCity
+            val matchDistrict = state.filterDistrict.isEmpty() || post.district == state.filterDistrict
+            val matchCategory = state.filterCategory.isEmpty() || post.category == state.filterCategory
 
             matchType && matchCity && matchDistrict && matchCategory
         }
