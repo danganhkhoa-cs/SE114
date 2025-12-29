@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.se114.local.PreferencesManager
+import com.example.se114.utils.CurrentChatManager
 import com.example.se114.utils.TimeUtils
 import com.example.se114.utils.TimeUtils.getTimeAgo
 
@@ -38,6 +39,15 @@ fun NotificationScreen(
     preferencesManager: PreferencesManager,
     viewModel: NotificationViewModel = hiltViewModel()
 ) {
+    DisposableEffect(Unit) {
+        // Khi màn hình được vẽ: Đánh dấu đang xem thông báo
+        CurrentChatManager.isNotificationScreenVisible = true
+
+        onDispose {
+            // Khi thoát màn hình: Bỏ đánh dấu
+            CurrentChatManager.isNotificationScreenVisible = false
+        }
+    }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     val socialUnreadCount = uiState.socialNotifications.count { !it.isRead }

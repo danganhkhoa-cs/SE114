@@ -50,6 +50,8 @@ import androidx.core.app.ActivityCompat
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import androidx.compose.material.icons.filled.LocationOn // Icon vị trí
+import com.example.se114.utils.CurrentChatManager
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatDetailScreen(
@@ -94,12 +96,24 @@ fun ChatDetailScreen(
 
     // Identify partner ID for clicking
     val partnerId = uiState.conversation?.participants?.find { it != myId } ?: ""
-
+    // Cập nhật ID người đang chat vào biến toàn cục
+    LaunchedEffect(partnerId) {
+        if (partnerId.isNotEmpty()) {
+            CurrentChatManager.currentPartnerId = partnerId
+        }
+    }
     // Hiển thị Toast khi có lỗi gửi tin nhắn
     LaunchedEffect(uiState.sendError) {
         uiState.sendError?.let { error ->
             Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
             viewModel.clearError()
+        }
+    }
+
+    // Dọn dẹp khi rời màn hình (Set về null)
+    DisposableEffect(Unit) {
+        onDispose {
+            CurrentChatManager.currentPartnerId = null
         }
     }
 

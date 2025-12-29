@@ -226,6 +226,7 @@ exports.sendNotification = onDocumentCreated(
 				title: title,
 				message: body,
 				postId: notificationData.postId || "",
+				senderId: notificationData.senderId || "",
 				click_action: "FLUTTER_NOTIFICATION_CLICK",
 				type: "alert",
 			},
