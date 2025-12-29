@@ -514,8 +514,12 @@ class OtherProfileViewModel @Inject constructor(
         }
     }
 
+    private fun getConversationId(uid1: String, uid2: String): String {
+        return if (uid1 < uid2) "${uid1}_${uid2}" else "${uid2}_${uid1}"
+    }
+
     private suspend fun createConversation(targetId: String, initialMessage: String, isFriendRequest: Boolean) {
-        val newConvId = "${myId}_${targetId}_${System.currentTimeMillis()}"
+        val newConvId = getConversationId(myId, targetId)
         val myName = preferencesManager.userName
         val myAvatar = preferencesManager.userName.take(1).uppercase()
         val targetName = _uiState.value.userName
