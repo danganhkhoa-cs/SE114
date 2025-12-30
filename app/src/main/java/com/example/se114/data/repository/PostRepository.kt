@@ -761,7 +761,6 @@ class PostRepository @Inject constructor(
                 .collection("notifications")
                 .whereEqualTo("isRead", false)
                 .limit(10) // Tối ưu: Chỉ lấy tối đa 10 tin để hiện "9+"
-                .whereNotEqualTo("type", "MESSAGE")
                 .addSnapshotListener { snapshot, error ->
                     if (error != null) {
                         return@addSnapshotListener
