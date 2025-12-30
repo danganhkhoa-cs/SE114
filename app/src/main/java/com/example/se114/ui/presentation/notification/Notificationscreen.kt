@@ -11,6 +11,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Comment
+import androidx.compose.material.icons.automirrored.filled.Message
+import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -51,7 +54,7 @@ fun NotificationScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     val socialUnreadCount = uiState.socialNotifications.count { !it.isRead }
-    val emergencyUnreadCount = uiState.systemNotifications.count { !it.isRead }
+    val systemUnreadCount = uiState.systemNotifications.count { !it.isRead }
 
     Scaffold(
         topBar = {
@@ -132,7 +135,7 @@ fun NotificationScreen(
                     Triple(NotificationTab.SYSTEM, preferencesManager.getString("system"), Icons.Default.Warning)
                 ).forEach { (tab, title, icon) ->
                     val isSelected = uiState.selectedTab == tab
-                    val unreadCount = if (tab == NotificationTab.SOCIAL) socialUnreadCount else emergencyUnreadCount
+                    val unreadCount = if (tab == NotificationTab.SOCIAL) socialUnreadCount else systemUnreadCount
                     val selectedBg = MaterialTheme.colorScheme.primary
                     val selectedContentColor = MaterialTheme.colorScheme.onPrimary
                     val unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -305,11 +308,12 @@ fun getNotificationIconData(type: NotificationType): NotificationIconData {
     return when (type) {
         NotificationType.LIKE -> NotificationIconData(Icons.Default.Favorite, Color(0xFFE91E63), Color(0xFFE91E63).copy(alpha = 0.15f))
         NotificationType.LIKE_COMMENT -> NotificationIconData(Icons.Default.Favorite, Color(0xFFE91E63), Color(0xFFE91E63).copy(alpha = 0.15f))
-        NotificationType.COMMENT -> NotificationIconData(Icons.Default.Comment, Color(0xFF2196F3), Color(0xFF2196F3).copy(alpha = 0.15f))
-        NotificationType.REPLY -> NotificationIconData(Icons.Default.Reply, Color(0xFF9C27B0), Color(0xFF9C27B0).copy(alpha = 0.15f))
+        NotificationType.COMMENT -> NotificationIconData(Icons.AutoMirrored.Filled.Comment, Color(0xFF2196F3), Color(0xFF2196F3).copy(alpha = 0.15f))
+        NotificationType.REPLY -> NotificationIconData(Icons.AutoMirrored.Filled.Reply, Color(0xFF9C27B0), Color(0xFF9C27B0).copy(alpha = 0.15f))
         NotificationType.FRIEND_REQUEST -> NotificationIconData(Icons.Default.PersonAdd, Color(0xFF4CAF50), Color(0xFF4CAF50).copy(alpha = 0.15f))
-        NotificationType.SYSTEM -> NotificationIconData(Icons.Default.Warning, Color(red = 255, 165, 0), Color(red = 255, 165, 0).copy(alpha = 0.15f))
-        NotificationType.MESSAGE -> NotificationIconData(Icons.Default.Message, Color(0xFF2196F3), Color(0xFF2196F3).copy(alpha = 0.15f))
+        NotificationType.SYSTEM -> NotificationIconData(Icons.Default.Campaign, Color(red = 255, 165, 0), Color(red = 255, 165, 0).copy(alpha = 0.15f))
+        NotificationType.VIOLATION -> NotificationIconData(Icons.Default.Warning, Color(red = 255, 0, 0), Color(red = 255, 0, 0).copy(alpha = 0.15f))
+        NotificationType.MESSAGE -> NotificationIconData(Icons.AutoMirrored.Filled.Message, Color(0xFF2196F3), Color(0xFF2196F3).copy(alpha = 0.15f))
     }
 }
 
@@ -321,6 +325,20 @@ fun getLocalizedMessage(notification: NotificationItem, preferencesManager: Pref
         NotificationType.REPLY -> preferencesManager.getString("replied_your_comment")
         NotificationType.FRIEND_REQUEST -> preferencesManager.getString("sent_friend_request")
         NotificationType.SYSTEM -> notification.message
+        NotificationType.VIOLATION ->
+            when {
+                notification.message.startsWith("delete_post:") ->
+                    "${preferencesManager.getString("delete_post")}: \"${
+                        notification.message.substringAfter("delete_post:")
+                    }\""
+
+                notification.message.startsWith("warning_post:") ->
+                    "${preferencesManager.getString("warning_post")}: \"${
+                        notification.message.substringAfter("warning_post:")
+                    }\""
+
+                else -> preferencesManager.getString(notification.message)
+            }
         NotificationType.MESSAGE -> preferencesManager.getString("message")
     }
 }

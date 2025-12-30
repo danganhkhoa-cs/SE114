@@ -330,8 +330,9 @@ object StringResources {
         "social_empty_msg" to "Interactions like likes, comments, and friend requests will appear here.",
         "emergency_empty_msg" to "System alerts and emergency updates will be shown here.",
         "friend_reject" to "Reject",
-        "Warning" to "Warning",
-        "Announcement" to "Announcement",
+        "warning" to "Warning",
+        "announcement" to "Announcement",
+        "violation" to "Violation notice",
 
         // Notification Types
         "liked_your_post" to "liked your post",
@@ -339,6 +340,14 @@ object StringResources {
         "commented_your_post" to "commented on your post",
         "replied_your_comment" to "replied to your comment",
         "sent_friend_request" to "sent you a friend request",
+        "ban_posting_24h" to "You are temporarily banned from posting for 24 hours for violating our policies.",
+        "ban_posting_7d" to "You are banned from posting for 7 days for violating our policies.",
+        "unban_posting" to "Your posting ban has been lifted.",
+        "suspend_account" to "Your account has been suspended.",
+        "unsuspend_account" to "Your account suspension has been lifted.",
+        "delete_post" to "This post has been removed for violating our policies",
+        "warning_post" to "This post has been flagged for violating our policies",
+        "warning_user" to "User has been flagged for violating our policies.",
 
         // Time ago labels
         "time_just_now" to "Just now",
@@ -1746,8 +1755,6 @@ object StringResources {
         "social_empty_msg" to "Các tương tác như thích, bình luận và lời mời kết bạn sẽ xuất hiện ở đây.",
         "emergency_empty_msg" to "Các cảnh báo hệ thống và cập nhật khẩn cấp sẽ được hiển thị ở đây.",
         "friend_reject" to "Từ chối",
-        "warning" to "Cảnh báo",
-        "announcement" to "Thông báo",
 
         // Notification Types
         "notif_liked_post" to "đã thích bài viết của bạn",
@@ -1816,6 +1823,7 @@ object StringResources {
         "friend_reject" to "Từ chối",
         "warning" to "Cảnh báo",
         "announcement" to "Thông báo",
+        "violation" to "Thông báo vi phạm",
 
         // Notification Types (Dịch tiếng Việt)
         "liked_your_post" to "đã thích bài viết của bạn",
@@ -1823,7 +1831,14 @@ object StringResources {
         "commented_your_post" to "đã bình luận vào bài viết",
         "replied_your_comment" to "đã trả lời bình luận của bạn",
         "sent_friend_request" to "đã gửi lời mời kết bạn",
-
+        "ban_posting_24h" to "Bạn đã bị cấm đăng bài trong 24 giờ do vi phạm quy định.",
+        "ban_posting_7d" to "Bạn đã bị cấm đăng bài trong 7 ngày do vi phạm quy định.",
+        "unban_posting" to "Lệnh cấm đăng bài của bạn đã được gỡ bỏ.",
+        "suspend_account" to "Tài khoản của bạn đã bị đình chỉ.",
+        "unsuspend_account" to "Tài khoản của bạn đã được khôi phục.",
+        "delete_post" to "Bài viết này của bạn đã bị xóa do vi phạm quy định",
+        "warning_post" to "Bài viết này của bạn đã bị cảnh báo vì vi phạm quy định",
+        "warning_user" to "Tài khoản của bạn đã bị cảnh báo vì vi phạm quy định.",
         //===
         "cat_repair" to "Sửa chữa",
         "cat_cleaning" to "Vệ sinh",

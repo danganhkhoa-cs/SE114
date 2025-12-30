@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.se114.data.repository.PostRepository
 import com.example.se114.local.PreferencesManager
 import com.google.firebase.Timestamp
+import com.google.firebase.firestore.DocumentId
 import com.google.firebase.firestore.Exclude
 import com.google.firebase.firestore.PropertyName
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -22,7 +23,7 @@ enum class NotificationType {
     LIKE, LIKE_COMMENT, COMMENT, REPLY, FRIEND_REQUEST,
 
     MESSAGE,
-    SYSTEM
+    SYSTEM, VIOLATION
 }
 
 enum class NotificationTab {
@@ -30,7 +31,8 @@ enum class NotificationTab {
 }
 
 data class NotificationItem(
-    val id: String = "", // Mặc định rỗng để Firestore tự điền nếu cần
+    @DocumentId
+    val id: String = "",
     val type: NotificationType = NotificationType.SYSTEM, // Cần gán default để dùng toObject()
     val senderName: String = "",
     val senderAvatar: String? = null,
@@ -97,7 +99,7 @@ class NotificationViewModel @Inject constructor(
 
                 // B. Phân loại Personal List
                 val (privateSystemList, socialList) = personalList.partition {
-                    it.type == NotificationType.SYSTEM
+                    it.type == NotificationType.SYSTEM || it.type == NotificationType.VIOLATION
                 }
 
                 // C. Cập nhật UI State
