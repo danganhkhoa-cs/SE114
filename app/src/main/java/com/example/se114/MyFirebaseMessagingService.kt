@@ -67,6 +67,24 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                 body = message
             }
 
+            // Hàm 4: Nhóm thông báo vi phạm
+            "VIOLATION" -> {
+                title = preferencesManager.getString(senderName)
+                body = when {
+                    message.startsWith("delete_post:") ->
+                        "${preferencesManager.getString("delete_post")}: \"${
+                            message.substringAfter("delete_post:")
+                        }\""
+
+                    message.startsWith("warning_post:") ->
+                        "${preferencesManager.getString("warning_post")}: \"${
+                            message.substringAfter("warning_post:")
+                        }\""
+
+                    else -> preferencesManager.getString(message)
+                }
+            }
+
             // Trường hợp khác (Dự phòng)
             else -> {
                 title = "LocaSOS"
